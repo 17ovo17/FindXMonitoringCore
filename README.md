@@ -195,18 +195,20 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 ## 项目规划
 
-近期主线是把 AI WorkBench 演进为“AI 问诊 + 成熟监控底座”的一体化 AIOps 平台：监控事实源和模板体系交给 Nightingale，采集底座交给 Categraf，平台自身聚焦 AI 诊断、证据编排、知识沉淀、Hermes/消息入口和 findx-agents 探针存活视图。
+近期主线是把 AI WorkBench / FindX 演进为 Nightingale 的全功能运维门户和产品化外壳：Nightingale 继续作为监控事实源、规则事实源、模板事实源、通知事实源、事件事实源和权限事实源；Categraf 继续作为成熟采集核心；findx-agents 则由 Categraf 采集核心 + findx-inspector 单机巡检侧车 + FindX Agent Control Protocol 组成。AI 问诊不是替代夜莺，而是在夜莺事件、规则、指标、Dashboard、通知记录、日志和 Agent 巡检证据之上做解释、归纳、推荐、复盘和知识沉淀。
 
 | 阶段 | 目标 |
 |------|------|
-| **P0：集成基线** | Nightingale Connector、FindX 模板中心只读目录、findx-agents 命名/安装基线、Categraf heartbeat、Dashboard 嵌入 PoC、敏感配置治理 |
-| **P1：可用闭环** | 告警/目标/仪表盘读取 Nightingale，模板中心支持 dashboard、alert、collect、record-rule 安装，AI 问诊引用夜莺告警、指标、规则、Dashboard、Runbook 证据 |
-| **P2：增强体验** | 通知模板、事件流水线、Hermes 推送、AI 推荐规则/Dashboard、Categraf http_provider 远程配置、findx-agents 多平台安装与升级 |
+| **P0：全功能基线** | Nightingale 459 路由功能域清单、Connector 对纳入范围完整覆盖、团队/RBAC/业务组映射、告警规划基线、FindX 模板中心、Dashboard 完整嵌入验收、findx-agents 命名/安装、Categraf heartbeat、findx-inspector `linux_quick` 正式巡检切片、敏感配置治理 |
+| **P1：可用闭环** | 告警/目标/仪表盘/通知/静默/订阅/模板读取和受控写入 Nightingale，模板中心支持 dashboard、alert、collect、record-rule 安装，findx-agents 支持 `linux_quick`、`linux_deep`、`network_basic`，AI 问诊可从夜莺告警触发 Agent 补证据 |
+| **P2：增强体验** | 告警规则/通知/事件流水线品牌化编辑，AI 推荐规则/Dashboard/静默/通知/巡检 profile，Categraf http_provider 与 Inspector profile 远程下发，Catpaw 风格工具 clean-room 迁移，Per-Agent Key/mTLS，Hermes 推送和多平台升级 |
 
 边界原则：
 
-- 除 AI 问诊和 findx-agents 存活视图外，不重写 Nightingale 的告警、仪表盘、通知、事件流水线、记录规则和模板能力。
-- findx-agents 基于 Categraf 做产品化包装，不 fork 采集插件，不直接从 Catpaw 派生。
+- 不允许 MVP、占位页、半截接口、静态假数据、只读目录或一次性 PoC 作为交付结论；阶段拆分只是交付顺序，不代表功能缩水。
+- 除 AI 问诊、findx-agents 存活视图和 findx-inspector 单机巡检外，不重写 Nightingale 的告警、仪表盘、通知、事件流水线、记录规则、日志、任务和模板能力。
+- findx-agents 基于 Categraf 做产品化包装，不 fork 采集插件；Catpaw 能力默认按 clean-room 方式迁移为 Inspector 结构化只读工具，不直接从 Catpaw AGPL 源码派生。
+- Agent 远程 session 默认禁用 shell，只开放结构化只读工具；巡检结果进入 InspectionRun / InspectionFinding，作为 AI 问诊和工作流证据，不成为第二套监控事实源。
 - 产品/UI/API 使用 FindX 命名，合规文档保留 Nightingale/Categraf 的开源归属。
 
 详细立项文档见 [`docs/aiops/nightingale_findx_agents_project_plan.md`](docs/aiops/nightingale_findx_agents_project_plan.md)。
@@ -227,4 +229,3 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 ## 许可证
 
 MIT License
-
