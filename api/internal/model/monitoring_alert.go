@@ -142,6 +142,7 @@ type MonitorAlertTryRunResult struct {
 	Checks  []MonitorTryCheck   `json:"checks"`
 	Rule    *MonitorAlertRule   `json:"rule,omitempty"`
 	EvalLog MonitorAlertEvalLog `json:"eval_log"`
+	Eval    any                 `json:"eval,omitempty"`
 }
 
 type MonitorTryCheck struct {

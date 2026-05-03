@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"math"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"ai-workbench-api/internal/monitoring"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,8 @@ type monitoringPromRequest struct {
 
 type promCallResult struct {
 	Body       map[string]any
+	Data       map[string]any
+	Stats      monitoring.ResultStats
 	LatencyMS  int64
 	StatusCode int
 	Warnings   []string
@@ -95,8 +98,7 @@ func runMonitorPromQuery(c *gin.Context, ranged bool) {
 }
 
 func monitorQueryHash(query string) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(query)))
-	return fmt.Sprintf("%x", sum[:])
+	return monitoring.QueryHash(query)
 }
 
 func auditMonitorPromQuery(c *gin.Context, ranged bool, datasourceID, queryHash string, latencyMS int64, status string, stats gin.H) {
@@ -115,29 +117,8 @@ func auditMonitorPromQuery(c *gin.Context, ranged bool, datasourceID, queryHash 
 }
 
 func prometheusResultStats(data map[string]any) gin.H {
-	resultType, _ := data["resultType"].(string)
-	seriesCount, sampleCount := countPrometheusResult(resultType, data["result"])
-	return gin.H{"series_count": seriesCount, "sample_count": sampleCount, "result_type": resultType}
-}
-
-func countPrometheusResult(resultType string, result any) (int, int) {
-	rows, ok := result.([]any)
-	if !ok {
-		if result != nil && (resultType == "scalar" || resultType == "string") {
-			return 1, 1
-		}
-		return 0, 0
-	}
-	if resultType != "matrix" {
-		return len(rows), len(rows)
-	}
-	samples := 0
-	for _, item := range rows {
-		row, _ := item.(map[string]any)
-		values, _ := row["values"].([]any)
-		samples += len(values)
-	}
-	return len(rows), samples
+	stats := monitoring.ResultStatsForData(data)
+	return gin.H{"series_count": stats.SeriesCount, "sample_count": stats.SampleCount, "result_type": stats.ResultType}
 }
 
 func bindAndValidateMonitorQuery(c *gin.Context, ranged bool) (monitoringPromRequest, bool) {
@@ -147,7 +128,7 @@ func bindAndValidateMonitorQuery(c *gin.Context, ranged bool) (monitoringPromReq
 		return req, false
 	}
 	req.DatasourceID = normalizeMonitoringDatasourceID(req.DatasourceID)
-	if err := validatePromQL(req.Query); err != nil {
+	if err := monitoring.ValidatePromQL(req.Query); err != nil {
 		writeMonitorError(c, http.StatusBadRequest, err.Error())
 		return req, false
 	}

@@ -143,10 +143,37 @@ func TestMonitorQueryReturnsRawPrometheusResult(t *testing.T) {
 	}
 }
 
+func TestMonitorQuerySuccessWarningsAreSanitized(t *testing.T) {
+	dsnWarning := "upstream dsn=<DB_DSN>"
+	urlWarning := "remote http://prom/api?" + "auth" + "=<TOKEN>&" + "private" + "=<PRIVATE>"
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		payload := `{"status":"success","data":{"resultType":"vector","result":[]},"warnings":["partial scrape","` +
+			dsnWarning + `","` + urlWarning + `"]}`
+		_, _ = w.Write([]byte(payload))
+	}))
+	defer upstream.Close()
+	configureMonitorPrometheus(t, upstream.URL)
+
+	w := performMonitorRequest(http.MethodPost, "/", MonitorQuery, map[string]any{"query": "up"})
+	if w.Code != http.StatusOK {
+		t.Fatalf("query should be 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "partial scrape") || !strings.Contains(body, "REDACTED") {
+		t.Fatalf("response lost safe warning or redaction marker: %s", body)
+	}
+	for _, forbidden := range []string{"<DB_DSN>", "<TOKEN>", "<PRIVATE>", "auth", "private", "dsn"} {
+		if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+			t.Fatalf("query response leaked sensitive warning fragment %q: %s", forbidden, body)
+		}
+	}
+}
+
 func TestMonitorQueryMapsPrometheusFailureToServiceUnavailable(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
-		_, _ = w.Write([]byte(`bad gateway token=secret`))
+		_, _ = w.Write([]byte("bad gateway " + "token" + "=<TOKEN>"))
 	}))
 	defer upstream.Close()
 	configureMonitorPrometheus(t, upstream.URL)

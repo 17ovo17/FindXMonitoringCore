@@ -86,6 +86,23 @@ P1 第一稳定切片聚焦 evaluator 到 current/history event closure：域常
 - 回滚方式：Git 回滚相关 Go 文件即可恢复旧写入逻辑；如未来已写入新事件，回滚前需评估 current event fingerprint 语义差异。
 - 验证证据占位：Windows/WSL Go test + build 由主代理执行；QA 二轮曾给 RISK，待补齐后复审。
 
+### P1-BE-2 API_CONTRACT_CHANGE、DATA_CHANGE 与安全边界
+
+- 目标边界：P1-BE-2 将告警规则 tryrun 从 dry validation 升级为真实 Prometheus instant query；新增无 Gin 依赖的 Prometheus query gateway service，并新增 evaluator core，供 tryrun 和后续 scheduler 复用。
+- 写入边界：tryrun 只写 eval log，不写正式 `monitor_alert_events_current` 或 history event；正式事件闭环仍由 P1-BE-3 scheduler/evaluator 切片承接。
+- 兼容响应：旧响应字段 `ok`、`status`、`checks`、`rule`、`eval_log` 必须保留；新增 `eval` 对象承载本次真实评估摘要、Prometheus instant query 归一化结果、`for_duration_ms`、`no_data_policy` 判定和最终评估状态。
+- API_CONTRACT_CHANGE：新增 `eval` 对象；`rule.query` 在 tryrun 安全响应中允许按实现脱敏或置空，但不得删除 `rule` 字段本身。前端和 QA 应按“旧字段仍存在、新字段可消费”的兼容契约回归。
+- API_CONTRACT_CHANGE：PromQL 校验统一复用 query gateway 安全口径，限制长度不超过 4096 字符，拒绝控制字符和高风险 admin/delete 语义；规则保存、tryrun、instant query、range query 必须使用同一校验策略。
+- validation fail 兼容旧行为：输入校验失败时仍返回 HTTP 200，`ok=false`、`status=invalid`，写入失败原因摘要到 eval log，但不得请求 Prometheus。
+- datasource not found：数据源不存在返回 HTTP 404，不降级为 Prometheus 网络错误或通用 503。
+- Prometheus 安全 503：Prometheus 网络错误、非 2xx 响应、返回 `status:error`、invalid JSON 均返回安全 HTTP 503；响应体和 eval log 只保留脱敏后的错误分类、datasource id、rule id、trace id 和可操作摘要。
+- 脱敏要求：raw PromQL 不进入 eval log `details`；响应、日志、eval log 均不得泄露 URL、token、password、secret、cookie、auth、DSN 或 upstream body。需要定位问题时只能记录 query hash、datasource id、duration、HTTP 状态类别和错误分类。
+- 脱敏要求：Prometheus `warnings` 属于 upstream body 的一部分，必须在 gateway 层集中脱敏；非敏感 warning 可保留，含 token/password/secret/cookie/auth/DSN/API key/private 等片段的内容必须替换为 `<REDACTED>` 或安全摘要。
+- `no_data_policy`：必须支持 `keep_state`、`alerting`、`ok` 三种策略；tryrun 仅返回本次评估结论，不修改正式事件状态。
+- `for_duration`：解析规则配置并返回毫秒值 `for_duration_ms`；tryrun 不做跨周期 pending 存储，也不把单次 tryrun 结果提升为 pending/alerting 的正式状态机事实。
+- DATA_CHANGE：无 DDL 变更；eval log `details` 写入内容从 dry validation 细节升级为安全评估摘要，属于写入语义变化。历史 eval log 不迁移，后续查询展示必须兼容旧 dry validation 记录和新真实评估摘要。
+- 验证矩阵：至少覆盖 valid 命中、valid no data + 三种 `no_data_policy`、validation fail 不请求 Prometheus、datasource not found 404、Prometheus 网络错误、非 2xx、`status:error`、invalid JSON、raw PromQL/URL/token/cookie/DSN 脱敏、tryrun 不写 current/history event、eval log 可追踪且不含敏感值。
+
 ## 5. P2 findx-agents 工作单
 
 P2 先落协议、能力目录、安全模型、证据模型，再迁移采集/巡检工具。Categraf `exec` 默认禁用；Catpaw 授权衍生能力进入实现前必须补合规材料。

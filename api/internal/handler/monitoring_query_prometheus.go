@@ -2,61 +2,29 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"time"
-	"unicode"
+
+	"ai-workbench-api/internal/monitoring"
 
 	"github.com/gin-gonic/gin"
 )
 
 func callPrometheus(parent context.Context, base, path string, params url.Values, timeout time.Duration) promCallResult {
-	ctx, cancel := context.WithTimeout(parent, timeout)
-	defer cancel()
-	endpoint := strings.TrimRight(base, "/") + path
-	if encoded := params.Encode(); encoded != "" {
-		endpoint += "?" + encoded
+	result, err := monitoring.NewPrometheusGateway(nil).Call(parent, monitoring.PrometheusCallRequest{
+		BaseURL: base, Path: path, Params: params, Timeout: timeout,
+	})
+	out := promCallResult{
+		Body: result.Body, Data: result.Data, Stats: result.Stats, LatencyMS: result.LatencyMS,
+		StatusCode: result.StatusCode, Warnings: result.Warnings, OK: err == nil,
 	}
-	started := time.Now()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return promCallResult{StatusCode: http.StatusBadRequest}
-	}
-	resp, err := (&http.Client{Timeout: timeout}).Do(req)
-	out := promCallResult{LatencyMS: time.Since(started).Milliseconds(), StatusCode: http.StatusServiceUnavailable}
-	if err != nil {
+		out.StatusCode = monitoring.HTTPStatus(err)
 		return out
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		out.StatusCode = http.StatusServiceUnavailable
-		return out
-	}
-	return decodePrometheusResponse(raw, out)
-}
-
-func decodePrometheusResponse(raw []byte, out promCallResult) promCallResult {
-	if err := json.Unmarshal(raw, &out.Body); err != nil {
-		out.StatusCode = http.StatusInternalServerError
-		return out
-	}
-	if rawWarnings, _ := out.Body["warnings"].([]any); len(rawWarnings) > 0 {
-		for _, item := range rawWarnings {
-			if s, ok := item.(string); ok {
-				out.Warnings = append(out.Warnings, s)
-			}
-		}
-	}
-	if status, _ := out.Body["status"].(string); status == "success" {
-		out.StatusCode, out.OK = http.StatusOK, true
-	} else {
-		out.StatusCode = http.StatusServiceUnavailable
 	}
 	return out
 }
@@ -94,28 +62,6 @@ func prometheusStringData(body map[string]any) ([]string, bool) {
 	}
 	sort.Strings(out)
 	return out, true
-}
-
-func validatePromQL(query string) error {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return fmt.Errorf("query required")
-	}
-	if len(query) > 4096 {
-		return fmt.Errorf("query too long")
-	}
-	for _, r := range query {
-		if unicode.IsControl(r) {
-			return fmt.Errorf("query contains invalid control characters")
-		}
-	}
-	lower := strings.ToLower(query)
-	for _, term := range []string{"delete_series", "/api/v1/admin", "api/v1/admin", "/admin/", " admin "} {
-		if strings.Contains(lower, term) {
-			return fmt.Errorf("query rejected by safety policy")
-		}
-	}
-	return nil
 }
 
 func sortPrometheusMatrix(body map[string]any) map[string]any {

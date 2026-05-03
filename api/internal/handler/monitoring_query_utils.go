@@ -7,30 +7,28 @@ import (
 	"strings"
 	"time"
 
+	"ai-workbench-api/internal/monitoring"
+
 	"github.com/gin-gonic/gin"
 )
 
 func resolveMonitoringPrometheus(c *gin.Context, datasourceID string) (string, string, bool) {
 	datasourceID = normalizeMonitoringDatasourceID(datasourceID)
-	for _, ds := range loadDataSources() {
-		if ds.ID != datasourceID {
-			continue
-		}
-		if !strings.EqualFold(ds.Type, "prometheus") {
-			writeMonitorError(c, http.StatusNotFound, "prometheus datasource not found")
-			return "", "", false
-		}
-		if base := strings.TrimRight(firstNonEmpty(ds.URL, resolvePrometheusURL(ds.ID)), "/"); base != "" {
-			return datasourceID, base, true
-		}
-	}
-	if datasourceID == defaultMonitoringDatasourceID {
-		if base := strings.TrimRight(resolvePrometheusURL(defaultPrometheusDatasourceID()), "/"); base != "" {
-			return datasourceID, base, true
-		}
+	dsID, base, err := monitoring.ResolvePrometheusDatasource(monitoringDatasources(), datasourceID, defaultMonitoringDatasourceID, resolvePrometheusURL(defaultPrometheusDatasourceID()))
+	if err == nil {
+		return dsID, base, true
 	}
 	writeMonitorError(c, http.StatusNotFound, "prometheus datasource not found")
 	return "", "", false
+}
+
+func monitoringDatasources() []monitoring.Datasource {
+	raw := loadDataSources()
+	out := make([]monitoring.Datasource, 0, len(raw))
+	for _, ds := range raw {
+		out = append(out, monitoring.Datasource{ID: ds.ID, Type: ds.Type, URL: ds.URL})
+	}
+	return out
 }
 
 func sanitizeDatasourceURL(raw string) string {

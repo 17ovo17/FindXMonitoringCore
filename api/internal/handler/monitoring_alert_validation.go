@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"crypto/sha1"
-	"fmt"
 	"net/url"
 	"strings"
 
 	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/monitoring"
 
 	"github.com/spf13/viper"
 )
@@ -60,11 +59,7 @@ func validNoDataPolicy(policy string) bool {
 }
 
 func validMonitorPromQL(query string) bool {
-	q := strings.TrimSpace(query)
-	if q == "" || len(q) > 8192 {
-		return false
-	}
-	return !strings.ContainsAny(q, ";\x00\r")
+	return monitoring.ValidatePromQL(query) == nil
 }
 
 func validMonitorDatasource(id string) bool {
@@ -93,7 +88,7 @@ func monitorTryRunDetails(checks []model.MonitorTryCheck) map[string]any {
 }
 
 func storeMonitorQueryHash(query string) string {
-	return fmt.Sprintf("%x", sha1.Sum([]byte(query)))
+	return monitoring.QueryHash(query)
 }
 
 func requestActor(c interface{ GetHeader(string) string }) string {
