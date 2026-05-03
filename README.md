@@ -195,21 +195,26 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 ## 项目规划
 
-近期主线是把 AI WorkBench / FindX 演进为 Nightingale 的全功能运维门户和产品化外壳：Nightingale 继续作为监控事实源、规则事实源、模板事实源、通知事实源、事件事实源和权限事实源；Categraf 继续作为成熟采集核心；findx-agents 则由 Categraf 采集核心 + findx-inspector 单机巡检侧车 + FindX Agent Control Protocol 组成。AI 问诊不是替代夜莺，而是在夜莺事件、规则、指标、Dashboard、通知记录、日志和 Agent 巡检证据之上做解释、归纳、推荐、复盘和知识沉淀。
+近期主线是把 AI WorkBench / FindX 演进为 **FindX Monitoring Core**：一套参考 Nightingale 成熟设计、但最终由 FindX 独立运行的新一代监控核心平台。Nightingale 不再作为长期运行依赖或外壳事实源，而是作为告警、Dashboard、通知、模板、权限、事件流水线、任务等核心能力的参考实现和可融合源码来源；FindX 自己实现 target、datasource、query、alert rule、evaluator、event、notification、dashboard、template、pipeline、task、permission、audit 等监控核心域。
+
+Categraf 插件生态会直接保留并改造成 `findx-agents` 发行版；已获授权的 Catpaw 能力会衍生进 `findx-agents`，提供巡检、诊断、远程会话、结构化工具和自动修复执行能力。AI 问诊直接基于 FindX 自有监控事实、Agent 巡检证据、通知记录、自动修复记录和知识库案例做推理，不再依赖 Nightingale 作为运行时事实源。
 
 | 阶段 | 目标 |
 |------|------|
-| **P0：全功能基线** | Nightingale 459 路由功能域清单、Connector 对纳入范围完整覆盖、团队/RBAC/业务组映射、告警规划基线、FindX 模板中心、Dashboard 完整嵌入验收、findx-agents 命名/安装、Categraf heartbeat、findx-inspector `linux_quick` 正式巡检切片、敏感配置治理 |
-| **P1：可用闭环** | 告警/目标/仪表盘/通知/静默/订阅/模板读取和受控写入 Nightingale，模板中心支持 dashboard、alert、collect、record-rule 安装，findx-agents 支持 `linux_quick`、`linux_deep`、`network_basic`，AI 问诊可从夜莺告警触发 Agent 补证据 |
-| **P2：增强体验** | 告警规则/通知/事件流水线品牌化编辑，AI 推荐规则/Dashboard/静默/通知/巡检 profile，Categraf http_provider 与 Inspector profile 远程下发，Catpaw 风格工具 clean-room 迁移，Per-Agent Key/mTLS，Hermes 推送和多平台升级 |
+| **P0：FindX Core 基座** | 参考 Nightingale 建立 target、datasource、query、alert rule、event、audit、heartbeat、`/api/v1/monitor/*` 和 `/api/v1/findx-agents/*` 主接口 |
+| **P1：告警核心与 Dashboard** | 参考 Nightingale 实现 evaluator、current/history event、规则试跑、版本回滚、Dashboard、模板中心 |
+| **P2：通知、模板、Agent 深度融合** | 实现通知、静默、订阅、值班、事件流水线、Categraf 插件复用、Catpaw 衍生 inspector |
+| **P3：AI 问诊与自动修复** | 告警触发 AI 问诊、Agent 巡检补证据、自动修复 precheck/dry-run/approve/execute/verify/rollback |
 
 边界原则：
 
 - 不允许 MVP、占位页、半截接口、静态假数据、只读目录或一次性 PoC 作为交付结论；阶段拆分只是交付顺序，不代表功能缩水。
-- 除 AI 问诊、findx-agents 存活视图和 findx-inspector 单机巡检外，不重写 Nightingale 的告警、仪表盘、通知、事件流水线、记录规则、日志、任务和模板能力。
-- findx-agents 基于 Categraf 做产品化包装，不 fork 采集插件；Catpaw 能力默认按 clean-room 方式迁移为 Inspector 结构化只读工具，不直接从 Catpaw AGPL 源码派生。
-- Agent 远程 session 默认禁用 shell，只开放结构化只读工具；巡检结果进入 InspectionRun / InspectionFinding，作为 AI 问诊和工作流证据，不成为第二套监控事实源。
-- 产品/UI/API 使用 FindX 命名，合规文档保留 Nightingale/Categraf 的开源归属。
+- FindX 是新平台，不需要照顾现有生产 Nightingale 的无缝迁移，也不迁移历史监控数据或历史告警事件。
+- Nightingale 是参考实现、源码参考和可融合对象；FindX 最终独立运行，不把 Nightingale 作为长期事实源。
+- 可参考和改造 Nightingale 的告警、Dashboard、通知、模板、权限、事件流水线、任务等成熟设计，但最终 API、数据模型、UI、权限、AI、Agent、自动修复都归 FindX 自己。
+- findx-agents 直接保留 Categraf 插件生态；Catpaw 授权能力衍生进 findx-agents，形成采集 + 巡检 + 诊断 + 会话 + 自动修复执行的一体化 Agent。
+- 自动修复作为正式核心项目纳入路线，必须完整实现权限、审批、试跑、验证、回滚和审计。
+- 产品/UI/API 使用 FindX 命名，合规文档保留 Nightingale、Categraf、Catpaw 的来源说明、授权记录和修改说明。
 
 详细立项文档见 [`docs/aiops/nightingale_findx_agents_project_plan.md`](docs/aiops/nightingale_findx_agents_project_plan.md)。
 
