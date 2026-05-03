@@ -41,6 +41,7 @@ func main() {
 	r.Use(middleware.RateLimit(100))
 	r.GET("/metrics", handler.Metrics)
 	adminRequired := requireAdminToken()
+	readRequired := handler.RequireAuth()
 
 	v1 := r.Group("/api/v1")
 	{
@@ -146,6 +147,40 @@ func main() {
 
 		v1.GET("/correlate", handler.CorrelateHandler)
 		v1.POST("/workflows/route-preview", handler.RoutePreviewHandler)
+
+		v1.GET("/monitor/health", readRequired, handler.MonitorHealth)
+		v1.GET("/monitor/datasources", readRequired, handler.ListMonitorDatasources)
+		v1.POST("/monitor/query", readRequired, handler.MonitorQuery)
+		v1.POST("/monitor/query-range", readRequired, handler.MonitorQueryRange)
+		v1.GET("/monitor/metrics", readRequired, handler.ListMonitorMetrics)
+		v1.GET("/monitor/labels", readRequired, handler.ListMonitorLabels)
+		v1.GET("/monitor/label-values", readRequired, handler.ListMonitorLabelValues)
+		v1.GET("/monitor/targets", readRequired, handler.ListMonitorTargets)
+		v1.POST("/monitor/targets", adminRequired, handler.SaveMonitorTarget)
+		v1.GET("/monitor/targets/:id", readRequired, handler.GetMonitorTarget)
+		v1.PUT("/monitor/targets/:id", adminRequired, handler.SaveMonitorTarget)
+		v1.DELETE("/monitor/targets/:id", adminRequired, handler.DeleteMonitorTarget)
+		v1.GET("/monitor/alert-rules", readRequired, handler.ListMonitorAlertRules)
+		v1.POST("/monitor/alert-rules", adminRequired, handler.CreateMonitorAlertRule)
+		v1.GET("/monitor/alert-rules/:id", readRequired, handler.GetMonitorAlertRule)
+		v1.PUT("/monitor/alert-rules/:id", adminRequired, handler.UpdateMonitorAlertRule)
+		v1.DELETE("/monitor/alert-rules/:id", adminRequired, handler.DeleteMonitorAlertRule)
+		v1.POST("/monitor/alert-rules/:id/enable", adminRequired, handler.EnableMonitorAlertRule)
+		v1.POST("/monitor/alert-rules/:id/disable", adminRequired, handler.DisableMonitorAlertRule)
+		v1.POST("/monitor/alert-rules/:id/clone", adminRequired, handler.CloneMonitorAlertRule)
+		v1.POST("/monitor/alert-rules/:id/tryrun", adminRequired, handler.TryRunMonitorAlertRule)
+		v1.POST("/monitor/alert-rules/:id/rollback", adminRequired, handler.RollbackMonitorAlertRule)
+		v1.GET("/monitor/events/current", readRequired, handler.ListMonitorEventsCurrent)
+		v1.GET("/monitor/events/history", readRequired, handler.ListMonitorEventsHistory)
+		v1.GET("/monitor/events/:id", readRequired, handler.GetMonitorEvent)
+		v1.POST("/monitor/events/:id/ack", adminRequired, handler.AckMonitorEvent)
+		v1.POST("/monitor/events/:id/assign", adminRequired, handler.AssignMonitorEvent)
+		v1.POST("/monitor/events/:id/resolve", adminRequired, handler.ResolveMonitorEvent)
+		v1.POST("/monitor/events/:id/archive", adminRequired, handler.ArchiveMonitorEvent)
+
+		v1.GET("/findx-agents", readRequired, handler.ListFindXAgents)
+		v1.POST("/findx-agents/register", handler.FindXAgentRegister)
+		v1.POST("/findx-agents/heartbeat", handler.FindXAgentHeartbeat)
 
 		v1.GET("/n9e/agents", handler.ListN9eAgents)
 		v1.GET("/n9e/alerts", handler.ListN9eAlerts)
@@ -256,7 +291,7 @@ func corsConfig() cors.Config {
 	origins := viper.GetStringSlice("server.allowed_origins")
 	cfg := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Admin-Token", "X-Test-Batch-Id"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Admin-Token", "X-Agent-Token", "X-Test-Batch-Id"},
 		ExposeHeaders:    []string{"X-Security-Mode"},
 		AllowCredentials: false,
 	}
@@ -273,15 +308,21 @@ func requireAdminToken() gin.HandlerFunc {
 }
 
 func requireAdminTokenWithAuth(authRequired gin.HandlerFunc) gin.HandlerFunc {
-	configured := strings.TrimSpace(os.Getenv("AIW_ADMIN_TOKEN"))
-	if configured == "" {
-		configured = strings.TrimSpace(viper.GetString("security.admin_token"))
-	}
+	configured, allowPermissive := adminTokenConfig()
 	logrus.Infof("admin token configured: len=%d empty=%v", len(configured), configured == "")
 	return func(c *gin.Context) {
 		if configured == "" {
-			c.Header("X-Security-Mode", "permissive-admin-token-not-configured")
-			c.Next()
+			if allowPermissive {
+				c.Header("X-Security-Mode", "permissive-admin")
+				c.Next()
+				return
+			}
+			if bearerToken(c) != "" {
+				c.Header("X-Security-Mode", "login-token-enforced")
+				authRequired(c)
+				return
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
 		provided := strings.TrimSpace(c.GetHeader("X-Admin-Token"))
@@ -290,12 +331,7 @@ func requireAdminTokenWithAuth(authRequired gin.HandlerFunc) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		authorization := strings.TrimSpace(c.GetHeader("Authorization"))
-		if !strings.HasPrefix(authorization, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "admin token required"})
-			return
-		}
-		bearer := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
+		bearer := bearerToken(c)
 		if bearer == configured {
 			c.Header("X-Security-Mode", "admin-token-enforced")
 			c.Next()
@@ -308,4 +344,20 @@ func requireAdminTokenWithAuth(authRequired gin.HandlerFunc) gin.HandlerFunc {
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "admin token required"})
 	}
+}
+
+func adminTokenConfig() (string, bool) {
+	configured := strings.TrimSpace(os.Getenv("AIW_ADMIN_TOKEN"))
+	if configured == "" {
+		configured = strings.TrimSpace(viper.GetString("security.admin_token"))
+	}
+	return configured, viper.GetBool("security.allow_permissive_admin")
+}
+
+func bearerToken(c *gin.Context) string {
+	authorization := strings.TrimSpace(c.GetHeader("Authorization"))
+	if !strings.HasPrefix(authorization, "Bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
 }

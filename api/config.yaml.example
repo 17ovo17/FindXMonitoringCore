@@ -8,9 +8,15 @@ server:
     allowed_origins:
         - "*"
 
+# Admin write API security. Keep allow_permissive_admin false outside explicit local tests.
+security:
+    admin_token: ""
+    allow_permissive_admin: false
+
 # MySQL 连接（必须，自动建表）
+# 示例文件只保留占位符；实际运行请通过环境变量或本地 config.yaml 写入真实 DSN，禁止提交真实连接串。
 mysql:
-    dsn: "root:yourpassword@tcp(127.0.0.1:3306)/ai_workbench?charset=utf8mb4&parseTime=true&loc=Local"
+    dsn: "<DB_DSN>"
 
 # Redis 连接（可选，不配则使用内存缓存）
 redis:
@@ -19,6 +25,13 @@ redis:
 # Prometheus 数据源（可选，在前端「系统配置 → 数据源」中添加也可以）
 prometheus:
     instance_format: '{ip}:9100'
+
+# FindX Agents（可选）
+# 默认不允许匿名注册/心跳；生产环境请配置 shared_token 或环境变量 FINDX_AGENT_TOKEN。
+# 仅本地临时调试时可将 allow_anonymous 设置为 true。
+findx_agents:
+    shared_token: ""
+    allow_anonymous: false
 
 # 以下配置均通过前端界面管理，无需在此配置：
 # - AI 模型（前端「AI 模型」页面配置）

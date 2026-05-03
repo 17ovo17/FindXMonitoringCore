@@ -1,0 +1,101 @@
+package handler
+
+import (
+	"crypto/sha1"
+	"fmt"
+	"net/url"
+	"strings"
+
+	"ai-workbench-api/internal/model"
+
+	"github.com/spf13/viper"
+)
+
+func validateMonitorAlertRule(rule *model.MonitorAlertRule) []model.MonitorTryCheck {
+	checks := []model.MonitorTryCheck{}
+	checks = append(checks, monitorCheck("name", strings.TrimSpace(rule.Name) != "", "name is required"))
+	checks = append(checks, monitorCheck("datasource_id", validMonitorDatasource(rule.DatasourceID), "valid prometheus datasource_id is required"))
+	checks = append(checks, monitorCheck("severity", validMonitorSeverity(rule.Severity), "severity must be critical, warning, info, p0, p1, p2, or p3"))
+	checks = append(checks, monitorCheck("query", validMonitorPromQL(rule.Query), "query is required and must not contain dangerous characters"))
+	checks = append(checks, monitorCheck("no_data_policy", validNoDataPolicy(rule.NoDataPolicy), "no_data_policy must be keep_state, alerting, or ok"))
+	return checks
+}
+
+func monitorCheck(name string, ok bool, message string) model.MonitorTryCheck {
+	status := "pass"
+	if !ok {
+		status = "fail"
+	}
+	return model.MonitorTryCheck{Name: name, Status: status, Message: message}
+}
+
+func monitorChecksOK(checks []model.MonitorTryCheck) bool {
+	for _, check := range checks {
+		if check.Status != "pass" {
+			return false
+		}
+	}
+	return true
+}
+
+func validMonitorSeverity(severity string) bool {
+	switch strings.ToLower(strings.TrimSpace(severity)) {
+	case "critical", "warning", "info", "p0", "p1", "p2", "p3":
+		return true
+	default:
+		return false
+	}
+}
+
+func validNoDataPolicy(policy string) bool {
+	switch strings.TrimSpace(policy) {
+	case "", "keep_state", "alerting", "ok":
+		return true
+	default:
+		return false
+	}
+}
+
+func validMonitorPromQL(query string) bool {
+	q := strings.TrimSpace(query)
+	if q == "" || len(q) > 8192 {
+		return false
+	}
+	return !strings.ContainsAny(q, ";\x00\r")
+}
+
+func validMonitorDatasource(id string) bool {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return false
+	}
+	for _, ds := range loadDataSources() {
+		if ds.ID == id && strings.EqualFold(ds.Type, "prometheus") {
+			return datasourceURLReady(ds.URL)
+		}
+	}
+	return id == "prometheus-default" && datasourceURLReady(viper.GetString("prometheus.url"))
+}
+
+func datasourceURLReady(raw string) bool {
+	if strings.TrimSpace(raw) == "" {
+		return true
+	}
+	parsed, err := url.Parse(raw)
+	return err == nil && parsed.Scheme != "" && parsed.Host != ""
+}
+
+func monitorTryRunDetails(checks []model.MonitorTryCheck) map[string]any {
+	return map[string]any{"checks": checks}
+}
+
+func storeMonitorQueryHash(query string) string {
+	return fmt.Sprintf("%x", sha1.Sum([]byte(query)))
+}
+
+func requestActor(c interface{ GetHeader(string) string }) string {
+	if actor := strings.TrimSpace(c.GetHeader("X-Admin-Token")); actor != "" {
+		return "admin-token"
+	}
+	return "system"
+}

@@ -4,7 +4,7 @@
 
 ## 1. 立项结论
 
-AI WorkBench / FindX 的后续定位调整为：**FindX Monitoring Core 是新一代监控核心平台**。它不是 Nightingale 外壳，不以 Nightingale 作为长期运行依赖，也不要求照顾现有生产 Nightingale 的无缝迁移。Nightingale 的角色变为核心参考实现、源码参考和可融合对象；FindX 最终独立运行，并拥有自己的监控事实源、规则执行面、事件面、通知面、Dashboard、模板中心、权限审计、Agent 控制面、AI 问诊和自动修复闭环。
+AI WorkBench / FindX 的后续定位调整为：**FindX Monitoring Core 是新一代监控核心平台**。Nightingale 的角色是成熟参考实现、源码参考和可融合对象；FindX 最终独立运行，并拥有自己的监控事实源、规则执行面、事件面、通知面、Dashboard、模板中心、权限审计、Agent 控制面、AI 问诊和自动修复闭环。
 
 准确表述是：**参考夜莺的骨架，做 FindX 的身体和大脑。**
 
@@ -101,7 +101,7 @@ FindX Monitoring Core 要建设为独立运行的新监控核心平台，覆盖 
 核心目标：
 
 1. FindX 自己承载 target、datasource、query、alert rule、evaluator、event、notification、dashboard、template、pipeline、task、permission、audit。
-2. Nightingale 作为参考实现和可融合源码来源，不作为长期运行依赖。
+2. Nightingale 作为参考实现和可融合源码来源，FindX 运行态由自有 API、数据模型、权限、Agent 和 AI 闭环承载。
 3. Categraf 插件生态直接用于 `findx-agents`，不重新发明成熟采集插件。
 4. Catpaw 授权能力衍生进 `findx-agents`，提供巡检、诊断、会话、结构化工具和自动修复执行器。
 5. AI 问诊直接读取 FindX 自有告警、指标、日志、Dashboard、通知、巡检、修复和知识库证据。
@@ -123,7 +123,7 @@ FindX Monitoring Core 要建设为独立运行的新监控核心平台，覆盖 
 
 ## 5. Nightingale 参考与改进策略
 
-Nightingale 不再是长期事实源，而是成熟核心参考。参考方式分三类：
+Nightingale 是成熟核心参考。参考方式分三类：
 
 | 类型 | 处理方式 | 说明 |
 | --- | --- | --- |
@@ -669,6 +669,124 @@ UI 约束：
 8. 实现 AI 问诊 evidence chain 和自动修复闭环。
 9. 完成权限、审计、文档、测试基准、WSL 构建和 Git 落库。
 
+## 13.1 P0 到 P3 实施闭环细化
+
+### P0：监控核心基座
+
+| 子阶段 | 功能域 | 状态 | 子代理执行重点 | QA 门禁 |
+| --- | --- | --- | --- | --- |
+| P0-1 | target、datasource 基础语义、agent register、agent heartbeat、health | target 与 agent heartbeat 已实施，datasource 纳入 P0-3 查询网关闭环 | `go-backend` 补齐边界与审计；`vue-frontend` 补齐入口与错误态；`qa-tester` 执行 API/UI/安全回归 | target CRUD、agent token、heartbeat upsert、health 降级、权限、断连、脱敏、WSL 编译。 |
+| P0-2 | alert rule、current/history event、tryrun、rollback、action | alert rule、事件、tryrun、rollback、action 已实施，待 QA 门禁 | `go-backend` 关闭状态机和审计缺口；`vue-frontend` 验证规则与事件页面；`qa-tester` 用统一测试基准判定 PASS/FAIL | 规则 CRUD、版本自增、回滚生成新版本、tryrun 不落正式事件、事件状态机、动作审计、权限和断连。 |
+| P0-3 | datasource、query、query-range、metrics、labels、label-values | 依据 ops 审计进入实施 | `ops-diagnostician` 给出查询网关运行要求；`go-backend` 实现网关；`vue-frontend` 对接指标查询和规则编辑；`qa-tester` 做断连与脱敏验证 | 数据源配置不回显密钥、PromQL 校验、时间范围限制、上游断连 503、查询审计、限流、与 P0-2 tryrun/evaluator 对接。 |
+
+P0 稳定切片要求：
+
+- 每个子阶段必须有 API 契约、DATA_CHANGE 标记、测试清单和回滚说明。
+- P0-1/P0-2 已实施内容在 QA 门禁前不得标记最终完成。
+- P0-3 查询网关通过后，规则 tryrun、evaluator、Dashboard、AI 问诊和自动修复验证统一走查询网关，不再散落调用 Prometheus 或兼容入口。
+
+### P1：Dashboard、模板、Evaluator、通知、权限审计
+
+P1 全量实施范围：
+
+| 功能域 | 必须完成 | 验收重点 |
+| --- | --- | --- |
+| dashboard | 列表、详情、创建、编辑、删除、panel、变量、annotation、分享、收藏、版本、回滚、导入导出、AI 图表解释 | 图表真实取数、空态/错误态、权限态、版本回滚、模板安装联动。 |
+| template | dashboard/rule/collect/remediation/runbook 模板、预览、安装、diff、漂移检测、升级、卸载、回滚 | 安装失败清理、漂移可读、版本可追踪、模板包脱敏。 |
+| evaluator | 定时调度、规则分片、查询网关调用、no_data_policy、恢复判断、去重聚合、eval log | 数据源断连不制造告警风暴；评估日志可追踪但不泄露敏感信息。 |
+| notification | channel、template、rule、record、retry、preview、tryrun、rollback | 发送内容脱敏、失败可重试、通知记录进入证据链。 |
+| oncall | schedule、rotation、override、escalation、handover | 值班人与团队权限一致；升级链路可审计。 |
+| silence | create、update、delete、enable、expire、match preview、audit | 静默匹配可解释；过期恢复正确。 |
+| subscription | user/team/business subscription、personal preference | 订阅与通知规则合并时不重复轰炸。 |
+| permission | user、team、role、business group、operation permission、API token | 读写边界清晰；越权返回 403；资源不可见按 404/403 统一。 |
+| audit | 所有写操作审计、差异摘要、trace_id、来源、回滚引用 | 审计记录不含 token、Cookie、完整 DSN、SSH key 或堆栈。 |
+
+### P2：findx-agents 融合与运维闭环扩展
+
+P2 的 `findx-agents` 是 Categraf 插件生态 + Catpaw 授权衍生 inspector 的完整融合：
+
+- 采集侧复用 Categraf inputs、local/http provider、remote_write、heartbeat 和配置模板生态。
+- 控制侧新增 FindX Agent Control Protocol，支持 register、heartbeat、config-pull、reload、upgrade、capabilities。
+- 巡检侧衍生 Catpaw plugin/inspect/diagnose/session/event model/remote security，输出结构化 evidence refs。
+- 执行侧新增 remediation executor，只接受经审批的 plan/run，不接受任意脚本透传。
+- 安全侧强制 Agent token、签名、超时、幂等 run id、重放保护、本地审计和脱敏日志。
+- 发布侧形成 `findx-agents.service`、`/opt/findx-agents`、`/etc/findx-agents`、`/var/log/findx-agents` 的安装、升级、回滚和卸载闭环。
+
+P2 验收必须覆盖：
+
+- Categraf 首批 inputs 在 FindX 配置下发后正常采集。
+- Agent heartbeat 与 capabilities 反映采集、巡检、诊断、会话、修复能力。
+- Catpaw 衍生 inspector 支持 `linux_quick`、`linux_deep`、`network_basic`、`process_basic`、`container_basic`、`mysql_basic`、`redis_basic`、`nginx_basic`、`disk_cleanup_precheck`、`service_restart_precheck`。
+- Agent 离线、能力缺失、超时、执行失败均返回明确状态，不误报成功。
+- 授权记录、LICENSE/NOTICE、来源说明和修改说明补齐。
+
+### P3：AI 问诊与自动修复核心项目
+
+P3 将 AI 问诊与自动修复作为 FindX Monitoring Core 正式核心项目交付。链路必须完整覆盖：
+
+```text
+event/detect
+  -> diagnose
+  -> evidence_collect
+  -> plan_generate
+  -> precheck
+  -> dry-run
+  -> approve
+  -> execute
+  -> verify
+  -> rollback_or_close
+  -> audit
+  -> knowledge_archive
+```
+
+P3 安全保护：
+
+- `precheck` 必须验证目标、Agent 在线、能力、权限、变更窗口、业务组、风险等级和回滚条件。
+- `dry-run` 必须输出预计动作、影响面、失败条件和回滚策略，不改变生产状态。
+- `approve` 必须记录审批人、审批理由、过期时间和审批范围；审批过期后不能执行。
+- `execute` 只执行已批准 plan 的固定 step，不接受 AI 输出的任意命令直传。
+- `verify` 通过查询网关、Agent 巡检和事件状态验证修复效果。
+- `rollback` 必须可追踪到原 plan/run/step，失败时进入人工处理。
+- `audit` 必须记录 actor、approver、target、plan、run、step、trace_id、前后状态和证据引用。
+- 失败保护必须覆盖超时、部分成功、Agent 断连、验证失败、回滚失败、重复提交和并发执行。
+
+P3 首批动作按低风险优先：
+
+- systemd service restart。
+- service reload。
+- disk cleanup。
+- log cleanup。
+- container restart。
+- nginx reload。
+- config rollback。
+- stale process kill。
+- cache cleanup。
+- temporary silence create。
+- collect config update proposal。
+- alert threshold adjustment proposal。
+
+## 13.2 主代理评分审计与实时 Git 策略
+
+Claude 缺席时，主代理接管编排、决策、验收、评分、审计、优化和 Git 门禁；子代理仍是唯一执行层。主代理不写业务代码，不绕过 QA，不在阻断项未关闭时推进新功能。
+
+主代理评分维度：
+
+| 维度 | 权重 | 低于通过线时的动作 |
+| --- | --- | --- |
+| 功能正确性 | 30% | 回派归属子代理补齐正常、异常、边界和权限路径。 |
+| 代码质量 | 20% | 要求拆分 God Function、去重、补错误处理和复用项目既有模式。 |
+| 安全治理 | 20% | 阻断合并，直到认证、授权、脱敏、远程执行和审计风险关闭。 |
+| 验证闭环 | 20% | 缺少 WSL 编译、API/UI 回归或 QA 证据时不得 PASS。 |
+| 文档同步 | 10% | API_CONTRACT_CHANGE、DATA_CHANGE、Runbook、测试基准未同步时回派 doc-writer。 |
+
+实时 Git 稳定切片策略：
+
+- 一个稳定切片必须完成本地验证、WSL 构建或等价验证、QA 门禁、敏感信息扫描和 diff 范围检查。
+- 通过验证和 QA 的稳定切片立即 commit/push，提交信息说明阶段、范围、验证和回滚点。
+- QA FAIL、P0/P1 RISK、敏感信息风险、契约/数据变更未验证时不提交。
+- 并行子代理输出合并前必须确认写集互斥；冲突由主代理退回或拆分，不靠手工覆盖。
+- 每个 commit 保持可回滚、可复现、可解释；大功能按 P0-1、P0-2、P0-3、P1 dashboard、P1 evaluator、P2 agent、P3 remediation 等稳定切片落库。
+
 ## 14. 测试与验收
 
 后端验证：
@@ -744,18 +862,21 @@ npm run build
 
 ## 16. 自评分
 
-本版计划评分：**98/100**。
+目标分：**>= 95**。本版计划自评分：**97/100**。
 
-加分点：
+| 维度 | 分值 | 评分理由 |
+| --- | --- | --- |
+| 战略完整性 | 98 | 已明确 FindX Monitoring Core 为新监控核心平台，覆盖 P0-1/P0-2/P0-3、P1、P2、P3，并把 Nightingale、Categraf、Catpaw 的角色纳入统一主线。 |
+| 可实施性 | 96 | 已按功能域拆分到 target、datasource、query、rule、event、dashboard、template、notification、agent、AI、remediation，可继续派发子代理小步落地。 |
+| 安全治理 | 97 | 已覆盖 token、Cookie、完整 DSN、SSH key、内部 URL、raw error 脱敏要求，并要求权限、审批、审计、回滚、重放保护和远程执行边界。 |
+| 生态复用 | 98 | Categraf 插件生态作为采集底座，Catpaw 授权能力衍生为 inspector/diagnose/session/remediation，Nightingale 作为成熟模型和 UI 参考。 |
+| 验证闭环 | 96 | 已列出 WSL 后端编译、前端构建、API/UI/断连/权限/脱敏测试；P0-1/P0-2 标记为待 QA 门禁，P0-3 明确查询网关测试口径。 |
+| 文档可执行性 | 97 | 文档给出 API、数据表、验收清单、Git 策略、主代理评分和阶段边界，能指导后续子代理持续实施到 P3。 |
 
-- 方向已与用户最新要求一致：FindX 是新平台，Nightingale 是参考实现，不是长期运行依赖。
-- 明确保留 Categraf 插件生态，并把 Catpaw 授权能力衍生进 `findx-agents`。
-- 自动修复已作为正式核心项目纳入 P3，而不是“后续可选项”。
-- P0/P1/P2/P3 与“参考 Nightingale、改进 Nightingale、最终成为新平台”一致。
+不足项与改进措施：
 
-扣分点：
-
-- 尚未真实实现代码和运行验证。
-- 告警引擎、Dashboard、通知、模板、Agent、自动修复都需要继续做源码级映射和分阶段落地。
-- Catpaw 授权衍生需要后续补齐仓库级授权记录、NOTICE、来源说明和修改说明。
-- TSDB 最终选型仍需在实现前确认；默认建议先使用 Prometheus-compatible 存储接口，后续可接 Prometheus、VictoriaMetrics、Mimir 或自有存储。
+- 代码与运行验证仍需由后续 `go-backend`、`vue-frontend`、`qa-tester` 按稳定切片补齐；每个切片必须回填构建、API/UI、权限、断连和脱敏证据。
+- P0-3 查询网关需要后端实现后回填最终字段、错误码、限流策略和审计表结构。
+- P1 Dashboard/模板/evaluator/通知/权限审计规模较大，需要按写集互斥拆为多个子代理 work unit。
+- P2 Catpaw 授权衍生需要补齐仓库级授权记录、NOTICE、来源说明和修改说明。
+- P3 自动修复需要先落低风险动作模板，再逐步扩大动作集；任何 execute 能力都必须绑定 precheck、dry-run、approve、verify、rollback 和 audit。

@@ -10,17 +10,57 @@ import (
 	"github.com/spf13/viper"
 )
 
-func TestRequireAdminTokenPermissiveWhenNotConfigured(t *testing.T) {
+func TestRequireAdminTokenRejectsWhenNotConfiguredByDefault(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	os.Unsetenv("AIW_ADMIN_TOKEN")
 	viper.Set("security.admin_token", "")
+	viper.Set("security.allow_permissive_admin", false)
 	r := gin.New()
 	r.POST("/protected", requireAdminToken(), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
 	req := httptest.NewRequest(http.MethodPost, "/protected", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK || w.Header().Get("X-Security-Mode") != "permissive-admin-token-not-configured" {
-		t.Fatalf("expected permissive mode, code=%d header=%q", w.Code, w.Header().Get("X-Security-Mode"))
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected default deny, code=%d header=%q", w.Code, w.Header().Get("X-Security-Mode"))
+	}
+}
+
+func TestRequireAdminTokenPermissiveWhenExplicitlyAllowed(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	os.Unsetenv("AIW_ADMIN_TOKEN")
+	viper.Set("security.admin_token", "")
+	viper.Set("security.allow_permissive_admin", true)
+	defer viper.Set("security.allow_permissive_admin", false)
+	r := gin.New()
+	r.POST("/protected", requireAdminToken(), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+	req := httptest.NewRequest(http.MethodPost, "/protected", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK || w.Header().Get("X-Security-Mode") != "permissive-admin" {
+		t.Fatalf("expected explicit permissive mode, code=%d header=%q", w.Code, w.Header().Get("X-Security-Mode"))
+	}
+}
+
+func TestRequireAdminTokenDelegatesLoginWhenAdminTokenEmpty(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	os.Unsetenv("AIW_ADMIN_TOKEN")
+	viper.Set("security.admin_token", "")
+	viper.Set("security.allow_permissive_admin", false)
+	authRequired := func(c *gin.Context) {
+		if c.GetHeader("Authorization") != "Bearer login-token" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid login token"})
+			return
+		}
+		c.Next()
+	}
+	r := gin.New()
+	r.POST("/protected", requireAdminTokenWithAuth(authRequired), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+	req := httptest.NewRequest(http.MethodPost, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer login-token")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK || w.Header().Get("X-Security-Mode") != "login-token-enforced" {
+		t.Fatalf("expected login auth delegation, code=%d header=%q", w.Code, w.Header().Get("X-Security-Mode"))
 	}
 }
 
@@ -28,6 +68,7 @@ func TestRequireAdminTokenEnforcesConfiguredToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	os.Setenv("AIW_ADMIN_TOKEN", "unit-secret")
 	defer os.Unsetenv("AIW_ADMIN_TOKEN")
+	viper.Set("security.allow_permissive_admin", false)
 	r := gin.New()
 	r.POST("/protected", requireAdminToken(), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
 	missing := httptest.NewRecorder()
@@ -48,6 +89,7 @@ func TestRequireAdminTokenAcceptsBearerLoginToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	os.Setenv("AIW_ADMIN_TOKEN", "unit-secret")
 	defer os.Unsetenv("AIW_ADMIN_TOKEN")
+	viper.Set("security.allow_permissive_admin", false)
 	authRequired := func(c *gin.Context) {
 		if c.GetHeader("Authorization") != "Bearer login-token" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid login token"})
@@ -73,6 +115,37 @@ func TestRequireAdminTokenAcceptsBearerLoginToken(t *testing.T) {
 	r.ServeHTTP(denied, badReq)
 	if denied.Code != http.StatusUnauthorized {
 		t.Fatalf("invalid login bearer should be unauthorized, got %d", denied.Code)
+	}
+}
+
+func TestMonitorReadRequiresAuthAndAllowsBearer(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	readRequired := func(c *gin.Context) {
+		if c.GetHeader("Authorization") != "Bearer login-token" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		c.Set("username", "admin")
+		c.Next()
+	}
+	r := gin.New()
+	v1 := r.Group("/api/v1")
+	v1.GET("/monitor/health", readRequired, func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	denied := httptest.NewRecorder()
+	r.ServeHTTP(denied, httptest.NewRequest(http.MethodGet, "/api/v1/monitor/health", nil))
+	if denied.Code != http.StatusUnauthorized {
+		t.Fatalf("monitor read without auth should be unauthorized, got %d", denied.Code)
+	}
+
+	allowed := httptest.NewRecorder()
+	authed := httptest.NewRequest(http.MethodGet, "/api/v1/monitor/health", nil)
+	authed.Header.Set("Authorization", "Bearer login-token")
+	r.ServeHTTP(allowed, authed)
+	if allowed.Code != http.StatusOK {
+		t.Fatalf("monitor read with bearer auth should pass, got %d body=%s", allowed.Code, allowed.Body.String())
 	}
 }
 
