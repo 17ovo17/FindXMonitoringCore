@@ -193,6 +193,24 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 完整 API 文档见 [`docs/API文档.md`](docs/API文档.md)。
 
+## 项目规划
+
+近期主线是把 AI WorkBench 演进为“AI 问诊 + 成熟监控底座”的一体化 AIOps 平台：监控事实源和模板体系交给 Nightingale，采集底座交给 Categraf，平台自身聚焦 AI 诊断、证据编排、知识沉淀、Hermes/消息入口和 findx-agents 探针存活视图。
+
+| 阶段 | 目标 |
+|------|------|
+| **P0：集成基线** | Nightingale Connector、FindX 模板中心只读目录、findx-agents 命名/安装基线、Categraf heartbeat、Dashboard 嵌入 PoC、敏感配置治理 |
+| **P1：可用闭环** | 告警/目标/仪表盘读取 Nightingale，模板中心支持 dashboard、alert、collect、record-rule 安装，AI 问诊引用夜莺告警、指标、规则、Dashboard、Runbook 证据 |
+| **P2：增强体验** | 通知模板、事件流水线、Hermes 推送、AI 推荐规则/Dashboard、Categraf http_provider 远程配置、findx-agents 多平台安装与升级 |
+
+边界原则：
+
+- 除 AI 问诊和 findx-agents 存活视图外，不重写 Nightingale 的告警、仪表盘、通知、事件流水线、记录规则和模板能力。
+- findx-agents 基于 Categraf 做产品化包装，不 fork 采集插件，不直接从 Catpaw 派生。
+- 产品/UI/API 使用 FindX 命名，合规文档保留 Nightingale/Categraf 的开源归属。
+
+详细立项文档见 [`docs/aiops/nightingale_findx_agents_project_plan.md`](docs/aiops/nightingale_findx_agents_project_plan.md)。
+
 ## 前端页面
 
 | 页面 | 功能 |
@@ -209,6 +227,4 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 ## 许可证
 
 MIT License
-
-
 
