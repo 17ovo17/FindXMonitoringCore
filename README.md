@@ -193,26 +193,50 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 完整 API 文档见 [`docs/API文档.md`](docs/API文档.md)。
 
-## 项目规划
+## FindX Monitoring Core 项目规划
 
-近期主线是把 AI WorkBench / FindX 演进为 **FindX Monitoring Core**：一套参考 Nightingale 成熟设计、但最终由 FindX 独立运行的新一代监控核心平台。Nightingale 不会作为运行期主依赖或外壳数据来源，而是作为告警、Dashboard、通知、模板、权限、事件流水线、任务等核心能力的参考实现和可融合源码来源；FindX 自己实现 target、datasource、query、alert rule、evaluator、event、notification、dashboard、template、pipeline、task、permission、audit 等监控核心域。
+近期主线是把 AI WorkBench / FindX 演进为 **FindX Monitoring Core**：FindX Monitoring Core 是新监控核心平台，一套参考并改进 Nightingale 成熟设计、但最终由 FindX 独立运行的监控核心。Nightingale 是告警、Dashboard、通知、模板、权限、事件流水线、任务等核心能力的成熟参考和可融合源码来源；FindX 自己实现 target、datasource、query、alert rule、evaluator、event、notification、dashboard、template、pipeline、task、permission、audit、team、oncall、subscription、silence 等监控核心域。
 
-Categraf 插件生态会直接保留并改造成 `findx-agents` 发行版；已获授权的 Catpaw 能力会衍生进 `findx-agents`，提供巡检、诊断、远程会话、结构化工具和自动修复执行能力。AI 问诊直接基于 FindX 自有监控事实、Agent 巡检证据、通知记录、自动修复记录和知识库案例做推理，不再依赖 Nightingale 作为运行时事实源。
+Categraf 插件生态会直接保留并改造成 `findx-agents` 发行版；已获授权的 Catpaw 能力会衍生进 `findx-agents`，提供巡检、诊断、远程会话、结构化工具和自动修复执行能力。AI 问诊直接基于 FindX 自有监控事实、Agent 巡检证据、通知记录、自动修复记录和知识库/Runbook 案例做推理，并把告警触发、Agent 补证据、审批、执行、验证、回滚、审计串成正式闭环。
+
+所有能力以 **WSL/Linux 兼容为准**：后端构建、前端构建、Agent 安装路径、服务名、日志路径、Run & Debug 脚本和浏览器回归都必须在 `/opt/ai-workbench` 或目标 Linux 运行态验证通过；Windows 结果只作为开发侧辅助证据。
 
 ### 当前进展 / 已落库切片
 
-P0 后端 API 基座已完成并通过 QA 门禁，提交记录为 `81b4531 feat: add FindX monitoring core P0 APIs`。QA 最终评分为 **98/100**，结论为 **通过**。
+当前已实现切片记录：
 
-已落库切片包括：monitor health、targets、findx-agents register/heartbeat/list、alert-rules、current/history events、query gateway datasources/query/query-range/metrics/labels/label-values。当前实现确认读接口走平台认证，写接口要求 admin，Agent token 默认拒绝匿名；Prometheus 上游失败返回 503；查询审计仅记录 hash/stats；事件终态保护已纳入后端状态约束。
+- **P0 文档规划闭环**：已明确 FindX Monitoring Core 新平台定位、Nightingale 参考/改进边界、Categraf 复用、Catpaw 授权衍生、AI 问诊与自动修复核心增强、WSL/Linux 验收基准。
+- **P0 后端 API 基座**：已完成并通过 QA 门禁，提交记录为 `81b4531 feat: add FindX monitoring core P0 APIs`；QA 最终评分 **98/100**，结论 **通过**。
+- **P1-BE-3 alert scheduler current/history 自动闭环**：已完成规则调度、current event upsert、history recovery、失败只写 eval log、不制造误告警、并发 RunOnce 锁保护和安全摘要要求；提交记录为 `1c4045e feat: add FindX alert scheduler event closure`，QA **92/100 PASS**，Windows/WSL `go test -count=1 ./...` 与 build 通过。
+- **安全基线修复**：CORS 空配置默认保持 localhost-only；Workflow DSL 创建/更新在 parse 后执行严格 graph validation，坏 DSL 返回 400 且不得持久化。
 
-P0 已完成 Windows 与 WSL/Linux 双环境验证，其中 WSL 侧已在 `/opt/ai-workbench/api` 执行后端单元测试和 `go build -o api-linux .`。P1/P2/P3 仍是后续阶段，不按已完成能力描述。
+已落库能力包括：monitor health、targets、findx-agents register/heartbeat/list、alert-rules、current/history events、query gateway datasources/query/query-range/metrics/labels/label-values、alert scheduler 自动评估闭环。当前实现确认读接口走平台认证，写接口要求 admin，Agent token 默认拒绝匿名；Prometheus 上游失败返回 503；查询审计仅记录 hash/stats；事件终态保护已纳入后端状态约束。
+
+已完成 Windows 与 WSL/Linux 双环境验证，其中 WSL 侧已在 `/opt/ai-workbench/api` 执行后端单元测试和 `go build -o api-linux .`；P1-BE-3 切片额外通过 Windows/WSL `go test -count=1 ./...` 与 build。P1 剩余 Dashboard、模板、通知、权限审计、团队/值班/订阅/静默，P2 `findx-agents` 深度融合，P3 AI 问诊与自动修复仍按后续阶段推进，不按已完成能力描述。
 
 | 阶段 | 目标 |
 |------|------|
 | **P0：FindX Core 基座** | 已完成后端 API 基座与 QA 门禁：target、datasource、query、alert rule、event、audit、heartbeat、`/api/v1/monitor/*` 和 `/api/v1/findx-agents/*` 主接口 |
-| **P1：告警核心与 Dashboard** | 待实施重点：evaluator、规则评估闭环、Dashboard、模板中心、前端入口与可视化工作流 |
+| **P1：告警核心与 Dashboard** | 已完成 P1-BE-3 alert scheduler 自动事件闭环；待实施重点：Dashboard、模板中心、前端入口、通知、权限审计、team/oncall/subscription/silence |
 | **P2：通知、模板、Agent 深度融合** | 待实施重点：通知、静默、订阅、值班、事件流水线、Categraf 插件复用、Catpaw 衍生 inspector |
 | **P3：AI 问诊与自动修复** | 待实施重点：告警触发 AI 问诊、Agent 巡检补证据、修复 precheck/dry-run/approve/execute/verify/rollback 全链路 |
+
+### 后续 QA 风险与改进动作
+
+| 风险 | 后续动作 |
+|------|----------|
+| 大基数候选截断语义 | 明确 evaluator 对超大候选集的截断策略、返回摘要、审计字段和用户可见提示，避免“部分评估”被误认为全量成功。 |
+| Workflow API 严格 DSL 400 回归 | 将坏 DSL 创建/更新返回 400 且不持久化纳入固定回归，覆盖缺节点、悬空边、循环、非法节点类型和错误分支。 |
+| 持久化失败一致性 | 补齐写入失败后的响应、审计、eval log、current/history event 一致性要求，避免成功响应和实际落库不一致。 |
+| 统一 `.gitattributes` | 后续补齐仓库换行符、Markdown、Go、Vue、脚本文件策略，降低 Windows/WSL/Linux 交叉开发漂移。 |
+
+### 运维落地闭环
+
+FindX Monitoring Core 的交付不只看 API 能否调用，还必须覆盖团队、权限、告警升级、模板导入导出、多租户、审计、通知通道、值班日历、Run & Debug 脚本、日志输出和回滚说明。`findx-agents` 发行版需要形成 `findx-agents.service`、`/opt/findx-agents`、`/etc/findx-agents`、`/var/log/findx-agents` 的安装、升级、回滚、卸载和故障定位闭环。
+
+### 文档自评分
+
+本轮文档-only QA 评分 **94/100 PASS**，主代理接受为当前文档闭环可提交状态。剩余扣分点是 P1 剩余 UI/通知/权限域尚未完成、P2/P3 仍缺运行证据、Catpaw 衍生 NOTICE/来源版本/修改说明需要随实现补齐。改进动作是按稳定切片补 QA 证据、同步 WSL/Linux 构建结果、补许可证材料，并把大基数截断、Workflow DSL 400、持久化失败一致性、`.gitattributes` 纳入固定后续计划。
 
 边界原则：
 

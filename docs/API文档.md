@@ -544,3 +544,125 @@
 
 ### PUT /api/v1/settings/reranker
 更新 Reranker 设置。
+# FindX Monitoring Core API 摘要
+
+更新时间：2026-05-04 07:06（UTC+8）
+
+本摘要根据 `api/main.go` 当前注册路由补强。FindX Monitoring Core 的新主入口为 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`；旧 `/api/v1/catpaw/*`、`/api/v1/n9e/*` 继续作为兼容入口保留，不作为新功能主入口。未来 `/api/v1/remediation/*` 尚未注册，本文仅列为规划/待实现接口，后续必须以代码路由、权限、审计和测试矩阵验收为准。
+
+## 通用认证与安全约定
+
+| 类型 | 约定 |
+|------|------|
+| 读接口 | 通常使用 `Authorization: Bearer <TOKEN>` 登录态访问 |
+| 写接口 | 通常需要管理员权限，可使用 `X-Admin-Token: <TOKEN>` 或登录态管理员权限 |
+| Agent 上报 | Agent 注册和心跳使用服务端约定的 Agent token，占位写作 `<TOKEN>` |
+| 敏感字段 | 文档、日志、测试报告中统一使用 `<TOKEN>`、`<DB_DSN>`、`<SECRET>`、`<AGENT_ID>`，不得写真实值 |
+| 错误模型 | 400 表示请求参数或 PromQL 错误；401/403 表示认证或权限失败；503 表示外部依赖不可用；500 表示内部错误 |
+
+## `/api/v1/monitor/*` 主入口
+
+### 健康、数据源与查询网关
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/monitor/health` | 查询 FindX Monitoring Core 健康状态，覆盖默认 datasource 和查询链路 | 登录态 |
+| GET | `/api/v1/monitor/datasources` | 列出监控数据源，当前以 Prometheus 兼容数据源为主 | 登录态 |
+| POST | `/api/v1/monitor/query` | 执行即时 PromQL 查询，作为 Query Gateway 主入口 | 登录态 |
+| POST | `/api/v1/monitor/query-range` | 执行区间 PromQL 查询，支持时间窗口和 step | 登录态 |
+| GET | `/api/v1/monitor/metrics` | 查询指标名列表，用于指标选择和规则配置 | 登录态 |
+| GET | `/api/v1/monitor/labels` | 查询 label 名称列表 | 登录态 |
+| GET | `/api/v1/monitor/label-values` | 查询指定 label 的候选值 | 登录态 |
+
+注意事项：
+- Query Gateway 不应返回真实认证信息；Prometheus URL、token、完整 `<DB_DSN>` 必须脱敏。
+- 大基数 label-values 或 metrics 查询可能出现候选截断，调用方必须把截断状态作为“不完整证据”处理。
+- Workflow 或 AI 链路调用 Query Gateway 时，若返回 400，应展示可理解错误，不得吞掉错误后生成伪证据。
+
+### Target 管理
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/monitor/targets` | 获取 Target 列表 | 登录态 |
+| POST | `/api/v1/monitor/targets` | 新增或保存 Target | 管理员 |
+| GET | `/api/v1/monitor/targets/:id` | 获取指定 Target 详情 | 登录态 |
+| PUT | `/api/v1/monitor/targets/:id` | 更新指定 Target | 管理员 |
+| DELETE | `/api/v1/monitor/targets/:id` | 删除指定 Target | 管理员 |
+
+Target 用于统一被监控对象标识、数据源归属和标签映射。删除或更新 Target 前，应确认没有活跃事件、自动修复计划或未归档处置记录引用该对象。
+
+### Alert Rule 管理
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/monitor/alert-rules` | 获取告警规则列表 | 登录态 |
+| POST | `/api/v1/monitor/alert-rules` | 创建告警规则 | 管理员 |
+| GET | `/api/v1/monitor/alert-rules/:id` | 获取告警规则详情 | 登录态 |
+| PUT | `/api/v1/monitor/alert-rules/:id` | 更新告警规则 | 管理员 |
+| DELETE | `/api/v1/monitor/alert-rules/:id` | 删除告警规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/enable` | 启用规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/disable` | 禁用规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/clone` | 克隆规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/tryrun` | 试运行规则，不应创建正式事件 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/rollback` | 回滚到历史版本 | 管理员 |
+
+规则变更属于高风险写操作，必须覆盖 PromQL 400、空结果、大基数候选、持久化失败一致性和审计脱敏验证。
+
+### Event 处置
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/monitor/events/current` | 查询当前活跃事件 | 登录态 |
+| GET | `/api/v1/monitor/events/history` | 查询历史事件 | 登录态 |
+| GET | `/api/v1/monitor/events/:id` | 查询事件详情 | 登录态 |
+| POST | `/api/v1/monitor/events/:id/ack` | 确认事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/assign` | 分派事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/resolve` | 解决事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/archive` | 归档事件 | 管理员 |
+
+事件详情应能串联 rule、target、datasource、query hash、labels/annotations、状态动作记录。任何事件动作都应进入审计或动作日志，敏感 label 值必须脱敏。
+
+## `/api/v1/findx-agents/*` 主入口
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/findx-agents` | 获取 FindX Agent 列表和心跳状态 | 登录态 |
+| POST | `/api/v1/findx-agents/register` | Agent 注册入口 | Agent token 或服务端约定 |
+| POST | `/api/v1/findx-agents/heartbeat` | Agent 心跳入口 | Agent token 或服务端约定 |
+
+Agent 注册与心跳接口面向机器端上报，不应返回真实 token、完整配置文件或主机敏感信息。升级、回滚、安装脚本仍需由运维流程和测试矩阵补齐，不应复用旧 Catpaw 路径作为新 FindX Agent 主入口。
+
+## `/api/v1/remediation/*` 规划接口
+
+以下接口为未来自动修复能力的规划/待实现摘要；当前 API 路由未注册，调用方不得按已实现能力依赖。
+
+| 方法 | 规划路径 | 规划摘要 | 状态 |
+|------|----------|---------|------|
+| POST | `/api/v1/remediation/plans` | 根据事件、规则和证据链生成修复计划 | 待实现 |
+| GET | `/api/v1/remediation/plans/:id` | 查看修复计划、审批状态、执行证据和回滚状态 | 待实现 |
+| POST | `/api/v1/remediation/plans/:id/approve` | 审批修复计划 | 待实现 |
+| POST | `/api/v1/remediation/plans/:id/reject` | 驳回修复计划 | 待实现 |
+| POST | `/api/v1/remediation/plans/:id/execute` | 执行已审批计划 | 待实现 |
+| POST | `/api/v1/remediation/plans/:id/rollback` | 执行回滚步骤 | 待实现 |
+| GET | `/api/v1/remediation/actions` | 查询可用动作、风险分级和命令模板 | 待实现 |
+
+上线前契约要求：
+- 必须区分 plan、approval、execution、rollback 四类状态。
+- 必须支持幂等、重复提交保护、超时、失败中止和审计。
+- L4 禁止命令必须无条件拦截；L2/L3 必须有确认或审批。
+- 所有响应和日志必须脱敏，不得包含真实 `<TOKEN>`、Cookie、完整 `<DB_DSN>` 或 SSH 私钥。
+
+## 兼容入口说明
+
+| 兼容入口 | 当前用途 | 新主入口建议 |
+|---------|---------|-------------|
+| `/api/v1/catpaw/heartbeat` | 旧 Catpaw 探针心跳 | 新功能优先使用 `/api/v1/findx-agents/heartbeat` |
+| `/api/v1/catpaw/report` | 旧 Catpaw 巡检报告上报 | FindX Agent 后续应使用独立上报契约，当前不把 Catpaw 当新主入口 |
+| `/api/v1/catpaw/agents` | 旧 Catpaw Agent 列表 | 新列表使用 `/api/v1/findx-agents` |
+| `/api/v1/catpaw/chat-ws` | 旧 Catpaw 交互式会话 | 自动修复待 `/api/v1/remediation/*` 落地后统一治理 |
+| `/api/v1/n9e/agents` | N9e Agent 兼容查询 | FindX Agent 使用 `/api/v1/findx-agents` |
+| `/api/v1/n9e/alerts` | N9e 告警兼容查询 | FindX Event 使用 `/api/v1/monitor/events/*` |
+
+兼容入口只用于历史数据、迁移期适配或旧页面保留。新增页面、测试矩阵和运维手册应优先引用 FindX Monitoring Core 主入口。
+
+---
