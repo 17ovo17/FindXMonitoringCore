@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -152,12 +153,22 @@ func TestMonitorReadRequiresAuthAndAllowsBearer(t *testing.T) {
 func TestCORSDefaultsAreLocalhostOnly(t *testing.T) {
 	viper.Set("server.allowed_origins", []string{})
 	cfg := corsConfig()
-	if len(cfg.AllowOrigins) == 0 {
-		t.Fatal("expected default localhost origins")
+	if cfg.AllowAllOrigins {
+		t.Fatal("default CORS must not allow all origins")
 	}
-	for _, origin := range cfg.AllowOrigins {
-		if origin == "*" {
-			t.Fatal("default CORS must not allow wildcard origin")
-		}
+	want := defaultLocalhostOrigins()
+	if !reflect.DeepEqual(cfg.AllowOrigins, want) {
+		t.Fatalf("default CORS origins=%v, want %v", cfg.AllowOrigins, want)
+	}
+}
+
+func TestCORSAllowsWildcardOnlyWhenExplicit(t *testing.T) {
+	viper.Set("server.allowed_origins", []string{"*"})
+	cfg := corsConfig()
+	if !cfg.AllowAllOrigins {
+		t.Fatal("explicit wildcard CORS should allow all origins")
+	}
+	if len(cfg.AllowOrigins) != 0 {
+		t.Fatalf("wildcard CORS should not also set explicit origins: %v", cfg.AllowOrigins)
 	}
 }

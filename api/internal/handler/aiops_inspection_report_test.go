@@ -33,7 +33,8 @@ func TestRichInspectionReportContainsOpsStructure(t *testing.T) {
 		"## 异常汇总",
 		"10.10.1.21 | CPU 使用率 | 96% | <80% | critical",
 		"## 处置建议",
-		"ssh 10.10.1.21 \"top -bn1 | head -20\"",
+		"| P0 | 10.10.1.21 | CPU 使用率 | 96% → <80% |",
+		"`top -bn1 | head -20`",
 		"## 历史对比",
 	}
 	for _, want := range mustContain {

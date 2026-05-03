@@ -14,7 +14,9 @@ import (
 
 func resolveMonitoringPrometheus(c *gin.Context, datasourceID string) (string, string, bool) {
 	datasourceID = normalizeMonitoringDatasourceID(datasourceID)
-	dsID, base, err := monitoring.ResolvePrometheusDatasource(monitoringDatasources(), datasourceID, defaultMonitoringDatasourceID, resolvePrometheusURL(defaultPrometheusDatasourceID()))
+	dsID, base, err := monitoring.ResolvePrometheusDatasource(
+		monitoringDatasources(), datasourceID, defaultMonitoringDatasourceID, resolvePrometheusURL(defaultPrometheusDatasourceID()),
+	)
 	if err == nil {
 		return dsID, base, true
 	}
@@ -23,12 +25,7 @@ func resolveMonitoringPrometheus(c *gin.Context, datasourceID string) (string, s
 }
 
 func monitoringDatasources() []monitoring.Datasource {
-	raw := loadDataSources()
-	out := make([]monitoring.Datasource, 0, len(raw))
-	for _, ds := range raw {
-		out = append(out, monitoring.Datasource{ID: ds.ID, Type: ds.Type, URL: ds.URL})
-	}
-	return out
+	return monitoring.PrometheusDatasourcesFromConfig()
 }
 
 func sanitizeDatasourceURL(raw string) string {

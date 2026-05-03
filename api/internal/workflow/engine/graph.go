@@ -189,6 +189,9 @@ func (g *Graph) Validate() error {
 	startCount := 0
 	endCount := 0
 	for _, node := range g.Nodes {
+		if !isKnownNodeType(node.Type) {
+			return fmt.Errorf("unknown node type %q for node %q", node.Type, node.ID)
+		}
 		if node.Type == NodeStart {
 			startCount++
 		}
@@ -203,20 +206,14 @@ func (g *Graph) Validate() error {
 	if endCount < 1 {
 		return errors.New("graph must have at least one end node")
 	}
-
-	reachable := make(map[string]bool)
-	g.walkReachable(g.StartNodeID, reachable)
-	for id := range g.Nodes {
-		if !reachable[id] {
-			return fmt.Errorf("node %q is not reachable from start", id)
-		}
-	}
-
-	if _, err := g.TopologicalSort(); err != nil {
+	if err := g.validateEdges(); err != nil {
 		return err
 	}
-
-	return nil
+	if err := g.validateReachable(); err != nil {
+		return err
+	}
+	_, err := g.TopologicalSort()
+	return err
 }
 
 func (g *Graph) walkReachable(nodeID string, visited map[string]bool) {
@@ -226,5 +223,41 @@ func (g *Graph) walkReachable(nodeID string, visited map[string]bool) {
 	visited[nodeID] = true
 	for _, next := range g.adjacency[nodeID] {
 		g.walkReachable(next, visited)
+	}
+}
+
+func (g *Graph) validateEdges() error {
+	for _, edge := range g.Edges {
+		if _, ok := g.Nodes[edge.SourceID]; !ok {
+			return fmt.Errorf("edge source node %q does not exist", edge.SourceID)
+		}
+		if _, ok := g.Nodes[edge.TargetID]; !ok {
+			return fmt.Errorf("edge target node %q does not exist", edge.TargetID)
+		}
+	}
+	return nil
+}
+
+func (g *Graph) validateReachable() error {
+	reachable := make(map[string]bool)
+	g.walkReachable(g.StartNodeID, reachable)
+	for id := range g.Nodes {
+		if !reachable[id] {
+			return fmt.Errorf("node %q is not reachable from start", id)
+		}
+	}
+	return nil
+}
+
+func isKnownNodeType(nodeType NodeType) bool {
+	switch nodeType {
+	case NodeStart, NodeEnd, NodeLLM, NodeKnowledgeRetrieval, NodeHTTPRequest,
+		NodeCondition, NodeCode, NodeLoop, NodeIteration, NodeParameterExtractor,
+		NodeQuestionClassifier, NodeTemplateTransform, NodeVariableAggregator,
+		NodeVariableAssigner, NodeTool, NodeAgent, NodeDocumentExtractor,
+		NodeListFilter, NodeSubWorkflow, NodeHumanInput:
+		return true
+	default:
+		return false
 	}
 }

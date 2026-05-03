@@ -104,8 +104,7 @@ func CreateWorkflow(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// validate DSL
-	if _, _, err := engine.ParseDSL([]byte(req.DSL)); err != nil {
+	if err := validateWorkflowDSL(req.DSL); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid DSL: " + err.Error()})
 		return
 	}
@@ -143,7 +142,7 @@ func UpdateWorkflow(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, _, err := engine.ParseDSL([]byte(req.DSL)); err != nil {
+	if err := validateWorkflowDSL(req.DSL); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid DSL: " + err.Error()})
 		return
 	}
@@ -307,4 +306,12 @@ func resolveWorkflowName(id string) string {
 	}
 	// For custom workflows, the store ID is used as the name for loadWorkflowGraph
 	return id
+}
+
+func validateWorkflowDSL(dsl string) error {
+	graph, _, err := engine.ParseDSL([]byte(dsl))
+	if err != nil {
+		return err
+	}
+	return graph.Validate()
 }

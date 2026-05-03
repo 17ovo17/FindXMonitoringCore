@@ -1,13 +1,10 @@
 package handler
 
 import (
-	"net/url"
 	"strings"
 
 	"ai-workbench-api/internal/model"
 	"ai-workbench-api/internal/monitoring"
-
-	"github.com/spf13/viper"
 )
 
 func validateMonitorAlertRule(rule *model.MonitorAlertRule) []model.MonitorTryCheck {
@@ -67,20 +64,13 @@ func validMonitorDatasource(id string) bool {
 	if id == "" {
 		return false
 	}
-	for _, ds := range loadDataSources() {
-		if ds.ID == id && strings.EqualFold(ds.Type, "prometheus") {
-			return datasourceURLReady(ds.URL)
+	for _, ds := range monitoring.PrometheusDatasourcesFromConfig() {
+		if ds.ID == id && monitoring.DatasourceURLReady(ds.URL) {
+			return true
 		}
 	}
-	return id == "prometheus-default" && datasourceURLReady(viper.GetString("prometheus.url"))
-}
-
-func datasourceURLReady(raw string) bool {
-	if strings.TrimSpace(raw) == "" {
-		return true
-	}
-	parsed, err := url.Parse(raw)
-	return err == nil && parsed.Scheme != "" && parsed.Host != ""
+	_, _, err := monitoring.ResolvePrometheusDatasourceFromConfig(id)
+	return err == nil
 }
 
 func monitorTryRunDetails(checks []model.MonitorTryCheck) map[string]any {

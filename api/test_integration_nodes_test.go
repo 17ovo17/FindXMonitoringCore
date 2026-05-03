@@ -151,7 +151,7 @@ func TestIntegrationNodes_All18TypesExecute(t *testing.T) {
 		{engine.NodeListFilter, func(t *testing.T) {
 			env := SetupTestEnv(t)
 			defer env.Cleanup(t)
-			g := testGraph("filter", startNode("filter"), &engine.NodeConfig{ID: "filter", Type: engine.NodeListFilter, Data: map[string]any{"items": []any{map[string]any{"value": 1}, map[string]any{"value": 4}, map[string]any{"value": 5}}, "filter_rules": []any{map[string]any{"field": "value", "operator": "gt", "value": "3"}}}, Next: "end"}, endNode(map[string]any{"count": "{{filter.count}}"}))
+			g := testGraph("filter", startNode("filter"), &engine.NodeConfig{ID: "filter", Type: engine.NodeListFilter, Data: map[string]any{"items": []any{map[string]any{"value": "web-a"}, map[string]any{"value": "db"}, map[string]any{"value": "web-b"}}, "filter_rules": []any{map[string]any{"field": "value", "operator": "contains", "value": "web"}}}, Next: "end"}, endNode(map[string]any{"count": "{{filter.count}}"}))
 			result, _ := runTestGraph(t, g, node.NewRegistry(nil, nil, nil), nil)
 			if fmt.Sprint(result.Outputs["count"]) != "2" {
 				t.Fatalf("filter count=%v, want 2", result.Outputs["count"])
@@ -291,6 +291,7 @@ func TestIntegrationNodes_ExecutionBoundaries(t *testing.T) {
 		cfg := engine.DefaultConfig()
 		cfg.Timeout = time.Second
 		cfg.NodeTimeout = 50 * time.Millisecond
+		cfg.MaxRetries = 0
 		stopEngine := engine.NewEngine(g, node.NewRegistry(nil, nil, nil), cfg)
 		stopResult, err := stopEngine.Run(context.Background(), nil)
 		if err != nil || stopResult.Status != engine.StatusFailed {

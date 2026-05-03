@@ -64,7 +64,7 @@ func TestAutoAdaptUsesDefaultModel(t *testing.T) {
 	viper.Reset()
 	viper.Set("ai.base_url", upstream.URL+"/v1")
 	viper.Set("ai.api_key", "test-key")
-	viper.Set("ai_providers", []map[string]any{{"id": "p1", "name": "test", "models": []string{"gpt-5.5"}, "default": true}, {"id": "p2", "name": "backup", "models": []string{"gpt-5.4"}}})
+	viper.Set("ai_providers", []model.AIProvider{{ID: "p1", Name: "test", Models: []string{"gpt-5.5"}, Default: true}, {ID: "p2", Name: "backup", Models: []string{"gpt-5.4"}}})
 	t.Cleanup(viper.Reset)
 
 	_, err := callLLMForAdapt("请返回 JSON", []model.MetricsMapping{{RawName: "cpu_usage"}})

@@ -103,6 +103,21 @@ P1 第一稳定切片聚焦 evaluator 到 current/history event closure：域常
 - DATA_CHANGE：无 DDL 变更；eval log `details` 写入内容从 dry validation 细节升级为安全评估摘要，属于写入语义变化。历史 eval log 不迁移，后续查询展示必须兼容旧 dry validation 记录和新真实评估摘要。
 - 验证矩阵：至少覆盖 valid 命中、valid no data + 三种 `no_data_policy`、validation fail 不请求 Prometheus、datasource not found 404、Prometheus 网络错误、非 2xx、`status:error`、invalid JSON、raw PromQL/URL/token/cookie/DSN 脱敏、tryrun 不写 current/history event、eval log 可追踪且不含敏感值。
 
+### P1-BE-3 DATA_CHANGE 与自动事件闭环
+
+- 目标边界：P1-BE-3 在 P1-BE-2 evaluator/gateway 基础上新增告警规则 scheduler，周期性评估启用规则，并把真实评估结果写入 `monitor_alert_events_current` 或恢复到 `monitor_alert_events_history`。
+- 启动边界：`main.go` 只挂载 scheduler 启动函数；scheduler 必须提供可测试的单轮入口，ticker 只负责周期触发，不承载业务逻辑。
+- 配置边界：新增 `monitoring.alert_scheduler.enabled`、`interval_seconds`、`timeout_seconds`、`max_concurrency`；默认不应让失败规则制造事件，超时和并发必须有上限。
+- DATA_CHANGE：无 DDL 变更；`monitor_alert_events_current` 将由 scheduler 自动写入和合并，`monitor_alert_events_history` 将接收 scheduler recovery 动作产生的 resolved 事件；eval log 会新增 scheduler 评估状态和安全摘要。
+- 事件语义：`Triggered=true` 且存在 candidates 时 upsert current event；`no_data_policy=alerting` 的 no data candidate 也 upsert current；`no_data_policy=ok`、scalar/string ok、empty vector ok 需要恢复同 rule 的旧 current event；`keep_state` no data 只写 eval log，不恢复也不新增。
+- 失败保护：Prometheus 网络错误、非 2xx、`status:error`、invalid JSON、datasource not found、PromQL 校验失败、evaluator invalid 均只写 eval log，不得制造 current/history event。
+- 幂等要求：同一 candidate 重复评估必须复用 P1-BE-1 fingerprint 合并语义，不新增重复 current event；同一轮 scheduler 不允许重入，单条规则失败不影响其他规则。
+- 脱敏要求：scheduler 日志、eval log details、事件 labels/annotations 不得包含 raw PromQL、URL、token/password/secret/cookie/auth/DSN 或 upstream body；事件只允许保存 query hash、rule id、datasource id、candidate labels 的脱敏结果和值摘要。
+- 验证矩阵：至少覆盖 firing 写 current、重复 firing 幂等、no_data alerting 写 current、no_data ok 恢复 history、keep_state 保持 current、旧 series 被恢复、upstream/status:error/invalid JSON 不造事件、datasource not found 不 panic、disabled rule 不评估、并发 RunOnce 锁保护、Windows/WSL Go test + build。
+- QA 闭环补强：P1-BE-3 复审发现非敏感 label key 中的 URL/DSN/token/password/cookie/secret/auth value 可能进入 event labels、annotations 或 target_ident；实现必须在 scheduler 写入 current/history event 和 eval log details 前做 value 级脱敏，并补充 `instance`、`endpoint`、`token` 等样本测试。
+- 全量验证补强：P1-BE-3 不只跑定向测试，还必须跑 Windows 与 WSL 的 `go test -count=1 ./...` 和构建；如果 WSL `/opt/ai-workbench` 与 Windows 工作区源码漂移，必须先同步完整 `api/**/*.go` 后再判定结果。
+- 安全基线补强：本轮全量测试基线修复不得通过放宽测试掩盖真实问题；CORS 空配置默认必须保持 localhost-only，Workflow DSL 创建/更新必须在 parse 后执行 graph validation，坏 DSL 返回 400 且不得持久化。
+
 ## 5. P2 findx-agents 工作单
 
 P2 先落协议、能力目录、安全模型、证据模型，再迁移采集/巡检工具。Categraf `exec` 默认禁用；Catpaw 授权衍生能力进入实现前必须补合规材料。

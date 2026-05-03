@@ -34,6 +34,7 @@ func main() {
 	scheduler.SetDiagnoseFunc(handler.RunDiagnose)
 	scheduler.Start()
 	scheduler.StartWorkflowScheduler()
+	scheduler.StartMonitorAlertScheduler()
 	handler.StartMetricsAutoSync()
 
 	r := gin.Default()
@@ -295,12 +296,23 @@ func corsConfig() cors.Config {
 		ExposeHeaders:    []string{"X-Security-Mode"},
 		AllowCredentials: false,
 	}
-	if len(origins) == 0 || (len(origins) == 1 && origins[0] == "*") {
+	if len(origins) == 1 && origins[0] == "*" {
 		cfg.AllowAllOrigins = true
+	} else if len(origins) == 0 {
+		cfg.AllowOrigins = defaultLocalhostOrigins()
 	} else {
 		cfg.AllowOrigins = origins
 	}
 	return cfg
+}
+
+func defaultLocalhostOrigins() []string {
+	return []string{
+		"http://localhost:5173",
+		"http://127.0.0.1:5173",
+		"http://localhost:8080",
+		"http://127.0.0.1:8080",
+	}
 }
 
 func requireAdminToken() gin.HandlerFunc {
