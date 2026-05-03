@@ -1,10 +1,10 @@
-# FindX Monitoring Core API 契约草案
+# FindX Monitoring Core API 契约与 P0 验证证据
 
 生成时间：2026-05-04 03:24（UTC+8）
 
 ## 1. 文档定位
 
-本文档为 FindX Monitoring Core P0-1/P0-2 的 API 契约与测试清单草案，用于指导后端、前端、QA 和文档同步。FindX Monitoring Core 是 FindX 新平台主线，负责承载自有监控事实源、Target、Agent、告警规则、告警事件、诊断与后续自动修复闭环。
+本文档为 FindX Monitoring Core P0-1/P0-2/P0-3 的 API 契约、测试清单与 P0 验证证据，用于指导后端、前端、QA 和文档同步。FindX Monitoring Core 是 FindX 新平台主线，负责承载自有监控事实源、Target、Agent、告警规则、告警事件、诊断与后续修复闭环。
 
 兼容策略：
 
@@ -440,9 +440,9 @@ Content-Type: application/json
 - 400：请求体不是合法 JSON、`ident/ip/hostname` 全为空、IP 非法。
 - 401：`X-Agent-Token` 缺失、`X-Agent-Token` 不匹配、服务端未配置共享 token 且 `findx_agents.allow_anonymous` 未显式开启；失败时不得写入 Agent 或 Target。
 
-## 4. P0-2 已实施/待 QA API：Alert Rules 全生命周期
+## 4. P0-2 已通过 QA 门禁 API：Alert Rules 全生命周期
 
-P0-2 已进入实现完成后的 QA 门禁阶段，目标是确认 FindX 自有告警规则生命周期、版本回滚、tryrun 与事件入口在正常、异常、权限、断连和脱敏路径下均可稳定运行。
+P0-2 后端 API 已通过 QA 门禁，覆盖 FindX 自有告警规则生命周期、版本回滚、tryrun 与事件入口在正常、异常、权限、断连和脱敏路径下的稳定性要求。
 
 ### 4.1 路由清单
 
@@ -665,9 +665,9 @@ GET    /api/v1/monitor/alert-rules/export
 - 导出内容必须脱敏。
 - 导出包应包含 schema_version、rules、generated_at、generated_by。
 
-## 5. P0-2 已实施/待 QA API：Events 全生命周期
+## 5. P0-2 已通过 QA 门禁 API：Events 全生命周期
 
-P0-2 事件模型覆盖 current event、history event、事件处置、AI 诊断、Agent 巡检和自动修复计划入口。
+P0-2 后端 API 已覆盖 current event、history event 与事件处置。AI 诊断、Agent 巡检和修复计划入口属于后续阶段边界，本文仅保留契约约束，不按 P0 已上线能力描述。
 
 ### 5.1 路由清单
 
@@ -1064,13 +1064,13 @@ GET  /api/v1/monitor/events/:id/actions
 
 ### 7.1 P0 状态闭环
 
-| 子阶段 | 范围 | 当前状态 | 待 QA 门禁 |
+| 子阶段 | 范围 | 当前状态 | 已验证门禁 |
 | --- | --- | --- | --- |
-| P0-1 | target、datasource 基础语义、agent register、agent heartbeat、health | target 与 agent heartbeat 主线已实施；datasource 基础语义进入 P0-3 查询网关统一承载 | health 降级、target CRUD、agent token、heartbeat upsert、权限、断连、脱敏、WSL 后端编译。 |
-| P0-2 | alert rule、current/history event、tryrun、rollback、event action | 告警规则、当前/历史事件、tryrun、回滚和事件动作已实施，进入 QA 门禁 | 规则 CRUD、版本自增、回滚生成新版本、tryrun 不落正式事件、事件状态机、动作审计、权限、断连、脱敏。 |
-| P0-3 | datasource、query、query-range、metrics、labels、label-values | 依据 ops 审计进入实施，作为 evaluator、dashboard、AI 问诊和自动修复的统一查询网关 | 数据源配置脱敏、PromQL 校验、时间范围限制、上游断连、查询审计、限流、权限、错误模型、与 P0-2 tryrun/evaluator 对接。 |
+| P0-1 | target、datasource 基础语义、agent register、agent heartbeat、health | P0 后端 API 已通过 QA 门禁；target 与 agent heartbeat 主线已落库；datasource 基础语义由 P0-3 查询网关统一承载 | health 降级、target CRUD、agent token、heartbeat upsert、权限、断连、脱敏、WSL 后端编译。 |
+| P0-2 | alert rule、current/history event、tryrun、rollback、event action | P0 后端 API 已通过 QA 门禁；告警规则、当前/历史事件、tryrun、回滚和事件动作已落库 | 规则 CRUD、版本自增、回滚生成新版本、tryrun 不落正式事件、事件状态机、动作审计、权限、断连、脱敏。 |
+| P0-3 | datasource、query、query-range、metrics、labels、label-values | P0 后端 API 已通过 QA 门禁；查询网关已作为 evaluator、dashboard、AI 问诊和修复验证的统一后端入口落库 | 数据源配置脱敏、PromQL 校验、时间范围限制、Prometheus 上游失败 503、查询审计只记 hash/stats、权限、错误模型、与 P0-2 tryrun/evaluator 对接。 |
 
-P0 门禁结论只允许：
+P0 门禁结论已确认为 `PASS`。后续 P1/P2/P3 门禁结论仍只允许：
 
 - `PASS`：构建、API、权限、断连、脱敏和回归均有证据。
 - `FAIL`：存在 P0/P1 缺陷、敏感信息风险、误报成功、状态机错误或未授权写入。
@@ -1078,7 +1078,40 @@ P0 门禁结论只允许：
 - `NOT_RUN`：未执行，不能作为通过依据。
 - `RISK`：存在非阻断风险，必须记录 owner、影响面和关闭计划。
 
-### 7.2 P0-3 路由清单
+### 7.2 P0 验证证据
+
+P0 已完成并推送，提交记录为 `81b4531 feat: add FindX monitoring core P0 APIs`。QA 最终评分为 **98/100**，结论为 **通过**。
+
+Windows 验证：
+
+```powershell
+cd D:\ai-workbench\api && go test ./internal/store ./internal/model
+cd D:\ai-workbench\api && go test ./internal/handler -run 'TestMonitor|TestSanitizeDatasourceURL'
+cd D:\ai-workbench\api && go test main.go main_test.go -run 'TestRequireAdminToken|TestMonitorRead'
+cd D:\ai-workbench\api && go build ./...
+```
+
+WSL/Linux 验证：
+
+```bash
+cd /opt/ai-workbench/api && go test ./internal/store ./internal/model
+cd /opt/ai-workbench/api && go test ./internal/handler -run 'TestMonitor|TestSanitizeDatasourceURL'
+cd /opt/ai-workbench/api && go test main.go main_test.go -run 'TestRequireAdminToken|TestMonitorRead'
+cd /opt/ai-workbench/api && go build -o api-linux .
+```
+
+已验证范围：
+
+- monitor health、targets、findx-agents register/heartbeat/list。
+- alert-rules、current/history events。
+- query gateway datasources/query/query-range/metrics/labels/label-values。
+- 读接口平台认证，写接口 admin。
+- Agent token 默认拒绝匿名。
+- Prometheus 上游失败返回 503。
+- 查询审计只记录 hash/stats，不记录原始敏感配置。
+- 事件终态保护。
+
+### 7.3 P0-3 路由清单
 
 ```text
 GET    /api/v1/monitor/datasources
@@ -1101,7 +1134,7 @@ GET    /api/v1/monitor/label-values
 - `datasources/:id/test`：`adminRequired`，测试结果必须脱敏。
 - `query/query-range`：读权限即可查询授权数据源；高成本查询可按团队、数据源或查询长度提升权限。
 
-### 7.3 MonitorDatasource 字段
+### 7.4 MonitorDatasource 字段
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
@@ -1161,7 +1194,7 @@ GET    /api/v1/monitor/label-values
 }
 ```
 
-### 7.4 POST /api/v1/monitor/query
+### 7.5 POST /api/v1/monitor/query
 
 用途：执行 Prometheus-compatible 即时查询，为规则 tryrun、Dashboard panel、AI 问诊和自动修复 precheck 提供统一入口。
 
@@ -1203,7 +1236,7 @@ GET    /api/v1/monitor/label-values
 - 查询失败不得包装成 `status=success`。
 - 查询审计记录必须包含操作者、数据源、查询摘要、耗时、结果规模、状态和 trace_id；不得记录密钥。
 
-### 7.5 POST /api/v1/monitor/query-range
+### 7.6 POST /api/v1/monitor/query-range
 
 用途：执行区间查询，服务 Dashboard、规则评估、趋势诊断和修复验证。
 
@@ -1227,7 +1260,7 @@ GET    /api/v1/monitor/label-values
 - `step` 合法且不会造成超大点数。
 - 返回序列不超过 `max_series`，超过时返回 400 或裁剪状态，不能静默丢数据。
 
-### 7.6 GET /metrics、/labels、/label-values
+### 7.7 GET /metrics、/labels、/label-values
 
 `GET /api/v1/monitor/metrics`
 
@@ -1248,7 +1281,7 @@ GET    /api/v1/monitor/label-values
 - 上游断连、超时或认证失败返回 503，错误必须脱敏。
 - 返回结果必须限制数量，避免前端渲染和后端内存压力。
 
-### 7.7 P0-3 与 P0-2 的对接边界
+### 7.8 P0-3 与 P0-2 的对接边界
 
 | 调用方 | 对接方式 | 门禁 |
 | --- | --- | --- |
@@ -1265,26 +1298,26 @@ API_CONTRACT_CHANGE：
 - 新主线确认为 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`。
 - P0-1 已实现路由包括 health、targets、findx-agents、register、heartbeat。
 - Agent register/heartbeat 认证策略变更为默认拒绝匿名写入：必须配置 `FINDX_AGENT_TOKEN` 或 `findx_agents.shared_token` 并提供正确 `X-Agent-Token: <TOKEN>`；仅本地/测试环境可显式设置 `findx_agents.allow_anonymous: true` 放行匿名接入，生产环境禁止开启。
-- P0-2 已实现 alert-rules 与 events 全生命周期路由，当前状态为待 QA 门禁。
-- P0-3 新增查询网关主线：`/api/v1/monitor/datasources`、`/api/v1/monitor/query`、`/api/v1/monitor/query-range`、`/api/v1/monitor/metrics`、`/api/v1/monitor/labels`、`/api/v1/monitor/label-values`。
+- P0-2 已实现 alert-rules 与 events 全生命周期路由，并已通过 P0 后端 API QA 门禁。
+- P0-3 已新增查询网关主线：`/api/v1/monitor/datasources`、`/api/v1/monitor/query`、`/api/v1/monitor/query-range`、`/api/v1/monitor/metrics`、`/api/v1/monitor/labels`、`/api/v1/monitor/label-values`。
 - 旧 `/api/v1/n9e/*` 与 `/api/v1/catpaw/*` 保留为兼容入口，不作为新功能主入口。
 
 DATA_CHANGE：
 
 - P0-1 已涉及 `monitor_targets` 与 `findx_agents` 语义。
 - P0-2 已涉及 `monitor_alert_rules`、`monitor_alert_rule_versions`、`monitor_alert_eval_logs`、`monitor_alert_events_current`、`monitor_alert_events_history`、`monitor_alert_actions` 等语义。
-- P0-3 计划涉及 `monitor_datasources`、`monitor_query_audit_logs`、`monitor_metric_metadata` 等语义；真实凭据必须加密或托管，不进入响应、日志、审计正文和 AI prompt。
-- 具体表结构、索引、迁移、回滚和幂等策略需以后端实现 PR 为准另行补充。
+- P0-3 已涉及 `monitor_datasources`、`monitor_query_audit_logs`、`monitor_metric_metadata` 等语义；真实凭据必须加密或托管，不进入响应、日志、审计正文和 AI prompt。
+- 具体表结构、索引、迁移、回滚和幂等策略以已落库实现和后续迁移文档为准。
 
 ## 9. 技术债检查
 
 | 检查项 | 结论 |
 | --- | --- |
 | 重复逻辑 | 本文档复用现有 model 字段与规划文档中的路由方向，未新增重复代码。 |
-| 复杂度 | 文档按 P0-1 已实现、P0-2 已实施待 QA、P0-3 查询网关和测试清单拆分，避免把契约、测试和治理混在单段描述中。 |
-| 边界 | 仅记录文档契约，不修改 `api`、`web`、`README`、`.claude` 或密钥配置。 |
+| 复杂度 | 文档按 P0-1、P0-2、P0-3 查询网关、测试清单和 P0 验证证据拆分，避免把契约、测试和治理混在单段描述中。 |
+| 边界 | 本次仅更新 `README.md` 与本文档，不修改 `api`、`web`、`.claude` 或密钥配置。 |
 | 依赖 | 未新增 Go module、npm 包或外部服务依赖。 |
 | 兼容 | 明确 `/n9e/*` 与 `/catpaw/*` 为兼容入口，新平台主线为 `/monitor/*` 与 `/findx-agents/*`。 |
-| 测试 | 提供 API、UI、兼容、断连、权限、边界、敏感信息脱敏测试清单；已补充 Agent 缺 token 401、错 token 401、`allow_anonymous=false` 默认拒绝、`allow_anonymous=true` 仅测试环境允许等安全用例；实际执行结果需 QA 按实现版本补充。 |
+| 测试 | 提供 API、UI、兼容、断连、权限、边界、敏感信息脱敏测试清单；已补充 Agent 缺 token 401、错 token 401、`allow_anonymous=false` 默认拒绝、`allow_anonymous=true` 仅测试环境允许等安全用例；P0 后端 API 已补充 Windows 与 WSL/Linux 验证证据。 |
 | 回滚 | 文档变更可直接按文件版本回滚；P0-2 规则回滚语义已在契约中约束为生成新版本。 |
-| 遗留风险 | P0-1/P0-2 仍需 QA 回填真实执行证据；P0-3 字段、状态机和错误码需以后端实现与 QA 结果回填。 |
+| 遗留风险 | P0 后端 API 已通过 QA 门禁；P1/P2/P3 的前端入口、Dashboard、通知、Agent 深度融合、AI 问诊和修复全链路仍需按后续实现与 QA 结果回填。 |

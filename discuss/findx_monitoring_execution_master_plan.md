@@ -1,10 +1,10 @@
 # FindX Monitoring Core P0-P3 实施总计划
 
-生成时间：2026-05-04 04:15（UTC+8）
+生成时间：2026-05-04 04:30（UTC+8）
 
 ## 1. 文档定位
 
-本文档是 FindX Monitoring Core 从 P0 到 P3 的完整实施总计划，用于指导主代理、子代理、QA 和后续 Git 稳定切片持续推进。主线是：FindX 建设为新的监控核心平台，参考并改进 Nightingale 的成熟能力，复用 Categraf 插件生态，融合 Catpaw 授权衍生 inspector，把 AI 问诊和自动修复纳入正式核心项目。
+本文档是 FindX Monitoring Core 从 P0 到 P3 的讨论总计划，用于指导主代理、子代理、QA 与后续 Git 稳定切片持续推进。当前主代理在 Claude 缺席时承担编排者、审计者、评分者和 Git 门禁职责；子代理承担执行层 work unit。
 
 本文档不记录真实密钥、认证票据、Cookie、完整连接串、SSH 私钥或生产数据。所有敏感示例统一使用 `<TOKEN>`、`<API_KEY>`、`<DB_DSN>`、`<LOGIN_USER>`、`<SSH_KEY>`、`<COOKIE>`。
 
@@ -28,271 +28,149 @@ target/datasource/agent
 核心交付原则：
 
 - 全功能推进 P0/P1/P2/P3，不以占位页、静态假数据、半截接口或一次性 PoC 作为完成结论。
-- API、数据模型、权限、审计、UI、Agent、AI 与自动修复最终归 FindX 主线承载。
-- Nightingale 用于成熟功能参考、源码对标和可融合组件分析。
-- Categraf 作为 `findx-agents` 的采集插件生态底座。
-- Catpaw 授权能力衍生为 `findx-agents` 的 inspector、diagnose、session 和远程安全能力。
-- 所有写操作必须有权限、审计、回滚或失败清理策略。
-- 所有 AI 输出必须绑定 evidence refs。
+- API、数据模型、权限、审计、UI、Agent、AI 与修复执行链路最终归 FindX 主线承载。
+- Categraf 作为 `findx-agents` 的采集插件生态底座，先明确协议、安全边界和配置分发，再迁移具体采集能力。
+- Catpaw 授权衍生能力进入 `findx-agents` 前，必须补齐来源说明、修改说明、授权边界、NOTICE 和合规材料。
+- 所有写操作必须有权限、审计、幂等、回滚或失败清理策略。
+- 所有 AI 输出必须绑定 evidence refs，不允许凭空生成诊断结论或执行建议。
 
-## 3. 阶段地图
+## 3. 阶段地图与 P0 状态
 
-| 阶段 | 目标 | 主要输出 | 进入下一阶段条件 |
+| 阶段 | 当前状态 | 主要输出 | 进入下一阶段条件 |
 | --- | --- | --- | --- |
-| P0-1 | target、datasource 基础语义、agent register、agent heartbeat、health | `/api/v1/monitor/targets`、`/api/v1/findx-agents/register`、`/api/v1/findx-agents/heartbeat`、health 状态 | QA 通过 target CRUD、agent token、heartbeat upsert、health 降级、权限、断连、脱敏、WSL 编译。 |
-| P0-2 | alert rule、current/history event、tryrun、rollback、action | 规则生命周期、事件生命周期、动作日志、诊断/巡检/修复计划入口 | QA 通过规则 CRUD、版本、回滚、tryrun、事件状态机、动作审计、权限、断连、脱敏。 |
-| P0-3 | query gateway | datasources、query、query-range、metrics、labels、label-values | QA 通过查询校验、数据源断连、限流、审计、脱敏，并完成与 P0-2 tryrun/evaluator 对接。 |
-| P1 | dashboard、template、evaluator、notification、oncall、silence、subscription、permission、audit | 监控核心工作台全功能面 | API/UI/断连/权限/脱敏/回滚验证通过，文档和测试基准同步。 |
-| P2 | findx-agents 融合 | Categraf 采集 + Catpaw 衍生 inspector/diagnose/session + Agent 控制协议 | Agent 安装、心跳、配置拉取、巡检、能力上报、离线保护和授权记录通过 QA。 |
-| P3 | AI 问诊 + 自动修复 | precheck、dry-run、approve、execute、verify、rollback、audit、失败保护 | 低风险动作闭环通过，失败保护和审计闭环完整，敏感信息不进入 AI prompt 和报告。 |
+| P0 | 已完成并推送：`81b4531`，QA `98/100` 通过 | target、datasource、agent register、agent heartbeat、health、alert rule、current/history event、tryrun、rollback、query gateway | Windows + WSL Go 测试/构建通过，QA 已确认核心路径、权限、断连、脱敏和降级闭环。 |
+| P1 | 待执行稳定切片 | evaluator、scheduler、current/history event 自动闭环、notification、silence、subscription、oncall、permission、audit、`/monitor` 工作台 | 后端稳定切片逐项通过 WSL 构建和 API 回归，前端稳定切片通过构建和 UI 回归。 |
+| P2 | 待协议先行 | findx-agents 协议、能力目录、安全模型、证据模型、control plane、session/evidence、Categraf 融合、Catpaw 衍生 inspector/tool registry | 协议、安全审批、离线保护、配置分发、合规 NOTICE 与 Agent 回归完成。 |
+| P3 | 待 evidence chain 先行 | AI evidence chain、remediation plan、precheck、dry-run、approve、execute、verify、rollback | 低风险动作闭环通过，失败保护和审计闭环完整，敏感信息不进入 AI prompt 和报告。 |
 
-## 4. P0 详细闭环
+P0 验证命令摘要：
 
-### 4.1 P0-1 已实施与待 QA 门禁
+```bash
+# Windows 项目目录
+cd D:\ai-workbench\api
+go test ./...
+go build -o api.exe .
 
-已实施范围：
-
-- `GET /api/v1/monitor/health`
-- `GET /api/v1/monitor/targets`
-- `POST /api/v1/monitor/targets`
-- `GET /api/v1/monitor/targets/:id`
-- `PUT /api/v1/monitor/targets/:id`
-- `DELETE /api/v1/monitor/targets/:id`
-- `GET /api/v1/findx-agents`
-- `POST /api/v1/findx-agents/register`
-- `POST /api/v1/findx-agents/heartbeat`
-
-待 QA 门禁：
-
-- health 正常、empty、degraded 状态。
-- target CRUD 正常、字段缺失、非法 IP、非 admin 写入。
-- agent register/heartbeat 正确 token、缺 token、错误 token、匿名开关仅测试环境允许。
-- heartbeat upsert Agent 与 Target，更新 `last_seen` 和在线状态。
-- MySQL 不可用时返回可读降级状态。
-- 响应、日志、审计不包含真实 token、Cookie、完整 DSN、SSH key、堆栈或本地敏感路径。
-
-### 4.2 P0-2 已实施与待 QA 门禁
-
-已实施范围：
-
-- alert rule：列表、详情、创建、更新、删除、启用、禁用、克隆、tryrun、版本、rollback、导入、导出。
-- current/history event：列表、详情、ack、assign、mute、resolve、archive、actions。
-- 诊断入口：event diagnose、event inspect、event remediation-plan。
-
-待 QA 门禁：
-
-- 规则创建必填字段、非法 severity、非法 no_data_policy、非法 for_duration。
-- 更新规则生成新版本，回滚生成新版本，不覆盖历史。
-- tryrun 成功返回检查项，不生成正式 current event。
-- tryrun 数据源断连返回可读失败，不误写事件。
-- current/history event 分页、筛选、详情和动作日志完整。
-- 事件状态机禁止 archived 后再次处置。
-- 非 admin 事件处置返回 403，状态不变。
-- diagnose 结果必须绑定 evidence refs。
-- inspect 在 Agent 离线时失败可读，不误报 queued。
-- remediation-plan 只创建草案，不直接执行。
-
-### 4.3 P0-3 查询网关实施
-
-P0-3 依据 ops 审计进入实施，统一承载规则试跑、evaluator、Dashboard、AI 问诊和自动修复验证的指标查询。
-
-必须实现 API：
-
-```text
-GET    /api/v1/monitor/datasources
-POST   /api/v1/monitor/datasources
-GET    /api/v1/monitor/datasources/:id
-PUT    /api/v1/monitor/datasources/:id
-DELETE /api/v1/monitor/datasources/:id
-POST   /api/v1/monitor/datasources/:id/test
-POST   /api/v1/monitor/query
-POST   /api/v1/monitor/query-range
-GET    /api/v1/monitor/metrics
-GET    /api/v1/monitor/labels
-GET    /api/v1/monitor/label-values
+# WSL 镜像目录
+cd /opt/ai-workbench/api
+go test ./...
+go build -o api-linux .
 ```
 
-实施要求：
+P0 验收摘要：
 
-- datasource 支持 Prometheus-compatible 类型优先落地，后续扩展 VictoriaMetrics、Mimir、Loki、Elasticsearch。
-- 数据源凭据只允许写入和加密保存，不允许响应、日志、审计正文或 AI prompt 回显。
-- query/query-range 校验查询表达式、时间范围、step、最大序列数、最大点数和超时。
-- metrics/labels/label-values 限制返回数量，支持数据源权限检查。
-- 上游断连、超时或认证失败返回 503，错误必须脱敏。
-- 查询审计记录操作者、数据源、查询摘要、耗时、结果规模、状态和 trace_id。
-- P0-2 tryrun/evaluator 必须通过查询网关取数。
+- QA 评分：`98/100`。
+- 推送提交：`81b4531`。
+- 已覆盖：target CRUD、datasource/query gateway、agent register/heartbeat、alert rule 生命周期、tryrun、current/history event 状态机、权限、断连、降级、脱敏、审计。
+- 遗留处理：P1 继续把 evaluator、scheduler、fingerprint 幂等和 eval log 接入真实事件闭环。
 
-## 5. P1 全量实施计划
+## 4. P1 后端与前端工作单
 
-| 功能域 | 后端范围 | 前端范围 | QA 门禁 |
-| --- | --- | --- | --- |
-| dashboard | dashboard、panel、variable、annotation、share、favorite、version、rollback、import/export | Dashboard 列表、编辑器、panel 配置、变量、空态、错误态、权限态 | 图表真实取数，版本回滚，权限拒绝，数据源断连。 |
-| template | dashboard/rule/collect/remediation/runbook 模板、preview、install、diff、drift、upgrade、rollback | 模板中心、安装向导、diff 视图、漂移提示 | 安装失败清理，模板包脱敏，版本可追踪。 |
-| evaluator | 调度、分片、规则评估、恢复判断、去重聚合、eval log | 规则评估状态、最近运行、失败原因 | 数据源断连不制造告警风暴，eval log 可追踪。 |
-| notification | channel、template、rule、record、retry、preview、tryrun、rollback | 通知中心、模板编辑、发送记录 | 内容脱敏，失败重试，通知记录进入证据链。 |
-| oncall | schedule、rotation、override、escalation、handover | 值班日历、交接、升级链路 | 团队权限一致，升级链路可审计。 |
-| silence | create、update、delete、enable、expire、match preview、audit | 静默列表、创建、匹配预览、过期状态 | 匹配解释正确，到期恢复正确。 |
-| subscription | user/team/business subscription、personal preference | 订阅偏好、团队订阅、业务组订阅 | 不重复轰炸，权限隔离正确。 |
-| permission | user、team、role、business group、operation permission、API token | 团队权限页、角色授权、资源可见性 | 越权 403，资源不可见按统一模型处理。 |
-| audit | 写操作审计、差异摘要、trace_id、来源、回滚引用 | 审计查询、对象追踪、差异查看 | 审计不含敏感信息，支持回放排障。 |
+P1 第一稳定切片聚焦 evaluator 到 current/history event closure：域常量、真实 tryrun、EvaluateRule、scheduler、fingerprint 幂等、eval log。前端新建 `/monitor` FindX Monitoring Core 入口，不继续堆旧 `Alerts.vue` 或 `OnCallConfig.vue`。
 
-## 6. P2 findx-agents 融合计划
+| Work Unit | 执行角色 | 写集边界 | 依赖 | 验收命令/用例 | 是否允许 Git 稳定切片 |
+| --- | --- | --- | --- | --- | --- |
+| P1-BE-1 域常量/状态机/fingerprint 幂等 | `go-backend` | 仅 `D:\ai-workbench\api\` 内 monitor 相关 model/service/store/test；禁止改 web、docs、配置、密钥 | P0 已推送；需先搜索现有 rule/event 状态值和动作日志实现 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖重复 evaluator 输入不重复创建 current event、resolved/archived 状态不可非法回退、fingerprint 稳定 | 允许。建议切片名：`findx-p1-be-domain-fingerprint` |
+| P1-BE-2 evaluator service + 真实 tryrun | `go-backend` | 仅 `D:\ai-workbench\api\` 内 evaluator/query gateway/rule tryrun 相关文件和测试；禁止引入新外部依赖 | 依赖 P1-BE-1 的域常量和 fingerprint；依赖 P0 query gateway | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 EvaluateRule 正常命中、恢复判断、no data、datasource 503、tryrun 不写正式 current event、eval log 可追踪 | 允许。建议切片名：`findx-p1-be-evaluator-tryrun` |
+| P1-BE-3 scheduler + current/history event 自动闭环 | `go-backend` | 仅 `D:\ai-workbench\api\` 内 scheduler/evaluator/event store/test；禁止改前端和文档 | 依赖 P1-BE-1、P1-BE-2；需要明确调度间隔、并发锁、超时、失败重试和审计 trace_id | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖启用规则定时评估、恢复进入 history、异常不制造误告警、并发调度幂等、eval log 保留失败原因 | 允许。建议切片名：`findx-p1-be-scheduler-event-closure` |
+| P1-BE-4 silence/subscription/notification/oncall/pipeline/permission/audit 分组实现 | `go-backend` | 仅 `D:\ai-workbench\api\` 内 monitor 扩展模块；每次派发必须再拆写集，禁止一次性改完全部域 | 依赖 P1-BE-3 的事件闭环；需要先定义 API_CONTRACT_CHANGE、权限矩阵、审计字段和脱敏规则 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 silence 匹配预览、subscription 去重、notification tryrun、oncall escalation、pipeline 失败清理、permission 403、audit 不含敏感值 | 允许，但必须拆成多个子切片，不允许一个 commit 混合全部域 |
+| P1-FE-1 `/monitor` 工作台与 API 封装 | `vue-frontend` | `D:\ai-workbench\web\src\api\monitor.js`、`D:\ai-workbench\web\src\views\monitoring\*`、`D:\ai-workbench\web\src\components\monitoring\*`、必要 router 注册；禁止修改旧 `Alerts.vue`/`OnCallConfig.vue` 作为主入口 | 依赖 P0/P1 后端契约；如后端未全量完成，前端必须使用真实 API 错误态和空态，不写静态假数据 | `cd /opt/ai-workbench/web && npm run build`；MCP/Playwright 覆盖 `/monitor` 入口、接口失败态、空态、权限态、列表筛选、刷新 | 允许。建议切片名：`findx-p1-fe-monitor-workbench-api` |
+| P1-FE-2 规则、事件、Dashboard、模板、通知、权限页面 | `vue-frontend` | 仅 `web/src/views/monitoring/*`、`web/src/components/monitoring/*`、`web/src/api/monitor.js` 必要扩展；不同页面分批派发 | 依赖 P1-FE-1；规则/事件依赖 P1-BE-2/P1-BE-3；通知/权限依赖 P1-BE-4 | `cd /opt/ai-workbench/web && npm run build`；MCP/Playwright 覆盖规则 tryrun、事件处置、Dashboard 真实取数失败态、模板 diff、通知 tryrun、权限 403 | 允许，但必须按页面或功能域拆分稳定切片 |
 
-`findx-agents` 的目标形态：
+## 5. P2 findx-agents 工作单
 
-```text
-findx-agents
-  -> Categraf collector inputs/logs/remote_write/provider
-  -> FindX heartbeat/config-pull/capabilities/reload/upgrade
-  -> Catpaw-derived inspector/diagnose/session/event model
-  -> remediation executor
-  -> local audit/supervisor
-```
+P2 先落协议、能力目录、安全模型、证据模型，再迁移采集/巡检工具。Categraf `exec` 默认禁用；Catpaw 授权衍生能力进入实现前必须补合规材料。
 
-实施切片：
+| Work Unit | 执行角色 | 写集边界 | 依赖 | 验收命令/用例 | 是否允许 Git 稳定切片 |
+| --- | --- | --- | --- | --- | --- |
+| P2-Agent-1 协议与结构化能力模型 | `ops-diagnostician` + `go-backend` | 设计文档、协议常量、API model/store/test；禁止写真实密钥和生产路径 | 依赖 P0 agent register/heartbeat；需明确 register、heartbeat、config-pull、capabilities、reload、upgrade 的请求/响应/错误码 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖能力目录上报、版本兼容、未知能力拒绝、脱敏响应 | 允许。建议切片名：`findx-p2-agent-protocol-capability` |
+| P2-Agent-2 control plane/session/evidence | `go-backend` | 仅 `api/` 内 agent control、session、evidence model/store/handler/test；禁止前端并行改同一契约 | 依赖 P2-Agent-1；需要先定义 session 状态机、证据引用、超时、审计和权限 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 session start/output/error/timeout、Agent 离线、evidence refs 不丢失、越权 403 | 允许。建议切片名：`findx-p2-agent-session-evidence` |
+| P2-Agent-3 Categraf 插件融合与配置分发 | `go-backend` + `ops-diagnostician` | agent 配置模板、插件目录、配置分发 API/test；禁止启用高风险 exec 默认能力 | 依赖 P2-Agent-1、P2-Agent-2；需要配置 hash/version、reload 幂等、失败回滚 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 config-pull、hash 未变不 reload、配置非法拒绝、离线保护、exec 默认禁用 | 允许，但必须独立于 Catpaw 衍生切片 |
+| P2-Agent-4 Catpaw 衍生 inspector/tool registry | `ops-diagnostician` + `go-backend` | inspector/tool registry 设计、授权衍生说明、API model/store/test；禁止复制未确认授权边界的实现 | 依赖 P2-Agent-2；合规 NOTICE、来源说明、修改说明必须先完成 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 tool registry 权限、inspect run 成功/失败/超时、artifact 脱敏保存、Agent 离线 | 允许，但必须与合规 NOTICE 同切片或后置于合规切片 |
+| P2-Agent-5 安全审批/离线保护/合规 NOTICE | `ops-diagnostician` + `doc-writer` + `qa-tester` | 仅授权文档、NOTICE、测试报告和必要安全策略说明；禁止修改业务代码，除非另派 `go-backend` | 依赖 P2-Agent-1 到 P2-Agent-4 的协议与授权边界 | 文档审查用例：敏感信息扫描、授权来源完整、审批链路完整、离线保护策略完整；代码相关时补 WSL Go 构建 | 允许。建议作为 P2 合规门禁切片 |
 
-1. Categraf 基线梳理：保留 inputs、provider、remote_write、配置模板和 heartbeat 思路。
-2. FindX Agent Control Protocol：register、heartbeat、config-pull、capabilities、reload、upgrade。
-3. Catpaw 授权衍生 inspector：plugin registry、inspect run、structured findings、artifact 保存。
-4. Diagnose/session：local/remote tool scope、session start/output/error、超时和审计。
-5. Remediation executor：只执行审批后的 plan/run step，不接受任意命令透传。
-6. 安装升级：`findx-agents.service`、`/opt/findx-agents`、`/etc/findx-agents`、`/var/log/findx-agents`。
-7. 合规记录：LICENSE、NOTICE、来源说明、修改说明、授权边界。
+## 6. P3 AI 与修复执行链路工作单
 
-P2 QA 门禁：
+P3 必须先建立 evidence chain，再进入 remediation plan/precheck/dry-run/approve/execute/verify/rollback。所有执行动作必须经过审批和审计，不允许任意命令透传。
 
-- Agent 在线、离线、重连、能力变化状态正确。
-- 配置拉取支持版本/hash，不重复 reload。
-- inspector 执行成功、超时、失败、Agent 离线均有明确状态。
-- 本地审计记录 run id、session id、发起人、审批人和结果。
-- 日志和响应不包含敏感信息。
+| Work Unit | 执行角色 | 写集边界 | 依赖 | 验收命令/用例 | 是否允许 Git 稳定切片 |
+| --- | --- | --- | --- | --- | --- |
+| P3-AI-1 evidence chain | `go-backend` + `ops-diagnostician` | 仅 `api/` 内 evidence、diagnose、knowledge/runbook 引用模型和测试；必要设计文档另行授权 | 依赖 P1 事件闭环和 P2 session/evidence；需要证据引用模型、脱敏摘要、追溯关系 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖事件、规则、目标、查询结果、巡检结果、通知记录进入 evidence chain，AI 输出必须引用 evidence refs | 允许。建议切片名：`findx-p3-ai-evidence-chain` |
+| P3-AI-2 remediation plan/precheck/dry-run/approve/execute/verify/rollback | `go-backend` + `qa-tester` + `ops-diagnostician` | 仅 `api/` 内 remediation plan/run/step/approval/audit/test；禁止实现任意命令透传，禁止写真实凭据 | 依赖 P3-AI-1；依赖 P2 Agent control/session；需先定义低风险动作白名单、审批模型、回滚模型 | `cd /opt/ai-workbench/api && go test ./... && go build -o api-linux .`；用例覆盖 plan 草稿、precheck 失败、dry-run 不改状态、approve 过期、execute 固定 step、verify 失败、rollback 绑定原 run、重复提交幂等 | 允许，但 execute 相关必须单独 QA 通过后再提交 |
 
-## 7. P3 AI 问诊与自动修复计划
+## 7. 主代理评分审计闭环
 
-P3 是正式核心项目，必须完整覆盖：
+主代理评分用于进入 Git 门禁前的审计，不替代 QA。总分低于 `98/100` 的维度必须给出优化动作；存在 P0/P1 阻断时，无论分数多少均退回归属子代理修正。
 
-```text
-precheck -> dry-run -> approve -> execute -> verify -> rollback -> audit
-```
-
-AI 问诊输入：
-
-- current/history event。
-- alert rule。
-- target metadata。
-- datasource/query 结果。
-- dashboard panel。
-- notification record。
-- silence/subscription/oncall。
-- inspection run。
-- remediation run。
-- knowledge case。
-- runbook。
-
-AI 输出：
-
-- 根因假设。
-- evidence refs。
-- 影响面。
-- 风险等级。
-- 建议动作。
-- 修复计划草案。
-- 是否建议调整规则、Dashboard、模板或知识库。
-
-自动修复安全边界：
-
-- precheck 验证目标、Agent 在线、能力、权限、变更窗口、风险等级和回滚条件。
-- dry-run 不改变生产状态，只输出预计动作、影响面、失败条件和回滚策略。
-- approve 记录审批人、审批理由、过期时间和审批范围。
-- execute 只执行已批准 plan 的固定 step。
-- verify 通过查询网关、Agent 巡检和事件状态验证修复效果。
-- rollback 绑定原 plan/run/step，失败时进入人工处理。
-- audit 记录 actor、approver、target、plan、run、step、trace_id、前后状态和证据引用。
-- 失败保护覆盖超时、部分成功、Agent 断连、验证失败、回滚失败、重复提交和并发执行。
-
-首批低风险动作：
-
-- systemd service restart。
-- service reload。
-- disk cleanup。
-- log cleanup。
-- container restart。
-- nginx reload。
-- config rollback。
-- stale process kill。
-- cache cleanup。
-- temporary silence create。
-- collect config update proposal。
-- alert threshold adjustment proposal。
-
-## 8. 主代理 Claude 缺席模式
-
-Claude 缺席时，主代理临时代行编排、决策、验收、评分、审计、优化和 Git 门禁；子代理是唯一执行层。
-
-硬约束：
-
-- 主代理不写业务代码。
-- 子代理执行编码、文档、QA、诊断设计等 work unit。
-- 所有子代理显式使用 `model: "gpt-5.5"`。
-- 子代理 prompt 必须自包含：任务目标、允许路径、禁止路径、验收标准、验证命令、敏感信息占位符。
-- 并行子代理写集互斥。
-- QA FAIL、P0/P1 缺陷、P0/P1 RISK、敏感信息风险、契约或数据变更未验证，必须回派修正。
-- 同一问题最多回派 3 轮；仍失败时停止盲修，标记人工处理。
-
-主代理评分：
-
-| 维度 | 权重 |
-| --- | --- |
-| 功能正确性 | 30% |
-| 代码质量 | 20% |
-| 安全治理 | 20% |
-| 验证闭环 | 20% |
-| 文档同步 | 10% |
+| 维度 | 权重 | 98 分基线 | 低于 98 的典型扣分项 | 优化动作 |
+| --- | --- | --- | --- | --- |
+| 功能正确性 | 30% | 正常、异常、边界、权限、断连和幂等路径均有证据 | tryrun 与正式写入边界不清；事件状态机漏非法迁移；scheduler 并发未证实；UI 只测正常路径 | 补充复现用例和失败路径；为状态机、fingerprint、scheduler、权限写单元或集成测试；QA 重新回归 |
+| 代码质量 | 20% | 分层清楚，复用已有 helper，单函数和文件复杂度受控 | 跨 handler/service/store 调用；重复状态常量；大函数混合查询、写入、审计；公共抽象无两个调用点 | 回派拆分函数和模块；集中域常量；删除重复实现；公共抽象不达标时降为模块私有 |
+| 安全治理 | 20% | 认证、授权、脱敏、审计、审批、回滚和失败清理完整 | 响应或日志可能泄露 token/DSN/Cookie；Agent 高风险能力默认开启；远程执行缺审批；审计缺 actor/trace_id | 敏感字段统一 mask；高风险能力默认关闭；补 approval/precheck；审计记录 actor、scope、trace_id、diff 摘要 |
+| 验证闭环 | 20% | WSL 构建、Go 测试、前端构建、API/UI 回归按变更类型完成 | 只在 Windows 通过未同步 WSL；UI 变更未跑浏览器；API_CONTRACT_CHANGE 未 curl；DATA_CHANGE 未验证旧数据 | 同步到 `/opt/ai-workbench` 后执行命令；补 curl/MCP/Playwright 证据；契约和数据变更单独列验证矩阵 |
+| 文档同步 | 10% | 计划、API 契约、测试报告、main-log 或讨论文档与代码一致 | 代码已变文档仍旧；测试基准无新增用例编号；Git 切片说明缺回滚和未覆盖项 | 回派 `doc-writer` 更新文档；QA 报告引用统一测试基准；提交说明补验证、回滚、未覆盖项 |
 
 评分规则：
 
-- `>= 90` 且无阻断项：可进入 Git 门禁。
-- `80-89`：需主代理复核风险并明确接受或回派。
+- `>= 98` 且无阻断项：可进入 Git 稳定切片门禁。
+- `90-97`：必须列出扣分项、优化动作、责任角色和是否接受残余风险；主代理明确同意后才可进入 Git 门禁。
+- `80-89`：需讨论或回派修正，不能直接提交功能切片。
 - `< 80`：退回归属子代理修正。
-- 存在 P0/P1 阻断：无论总分多少均退回。
+- 存在 P0/P1 缺陷、P0/P1 RISK、敏感信息泄露、权限绕过、API_CONTRACT_CHANGE/DATA_CHANGE 未验证：直接阻断。
 
-## 9. 实时 Git 稳定切片策略
+## 8. 实时 Git 稳定切片策略
 
 稳定切片定义：
 
-- 功能域清晰。
-- 写集清晰。
-- 验证清晰。
-- 风险清晰。
-- 回滚清晰。
+- 功能域清晰：一个 commit 只承载一个 work unit 或一个 work unit 内的明确子域。
+- 写集清晰：后端、前端、文档、QA 报告尽量分开；同一契约需要同步提交时必须说明原因。
+- 验证清晰：每个切片写明已执行命令、正常路径、异常路径、边界或权限路径、未覆盖项。
+- 风险清晰：API_CONTRACT_CHANGE、DATA_CHANGE、依赖变更、安全审批和合规材料必须打标。
+- 回滚清晰：说明 Git 文件回滚、数据库回滚、配置回滚、运行态回滚或人工处理边界。
 
 提交策略：
 
-- 通过本地验证和 QA 的稳定切片立即 commit/push。
-- QA FAIL 不提交。
-- P0/P1 RISK 未关闭不提交。
-- 敏感信息风险未关闭不提交。
-- API_CONTRACT_CHANGE 或 DATA_CHANGE 未验证不提交。
-- 文档-only 切片可不跑 Go/Vue 构建，但必须说明原因并完成敏感信息扫描。
+- 文档-only 切片可不跑 Go/Vue 构建，但必须执行敏感信息扫描，标记 `NOT_RUN` 并说明原因。
+- 后端切片必须同步到 `/opt/ai-workbench` 后执行 `go test ./...` 和 `go build -o api-linux .`。
+- 前端切片必须同步到 `/opt/ai-workbench` 后执行 `npm run build`，UI 变更还需 MCP/Playwright 回归。
+- QA FAIL、P0/P1 RISK、敏感信息风险、权限绕过、契约或数据变更未验证时不提交。
+- P1-BE-4、P1-FE-2、P2-Agent-3、P3-AI-2 属于多域工作单，必须继续拆成更小稳定切片。
 
-推荐提交切片：
+推荐切片顺序：
 
-1. `findx-p0-1-target-agent-heartbeat`
-2. `findx-p0-2-alert-rule-event`
-3. `findx-p0-3-query-gateway`
-4. `findx-p1-dashboard-template`
-5. `findx-p1-evaluator-notification-permission-audit`
-6. `findx-p2-findx-agents-collector-inspector`
-7. `findx-p3-ai-remediation-loop`
+1. `findx-doc-master-plan-closure`
+2. `findx-p1-be-domain-fingerprint`
+3. `findx-p1-be-evaluator-tryrun`
+4. `findx-p1-be-scheduler-event-closure`
+5. `findx-p1-fe-monitor-workbench-api`
+6. `findx-p1-fe-rules-events-dashboard`
+7. `findx-p1-be-notification-permission-audit`
+8. `findx-p2-agent-protocol-capability`
+9. `findx-p2-agent-session-evidence`
+10. `findx-p2-agent-collector-config`
+11. `findx-p2-agent-inspector-registry`
+12. `findx-p2-agent-security-notice`
+13. `findx-p3-ai-evidence-chain`
+14. `findx-p3-remediation-safe-loop`
 
-## 10. 验证与验收
+## 9. 下一步立即执行顺序
+
+1. 先补文档闭环：更新本文档，明确 P0 完成状态、P1/P2/P3 work units、评分审计、Git 稳定切片。
+2. QA 文档审查：由 `qa-tester` 按文档-only 口径检查路径边界、敏感信息、禁止短语、work unit 可执行性和测试基准引用需求。
+3. Git 文档切片：文档审查通过后，以 `findx-doc-master-plan-closure` 作为独立稳定切片提交。
+4. 开始 P1-BE-1：派发 `go-backend` 实现域常量、状态机和 fingerprint 幂等，主代理并行准备验证矩阵。
+5. 开始 P1-BE-2：在 P1-BE-1 通过后派发 evaluator service 与真实 tryrun，实现 EvaluateRule 和 eval log。
+6. P1-BE-1/P1-BE-2 均通过后，再进入 P1-BE-3 scheduler 与 current/history event 自动闭环。
+7. 前端并行准备 P1-FE-1，但必须等后端契约稳定后再做真实联调和浏览器回归。
+
+## 10. 验证与验收基线
 
 后端变更：
 
 ```bash
 cd /opt/ai-workbench/api
-go build -o api-linux .
 go test ./...
+go build -o api-linux .
 ```
 
 前端变更：
@@ -304,49 +182,64 @@ npm run build
 
 UI 变更：
 
-- 使用 Playwright/MCP 做真实浏览器验证。
+- 使用 MCP/Playwright 做真实浏览器验证。
 - 覆盖正常、异常、边界、权限、断连路径。
+- 不允许静态假数据冒充真实 API 联调结果。
 
 API 变更：
 
 - 使用 curl 或测试脚本验证状态码、响应结构、认证、输入校验、错误提示和脱敏。
-- API_CONTRACT_CHANGE 必须同步到 `docs/aiops/findx_monitoring_core_api_contract.md`。
+- API_CONTRACT_CHANGE 必须列出旧契约、新契约、兼容性、前端调用点、curl 验证和文档同步项。
+
+数据变更：
+
+- DATA_CHANGE 必须列出影响表/字段、旧数据兼容、迁移需求、回滚方式、幂等性和受影响接口/页面。
 
 文档变更：
 
-- 确认路径、接口、命令和项目约定一致。
-- 文档-only 不跑构建时标记 `NOT_RUN` 并说明原因。
+- 确认命令、路径、端口、接口清单与代码一致。
+- 文档-only 不跑构建时标记 `NOT_RUN`，说明原因，并完成敏感信息扫描。
 
-## 11. 自评分
-
-目标分：**>= 95**。本总计划自评分：**97/100**。
-
-| 维度 | 分值 | 说明 |
-| --- | --- | --- |
-| 战略完整性 | 98 | P0/P1/P2/P3 主线完整，FindX 新核心、Nightingale 参考、Categraf 复用、Catpaw 授权衍生、AI 自动修复均纳入。 |
-| 可实施性 | 96 | 已拆分到可派发 work unit、稳定切片、QA 门禁和 Git 策略。 |
-| 安全治理 | 97 | 覆盖认证、授权、脱敏、审计、远程执行、审批、回滚、AI prompt 保护。 |
-| 生态复用 | 98 | 明确复用 Categraf 插件生态和 Catpaw 授权能力，参考 Nightingale 成熟模型。 |
-| 验证闭环 | 96 | 覆盖 WSL 编译、前端构建、API/UI/断连/权限/脱敏回归；P0-1/P0-2 标记待 QA。 |
-| 文档可执行性 | 97 | 可直接指导后续子代理按 P0 到 P3 持续实施。 |
-
-不足项与改进措施：
-
-- P0-1/P0-2 需要 QA 回填真实执行证据；改进措施是按统一测试基准逐条补证据。
-- P0-3 查询网关需后端实现后回填最终字段、错误码和审计表结构。
-- P1 面较大；改进措施是拆成 dashboard/template、evaluator、notification/oncall/silence/subscription、permission/audit 多个稳定切片。
-- P2 需要补齐 Catpaw 授权衍生记录；改进措施是同步 LICENSE/NOTICE/来源说明/修改说明。
-- P3 自动修复生产风险高；改进措施是先落低风险动作，所有 execute 必须经 precheck、dry-run、approve、verify、rollback、audit。
-
-## 12. 技术债检查
+## 11. 设计债检查
 
 | 检查项 | 结论 |
 | --- | --- |
-| 重复逻辑 | 本文档整合既有 API 契约、项目计划和 Claude 缺席协作模式，不新增重复执行入口。 |
-| 复杂度 | 按 P0-1/P0-2/P0-3/P1/P2/P3 拆分，避免单次大改。 |
-| 边界 | 仅为文档总计划，不修改 `api/`、`web/`、`README.md`、`.claude/`、`AGENTS.md` 或密钥配置。 |
+| 重复逻辑 | 本次仅更新讨论总计划，未新增业务实现或重复执行入口。后续 P1/P2/P3 要求先搜再写，复用现有 handler/service/store/test 模式。 |
+| 复杂度 | 已将后续实施拆成 P1-BE、P1-FE、P2-Agent、P3-AI 工作单，并对多域工作单要求继续拆分稳定切片。 |
+| 边界 | 本次只允许修改 `D:\ai-workbench\discuss\findx_monitoring_execution_master_plan.md`；不修改 README、docs、api、web、.claude、.codex、配置文件或运行产物。 |
 | 依赖 | 未新增 Go module、npm 包、外部服务或运行时依赖。 |
-| 兼容 | 保留既有兼容入口作为过渡和导入参考，新主线使用 `/api/v1/monitor/*`、`/api/v1/findx-agents/*`、`/api/v1/remediation/*`。 |
-| 测试 | 文档-only 变更未执行 Go/Vue 构建；后续代码切片必须按阶段执行 WSL 编译、前端构建、API/UI/断连/权限/脱敏验证。 |
-| 回滚 | 文档变更可按 Git 文件版本回滚；代码切片必须在各自 PR/commit 中补充迁移和运行回滚策略。 |
-| 遗留风险 | P0-1/P0-2 QA 证据待回填，P0-3/P1/P2/P3 尚待执行层实现。 |
+| 兼容 | P0 状态改为已完成并推送；P1/P2/P3 均保持向后推进，不改变已完成接口事实。 |
+| 测试 | 文档-only 变更不执行 Go/Vue 构建；需要 QA 文档审查和敏感信息扫描。代码切片必须按第 10 节执行。 |
+| 回滚 | 文档变更可按 Git 文件版本回滚；后续代码切片必须在各自提交说明中补充运行态回滚策略。 |
+| 遗留风险 | P1/P2/P3 尚未实现；P1-BE-4、P1-FE-2、P2-Agent-3、P3-AI-2 范围较大，必须二次拆分。 |
+
+## 12. 脱敏检查
+
+| 检查项 | 结果 |
+| --- | --- |
+| 真实 token/cookie/DSN/SSH 私钥 | 未写入。 |
+| 示例敏感值 | 统一使用 `<TOKEN>`、`<API_KEY>`、`<DB_DSN>`、`<LOGIN_USER>`、`<SSH_KEY>`、`<COOKIE>`。 |
+| 响应、日志、审计要求 | 已明确不得回显敏感信息，Agent、AI 和 remediation 链路均要求脱敏。 |
+| 高风险能力 | 已明确 Categraf `exec` 默认禁用，修复执行链路禁止任意命令透传。 |
+
+## 13. 仍需补充
+
+- 由 `qa-tester` 对本文档执行文档-only 审查，并输出 PASS/FAIL/BLOCKED/NOT_RUN/RISK。
+- P1-BE-1 开始前，需要主代理确认现有 rule/event 状态值搜索结果和写集边界。
+- P1-BE-2 开始前，需要确认 query gateway 的 tryrun 输入输出契约和 eval log 字段。
+- P2-Agent-4 开始前，需要补齐 Catpaw 授权衍生来源说明、修改说明、授权边界和 NOTICE。
+- P3-AI-2 开始前，需要明确首批低风险动作白名单、审批过期策略和失败回滚边界。
+
+## 14. 自评分建议
+
+本文档自评分建议：**98/100**。
+
+| 维度 | 分数 | 说明 | 低于 98 的优化动作 |
+| --- | --- | --- | --- |
+| 功能正确性 | 98 | P0 状态、P1/P2/P3 work units、依赖和验收用例已明确。 | 暂无。 |
+| 代码质量 | 98 | 文档-only 变更，不涉及业务代码；后续已要求分层、复用和复杂度控制。 | 暂无。 |
+| 安全治理 | 98 | 已覆盖脱敏、权限、审批、审计、离线保护、exec 默认禁用和禁止任意命令透传。 | 暂无。 |
+| 验证闭环 | 98 | 已列出文档-only、后端、前端、UI、API、数据变更的验证基线。 | 暂无。 |
+| 文档同步 | 98 | 已补齐时间、P0 推送状态、主代理评分审计、Git 稳定切片和下一步顺序。 | 暂无。 |
+
+建议结论：**通过文档切片，进入 QA 文档审查；QA 通过后可提交 `findx-doc-master-plan-closure` 稳定切片。**

@@ -199,12 +199,20 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 Categraf 插件生态会直接保留并改造成 `findx-agents` 发行版；已获授权的 Catpaw 能力会衍生进 `findx-agents`，提供巡检、诊断、远程会话、结构化工具和自动修复执行能力。AI 问诊直接基于 FindX 自有监控事实、Agent 巡检证据、通知记录、自动修复记录和知识库案例做推理，不再依赖 Nightingale 作为运行时事实源。
 
+### 当前进展 / 已落库切片
+
+P0 后端 API 基座已完成并通过 QA 门禁，提交记录为 `81b4531 feat: add FindX monitoring core P0 APIs`。QA 最终评分为 **98/100**，结论为 **通过**。
+
+已落库切片包括：monitor health、targets、findx-agents register/heartbeat/list、alert-rules、current/history events、query gateway datasources/query/query-range/metrics/labels/label-values。当前实现确认读接口走平台认证，写接口要求 admin，Agent token 默认拒绝匿名；Prometheus 上游失败返回 503；查询审计仅记录 hash/stats；事件终态保护已纳入后端状态约束。
+
+P0 已完成 Windows 与 WSL/Linux 双环境验证，其中 WSL 侧已在 `/opt/ai-workbench/api` 执行后端单元测试和 `go build -o api-linux .`。P1/P2/P3 仍是后续阶段，不按已完成能力描述。
+
 | 阶段 | 目标 |
 |------|------|
-| **P0：FindX Core 基座** | 参考 Nightingale 建立 target、datasource、query、alert rule、event、audit、heartbeat、`/api/v1/monitor/*` 和 `/api/v1/findx-agents/*` 主接口 |
-| **P1：告警核心与 Dashboard** | 参考 Nightingale 实现 evaluator、current/history event、规则试跑、版本回滚、Dashboard、模板中心 |
-| **P2：通知、模板、Agent 深度融合** | 实现通知、静默、订阅、值班、事件流水线、Categraf 插件复用、Catpaw 衍生 inspector |
-| **P3：AI 问诊与自动修复** | 告警触发 AI 问诊、Agent 巡检补证据、自动修复 precheck/dry-run/approve/execute/verify/rollback |
+| **P0：FindX Core 基座** | 已完成后端 API 基座与 QA 门禁：target、datasource、query、alert rule、event、audit、heartbeat、`/api/v1/monitor/*` 和 `/api/v1/findx-agents/*` 主接口 |
+| **P1：告警核心与 Dashboard** | 待实施重点：evaluator、规则评估闭环、Dashboard、模板中心、前端入口与可视化工作流 |
+| **P2：通知、模板、Agent 深度融合** | 待实施重点：通知、静默、订阅、值班、事件流水线、Categraf 插件复用、Catpaw 衍生 inspector |
+| **P3：AI 问诊与自动修复** | 待实施重点：告警触发 AI 问诊、Agent 巡检补证据、修复 precheck/dry-run/approve/execute/verify/rollback 全链路 |
 
 边界原则：
 
