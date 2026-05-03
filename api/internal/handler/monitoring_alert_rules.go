@@ -105,12 +105,16 @@ func TryRunMonitorAlertRule(c *gin.Context) {
 	details := monitorTryRunDetails(checks)
 	details["mode"] = "dry_validation"
 	details["promql_executed"] = false
-	log := store.AddMonitorAlertEvalLog(model.MonitorAlertEvalLog{
+	log, err := store.AddMonitorAlertEvalLog(model.MonitorAlertEvalLog{
 		RuleID: rule.ID, RuleVersion: rule.Version, Status: status,
 		Message: "dry_validation completed; PromQL was not executed", StartedAt: started, FinishedAt: finished,
 		DurationMs: finished.Sub(started).Milliseconds(), DatasourceID: rule.DatasourceID,
 		QueryHash: storeMonitorQueryHash(rule.Query), Details: details,
 	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "alert rule evaluation log write failed"})
+		return
+	}
 	c.JSON(http.StatusOK, model.MonitorAlertTryRunResult{OK: ok, Status: status, Checks: checks, Rule: rule, EvalLog: log})
 }
 

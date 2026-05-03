@@ -1,6 +1,46 @@
 package model
 
-import "time"
+import (
+	"crypto/sha256"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+)
+
+const (
+	MonitorAlertSeverityCritical = "critical"
+	MonitorAlertSeverityWarning  = "warning"
+	MonitorAlertSeverityInfo     = "info"
+	MonitorAlertSeverityP0       = "p0"
+	MonitorAlertSeverityP1       = "p1"
+	MonitorAlertSeverityP2       = "p2"
+	MonitorAlertSeverityP3       = "p3"
+
+	MonitorAlertRuleStatusActive   = "active"
+	MonitorAlertRuleStatusDisabled = "disabled"
+
+	MonitorAlertEventStatusFiring       = "firing"
+	MonitorAlertEventStatusAcknowledged = "acknowledged"
+	MonitorAlertEventStatusAssigned     = "assigned"
+	MonitorAlertEventStatusMuted        = "muted"
+	MonitorAlertEventStatusResolved     = "resolved"
+	MonitorAlertEventStatusArchived     = "archived"
+
+	MonitorAlertEventActionAck     = "ack"
+	MonitorAlertEventActionAssign  = "assign"
+	MonitorAlertEventActionMute    = "mute"
+	MonitorAlertEventActionResolve = "resolve"
+	MonitorAlertEventActionArchive = "archive"
+
+	MonitorNoDataPolicyKeepState = "keep_state"
+	MonitorNoDataPolicyAlerting  = "alerting"
+	MonitorNoDataPolicyOK        = "ok"
+)
+
+var monitorFingerprintSensitiveKeys = []string{
+	"api_key", "apikey", "auth", "authorization", "cookie", "dsn", "password", "private", "secret", "token",
+}
 
 type MonitorAlertRule struct {
 	ID             string            `json:"id"`
@@ -108,4 +148,94 @@ type MonitorTryCheck struct {
 	Name    string `json:"name"`
 	Status  string `json:"status"`
 	Message string `json:"message"`
+}
+
+func GenerateMonitorAlertEventFingerprint(event *MonitorAlertEvent) string {
+	if event == nil {
+		return ""
+	}
+	// P1 新平台基座语义：current event 幂等键只来自规范字段，外部 fingerprint 与敏感 label 不参与计算。
+	parts := []string{
+		"rule_id=" + strings.TrimSpace(event.RuleID),
+		"datasource_id=" + strings.TrimSpace(event.DatasourceID),
+		"event_key=" + strings.TrimSpace(event.EventKey),
+		"target_id=" + strings.TrimSpace(event.TargetID),
+		"target_ident=" + strings.TrimSpace(event.TargetIdent),
+		"labels=" + canonicalAlertLabels(event.Labels),
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
+	return fmt.Sprintf("%x", sum)
+}
+
+func ValidateMonitorAlertEventTransition(status, action string) (string, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		status = MonitorAlertEventStatusFiring
+	}
+	action = strings.TrimSpace(action)
+	if !IsKnownMonitorAlertEventStatus(status) {
+		return "", fmt.Errorf("invalid alert event status: %s", status)
+	}
+	if IsTerminalMonitorAlertEventStatus(status) {
+		return "", fmt.Errorf("terminal alert event cannot be changed")
+	}
+	switch action {
+	case MonitorAlertEventActionAck:
+		return MonitorAlertEventStatusAcknowledged, nil
+	case MonitorAlertEventActionAssign:
+		return MonitorAlertEventStatusAssigned, nil
+	case MonitorAlertEventActionMute:
+		return MonitorAlertEventStatusMuted, nil
+	case MonitorAlertEventActionResolve:
+		return MonitorAlertEventStatusResolved, nil
+	case MonitorAlertEventActionArchive:
+		return MonitorAlertEventStatusArchived, nil
+	default:
+		return "", fmt.Errorf("invalid alert event action: %s", action)
+	}
+}
+
+func IsKnownMonitorAlertEventStatus(status string) bool {
+	switch strings.TrimSpace(status) {
+	case MonitorAlertEventStatusFiring, MonitorAlertEventStatusAcknowledged,
+		MonitorAlertEventStatusAssigned, MonitorAlertEventStatusMuted,
+		MonitorAlertEventStatusResolved, MonitorAlertEventStatusArchived:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsTerminalMonitorAlertEventStatus(status string) bool {
+	switch strings.TrimSpace(status) {
+	case MonitorAlertEventStatusResolved, MonitorAlertEventStatusArchived:
+		return true
+	default:
+		return false
+	}
+}
+
+func canonicalAlertLabels(labels map[string]string) string {
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		if !isMonitorFingerprintSensitiveKey(key) {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, strings.TrimSpace(key)+"="+strings.TrimSpace(labels[key]))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func isMonitorFingerprintSensitiveKey(key string) bool {
+	key = strings.ToLower(strings.TrimSpace(key))
+	for _, sensitive := range monitorFingerprintSensitiveKeys {
+		if strings.Contains(key, sensitive) {
+			return true
+		}
+	}
+	return false
 }

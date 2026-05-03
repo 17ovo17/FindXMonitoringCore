@@ -1,17 +1,18 @@
 package store
 
 import (
-	"crypto/sha1"
 	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"ai-workbench-api/internal/model"
 )
 
 var ErrTerminalMonitorAlertEvent = errors.New("terminal alert event cannot be changed")
+var ErrInvalidMonitorAlertEventAction = errors.New("invalid alert event action")
 
 func ListMonitorAlertEvents(current bool) []model.MonitorAlertEvent {
 	if mysqlOK {
@@ -49,18 +50,30 @@ func GetMonitorAlertEvent(id string) (*model.MonitorAlertEvent, bool) {
 
 func UpsertMonitorAlertEvent(event *model.MonitorAlertEvent) (*model.MonitorAlertEvent, error) {
 	normalized := normalizeMonitorAlertEvent(event)
+	countDelta := max(1, normalized.Count)
+	var existing *model.MonitorAlertEvent
+	if mysqlOK {
+		if found, ok := getCurrentMonitorAlertEventByFingerprint(normalized.Fingerprint); ok {
+			existing = found
+		}
+	}
 	mu.Lock()
-	if existing := monitorEventsCurrent[normalized.ID]; existing != nil {
-		existing.Count++
-		existing.LastSeen = normalized.LastSeen
-		existing.UpdatedAt = normalized.UpdatedAt
-		normalized = copyMonitorAlertEvent(existing)
+	if existing == nil {
+		existing = findCurrentMonitorAlertEventLocked(normalized)
+	}
+	if existing != nil {
+		merged := mergeMonitorAlertEvent(existing, normalized)
+		if existing.ID != merged.ID {
+			delete(monitorEventsCurrent, existing.ID)
+		}
+		monitorEventsCurrent[merged.ID] = copyMonitorAlertEvent(merged)
+		normalized = merged
 	} else {
 		monitorEventsCurrent[normalized.ID] = copyMonitorAlertEvent(normalized)
 	}
 	mu.Unlock()
 	if mysqlOK {
-		if err := persistMonitorAlertEvent(normalized, true); err != nil {
+		if err := persistMonitorAlertEventCurrent(normalized, countDelta, true); err != nil {
 			return normalized, err
 		}
 	}
@@ -72,7 +85,13 @@ func ApplyMonitorAlertEventAction(id string, action model.MonitorAlertAction) (*
 	if !ok {
 		return nil, false, nil
 	}
-	if isTerminalMonitorAlertStatus(event.Status) {
+	if _, err := model.ValidateMonitorAlertEventTransition(event.Status, action.Action); err != nil {
+		if model.IsTerminalMonitorAlertEventStatus(event.Status) {
+			return nil, true, ErrTerminalMonitorAlertEvent
+		}
+		return nil, true, fmt.Errorf("%w: %v", ErrInvalidMonitorAlertEventAction, err)
+	}
+	if model.IsTerminalMonitorAlertEventStatus(event.Status) {
 		return nil, true, ErrTerminalMonitorAlertEvent
 	}
 	now := time.Now()
@@ -80,7 +99,7 @@ func ApplyMonitorAlertEventAction(id string, action model.MonitorAlertAction) (*
 	action = applyMonitorEventMutation(event, action, now)
 	mu.Lock()
 	delete(monitorEventsCurrent, id)
-	if event.Status == "resolved" || event.Status == "archived" {
+	if model.IsTerminalMonitorAlertEventStatus(event.Status) {
 		monitorEventsHistory[id] = copyMonitorAlertEvent(event)
 	} else {
 		monitorEventsCurrent[id] = copyMonitorAlertEvent(event)
@@ -91,11 +110,11 @@ func ApplyMonitorAlertEventAction(id string, action model.MonitorAlertAction) (*
 		if err := persistMonitorAlertAction(action); err != nil {
 			return event, true, err
 		}
-		current := event.Status != "resolved" && event.Status != "archived"
+		current := !model.IsTerminalMonitorAlertEventStatus(event.Status)
 		if err := persistMonitorAlertEvent(event, current); err != nil {
 			return event, true, err
 		}
-		if event.Status == "resolved" || event.Status == "archived" {
+		if model.IsTerminalMonitorAlertEventStatus(event.Status) {
 			res, err := db.Exec(`DELETE FROM monitor_alert_events_current WHERE id=?`, id)
 			if err != nil {
 				return event, true, err
@@ -122,6 +141,49 @@ func ListMonitorAlertEventActions(eventID string) []model.MonitorAlertAction {
 	return append([]model.MonitorAlertAction{}, monitorEventActions[eventID]...)
 }
 
+func mergeMonitorAlertEvent(existing, incoming *model.MonitorAlertEvent) *model.MonitorAlertEvent {
+	merged := copyMonitorAlertEvent(existing)
+	merged.Count += max(1, incoming.Count)
+	merged.LastSeen = laterMonitorAlertEventTime(merged.LastSeen, incoming.LastSeen)
+	merged.UpdatedAt = laterMonitorAlertEventTime(merged.UpdatedAt, incoming.UpdatedAt)
+	merged.Value = firstNonEmpty(incoming.Value, merged.Value)
+	merged.Labels = mergeStringMap(merged.Labels, incoming.Labels)
+	merged.Annotations = mergeStringMap(merged.Annotations, incoming.Annotations)
+	return merged
+}
+
+func laterMonitorAlertEventTime(existing, incoming time.Time) time.Time {
+	if incoming.IsZero() || existing.After(incoming) {
+		return existing
+	}
+	return incoming
+}
+
+func findCurrentMonitorAlertEventLocked(event *model.MonitorAlertEvent) *model.MonitorAlertEvent {
+	if existing := monitorEventsCurrent[event.ID]; existing != nil {
+		return existing
+	}
+	for _, existing := range monitorEventsCurrent {
+		if existing.Fingerprint == event.Fingerprint && event.Fingerprint != "" {
+			return existing
+		}
+	}
+	return nil
+}
+
+func getCurrentMonitorAlertEventByFingerprint(fingerprint string) (*model.MonitorAlertEvent, bool) {
+	if fingerprint == "" || !mysqlOK {
+		return nil, false
+	}
+	row := db.QueryRow(monitorEventSelectSQL("monitor_alert_events_current")+` WHERE fingerprint=?`, fingerprint)
+	return scanMonitorAlertEventRow(row)
+}
+
+func isSensitiveKey(key string) bool {
+	k := strings.ToLower(strings.TrimSpace(key))
+	return strings.Contains(k, "api_key") || strings.Contains(k, "apikey") || strings.Contains(k, "auth") || strings.Contains(k, "token") || strings.Contains(k, "secret") || strings.Contains(k, "password") || strings.Contains(k, "cookie") || strings.Contains(k, "private") || strings.Contains(k, "dsn")
+}
+
 func normalizeMonitorAlertEvent(event *model.MonitorAlertEvent) *model.MonitorAlertEvent {
 	now := time.Now()
 	cp := copyMonitorAlertEvent(event)
@@ -129,7 +191,7 @@ func normalizeMonitorAlertEvent(event *model.MonitorAlertEvent) *model.MonitorAl
 		cp.ID = NewID()
 	}
 	if cp.Status == "" {
-		cp.Status = "firing"
+		cp.Status = model.MonitorAlertEventStatusFiring
 	}
 	if cp.Count <= 0 {
 		cp.Count = 1
@@ -146,7 +208,7 @@ func normalizeMonitorAlertEvent(event *model.MonitorAlertEvent) *model.MonitorAl
 	cp.UpdatedAt = now
 	cp.Labels = sanitizeStringMap(cp.Labels)
 	cp.Annotations = sanitizeStringMap(cp.Annotations)
-	cp.Fingerprint = monitorEventFingerprint(cp)
+	cp.Fingerprint = model.GenerateMonitorAlertEventFingerprint(cp)
 	return cp
 }
 
@@ -162,24 +224,23 @@ func normalizeMonitorEventAction(event *model.MonitorAlertEvent, action model.Mo
 	return action
 }
 
-func isTerminalMonitorAlertStatus(status string) bool {
-	return status == "resolved" || status == "archived"
-}
-
 func applyMonitorEventMutation(event *model.MonitorAlertEvent, action model.MonitorAlertAction, now time.Time) model.MonitorAlertAction {
+	next, _ := model.ValidateMonitorAlertEventTransition(event.Status, action.Action)
 	switch action.Action {
-	case "ack":
-		event.Status = "acknowledged"
+	case model.MonitorAlertEventActionAck:
+		event.Status = next
 		event.AckBy = firstNonEmpty(action.Actor, "admin")
-	case "assign":
-		event.Status = "assigned"
+	case model.MonitorAlertEventActionAssign:
+		event.Status = next
 		event.Assignee = firstNonEmpty(action.Assignee, action.Actor)
-	case "resolve":
-		event.Status = "resolved"
+	case model.MonitorAlertEventActionMute:
+		event.Status = next
+	case model.MonitorAlertEventActionResolve:
+		event.Status = next
 		event.Resolution = action.Reason
 		event.ResolvedAt = &now
-	case "archive":
-		event.Status = "archived"
+	case model.MonitorAlertEventActionArchive:
+		event.Status = next
 		event.ArchivedAt = &now
 	}
 	action.To = event.Status
@@ -202,14 +263,6 @@ func listMonitorEventsMemory(current bool) []model.MonitorAlertEvent {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].LastSeen.After(out[j].LastSeen) })
 	return out
-}
-
-func monitorEventFingerprint(event *model.MonitorAlertEvent) string {
-	if event.Fingerprint != "" {
-		return event.Fingerprint
-	}
-	key := event.RuleID + "|" + event.EventKey + "|" + event.TargetID + "|" + event.TargetIdent + "|" + event.Name
-	return fmt.Sprintf("%x", sha1.Sum([]byte(key)))
 }
 
 func copyMonitorAlertEvent(in *model.MonitorAlertEvent) *model.MonitorAlertEvent {

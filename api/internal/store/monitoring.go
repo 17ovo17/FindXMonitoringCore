@@ -369,11 +369,6 @@ func sanitizeStringMap(in map[string]string) map[string]string {
 	return out
 }
 
-func isSensitiveKey(key string) bool {
-	k := strings.ToLower(key)
-	return strings.Contains(k, "token") || strings.Contains(k, "secret") || strings.Contains(k, "password") || strings.Contains(k, "authorization") || strings.Contains(k, "cookie") || strings.Contains(k, "private") || strings.Contains(k, "dsn")
-}
-
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if trimmed := strings.TrimSpace(value); trimmed != "" {

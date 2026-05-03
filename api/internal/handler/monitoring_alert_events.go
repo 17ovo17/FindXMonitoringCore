@@ -29,19 +29,19 @@ func GetMonitorEvent(c *gin.Context) {
 }
 
 func AckMonitorEvent(c *gin.Context) {
-	applyMonitorEventAction(c, "ack")
+	applyMonitorEventAction(c, model.MonitorAlertEventActionAck)
 }
 
 func AssignMonitorEvent(c *gin.Context) {
-	applyMonitorEventAction(c, "assign")
+	applyMonitorEventAction(c, model.MonitorAlertEventActionAssign)
 }
 
 func ResolveMonitorEvent(c *gin.Context) {
-	applyMonitorEventAction(c, "resolve")
+	applyMonitorEventAction(c, model.MonitorAlertEventActionResolve)
 }
 
 func ArchiveMonitorEvent(c *gin.Context) {
-	applyMonitorEventAction(c, "archive")
+	applyMonitorEventAction(c, model.MonitorAlertEventActionArchive)
 }
 
 func applyMonitorEventAction(c *gin.Context, actionName string) {
@@ -52,12 +52,21 @@ func applyMonitorEventAction(c *gin.Context, actionName string) {
 		TraceID  string `json:"trace_id"`
 	}
 	_ = c.ShouldBindJSON(&req)
-	if actionName == "assign" && strings.TrimSpace(req.Assignee) == "" {
+	if actionName == model.MonitorAlertEventActionAssign && strings.TrimSpace(req.Assignee) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "assignee is required"})
 		return
 	}
+	current, ok := store.GetMonitorAlertEvent(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "alert event not found"})
+		return
+	}
+	if _, err := model.ValidateMonitorAlertEventTransition(current.Status, actionName); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	action := model.MonitorAlertAction{Action: actionName, Actor: firstNonEmpty(req.Actor, requestActor(c)), Reason: req.Reason, Assignee: req.Assignee, TraceID: req.TraceID}
-	event, ok, err := store.ApplyMonitorAlertEventAction(c.Param("id"), action)
+	event, ok, err := store.ApplyMonitorAlertEventAction(current.ID, action)
 	if err != nil {
 		if errors.Is(err, store.ErrTerminalMonitorAlertEvent) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

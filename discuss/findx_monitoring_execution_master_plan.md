@@ -77,6 +77,15 @@ P1 第一稳定切片聚焦 evaluator 到 current/history event closure：域常
 | P1-FE-1 `/monitor` 工作台与 API 封装 | `vue-frontend` | `D:\ai-workbench\web\src\api\monitor.js`、`D:\ai-workbench\web\src\views\monitoring\*`、`D:\ai-workbench\web\src\components\monitoring\*`、必要 router 注册；禁止修改旧 `Alerts.vue`/`OnCallConfig.vue` 作为主入口 | 依赖 P0/P1 后端契约；如后端未全量完成，前端必须使用真实 API 错误态和空态，不写静态假数据 | `cd /opt/ai-workbench/web && npm run build`；MCP/Playwright 覆盖 `/monitor` 入口、接口失败态、空态、权限态、列表筛选、刷新 | 允许。建议切片名：`findx-p1-fe-monitor-workbench-api` |
 | P1-FE-2 规则、事件、Dashboard、模板、通知、权限页面 | `vue-frontend` | 仅 `web/src/views/monitoring/*`、`web/src/components/monitoring/*`、`web/src/api/monitor.js` 必要扩展；不同页面分批派发 | 依赖 P1-FE-1；规则/事件依赖 P1-BE-2/P1-BE-3；通知/权限依赖 P1-BE-4 | `cd /opt/ai-workbench/web && npm run build`；MCP/Playwright 覆盖规则 tryrun、事件处置、Dashboard 真实取数失败态、模板 diff、通知 tryrun、权限 403 | 允许，但必须按页面或功能域拆分稳定切片 |
 
+### P1-BE-1 DATA_CHANGE 与兼容说明
+
+- DATA_CHANGE：P1-BE-1 改变 `monitor_alert_events_current` 写入语义和 fingerprint 生成语义，但不改 DDL。
+- fingerprint 新语义：由 `rule_id + datasource_id + event_key + target_id + target_ident + 非敏感 labels` 生成 SHA-256；外部传入 fingerprint 不可信，不参与幂等。
+- current event upsert：由 `REPLACE INTO` 风险语义改为保留首 ID 的 `INSERT ... ON DUPLICATE KEY UPDATE` 语义，count 累加，last_seen/updated_at 不回退。
+- 兼容边界：FindX 是新平台，不迁移旧 Nightingale 或旧生产历史告警事件；本切片不做历史数据迁移。若未来导入旧事件，需要单独迁移/回填 fingerprint 并列回滚方案。
+- 回滚方式：Git 回滚相关 Go 文件即可恢复旧写入逻辑；如未来已写入新事件，回滚前需评估 current event fingerprint 语义差异。
+- 验证证据占位：Windows/WSL Go test + build 由主代理执行；QA 二轮曾给 RISK，待补齐后复审。
+
 ## 5. P2 findx-agents 工作单
 
 P2 先落协议、能力目录、安全模型、证据模型，再迁移采集/巡检工具。Categraf `exec` 默认禁用；Catpaw 授权衍生能力进入实现前必须补合规材料。

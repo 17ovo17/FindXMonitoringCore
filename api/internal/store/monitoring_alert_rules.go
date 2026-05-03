@@ -99,9 +99,9 @@ func SetMonitorAlertRuleEnabled(id string, enabled bool, actor string) (*model.M
 		return nil, false, nil
 	}
 	rule.Enabled = enabled
-	rule.Status = "active"
+	rule.Status = model.MonitorAlertRuleStatusActive
 	if !enabled {
-		rule.Status = "disabled"
+		rule.Status = model.MonitorAlertRuleStatusDisabled
 	}
 	rule.Version++
 	out, err := SaveMonitorAlertRule(rule, actor)
@@ -154,15 +154,21 @@ func ListMonitorAlertRuleVersions(ruleID string) []model.MonitorAlertRuleVersion
 	return out
 }
 
-func AddMonitorAlertEvalLog(log model.MonitorAlertEvalLog) model.MonitorAlertEvalLog {
+func AddMonitorAlertEvalLog(log model.MonitorAlertEvalLog) (model.MonitorAlertEvalLog, error) {
 	if log.ID == "" {
 		log.ID = NewID()
 	}
 	if mysqlOK {
-		details, _ := json.Marshal(log.Details)
-		_, _ = db.Exec(`INSERT INTO monitor_alert_rule_eval_logs (id,rule_id,rule_version,status,message,details,started_at,finished_at,duration_ms,datasource_id,query_hash) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, log.ID, log.RuleID, log.RuleVersion, log.Status, log.Message, string(details), log.StartedAt, log.FinishedAt, log.DurationMs, log.DatasourceID, log.QueryHash)
+		details, err := json.Marshal(log.Details)
+		if err != nil {
+			return log, fmt.Errorf("marshal monitor alert eval log details: %w", err)
+		}
+		_, err = db.Exec(`INSERT INTO monitor_alert_rule_eval_logs (id,rule_id,rule_version,status,message,details,started_at,finished_at,duration_ms,datasource_id,query_hash) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, log.ID, log.RuleID, log.RuleVersion, log.Status, log.Message, string(details), log.StartedAt, log.FinishedAt, log.DurationMs, log.DatasourceID, log.QueryHash)
+		if err != nil {
+			return log, fmt.Errorf("insert monitor alert eval log: %w", err)
+		}
 	}
-	return log
+	return log, nil
 }
 
 func normalizeMonitorAlertRule(rule, existing *model.MonitorAlertRule, actor string, now time.Time) *model.MonitorAlertRule {
@@ -185,7 +191,7 @@ func normalizeMonitorAlertRule(rule, existing *model.MonitorAlertRule, actor str
 		cp.CreatedBy = actor
 	}
 	if cp.NoDataPolicy == "" {
-		cp.NoDataPolicy = "keep_state"
+		cp.NoDataPolicy = model.MonitorNoDataPolicyKeepState
 	}
 	return cp
 }
@@ -216,10 +222,10 @@ func ruleFromVersion(v model.MonitorAlertRuleVersion, version int, actor string)
 
 func monitorRuleStatus(enabled bool, status string) string {
 	if !enabled {
-		return "disabled"
+		return model.MonitorAlertRuleStatusDisabled
 	}
-	if status == "" || status == "disabled" {
-		return "active"
+	if status == "" || status == model.MonitorAlertRuleStatusDisabled {
+		return model.MonitorAlertRuleStatusActive
 	}
 	return status
 }

@@ -40,7 +40,10 @@ func monitorChecksOK(checks []model.MonitorTryCheck) bool {
 
 func validMonitorSeverity(severity string) bool {
 	switch strings.ToLower(strings.TrimSpace(severity)) {
-	case "critical", "warning", "info", "p0", "p1", "p2", "p3":
+	case model.MonitorAlertSeverityCritical, model.MonitorAlertSeverityWarning,
+		model.MonitorAlertSeverityInfo, model.MonitorAlertSeverityP0,
+		model.MonitorAlertSeverityP1, model.MonitorAlertSeverityP2,
+		model.MonitorAlertSeverityP3:
 		return true
 	default:
 		return false
@@ -49,7 +52,7 @@ func validMonitorSeverity(severity string) bool {
 
 func validNoDataPolicy(policy string) bool {
 	switch strings.TrimSpace(policy) {
-	case "", "keep_state", "alerting", "ok":
+	case "", model.MonitorNoDataPolicyKeepState, model.MonitorNoDataPolicyAlerting, model.MonitorNoDataPolicyOK:
 		return true
 	default:
 		return false
