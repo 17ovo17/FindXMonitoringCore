@@ -90,7 +90,7 @@ npm run dev
 ```
 AI-WorkBench/
 ├── api/                          # Go 后端
-│   ├── main.go                   # 入口（143 个 API 端点）
+│   ├── main.go                   # 入口（156 个 API 端点）
 │   ├── config.yaml.example       # 配置模板
 │   └── internal/
 │       ├── handler/              # HTTP 处理层
@@ -111,7 +111,7 @@ AI-WorkBench/
 │       └── security/             # 安全机制
 ├── web/                          # Vue 3 前端
 │   └── src/
-│       ├── views/                # 10 个页面
+│       ├── views/                # 26 个页面
 │       └── components/           # 可复用组件
 ├── docker/                       # Docker + Prometheus 配置
 ├── scripts/                      # 启停脚本
@@ -179,7 +179,7 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 
 ## API 概览
 
-143 个 REST API 端点，按功能分组：
+156 个 REST API 端点，按功能分组：
 
 - **对话与 AI** — 通用对话、Agent 对话
 - **AIOps 智能运维** — 会话、巡检、WebSocket 实时推理
@@ -191,7 +191,7 @@ Go 原生实现的 DAG 工作流引擎，零外部依赖。
 - **监控** — Prometheus 集成、指标扫描、AI 适配
 - **设置** — AI 模型、Embedding、Reranker、数据源、通知渠道
 
-完整 API 文档见 `docs/API文档.md`。
+完整 API 文档见 [`docs/API文档.md`](docs/API文档.md)。
 
 ## 前端页面
 

@@ -1,661 +1,546 @@
-# AI WorkBench API 文档
+# AI Workbench API 文档
 
-> 本文档列出 Dify 集成相关的 30+ 个新增 API 端点。原有 API（认证、对话、AIOps、告警、拓扑、探针等）见各模块代码注释。
+更新时间：2026-05-03 14:36（UTC+8）
+
+本文档根据 `api/main.go` 中注册的路由重写，覆盖 156 个 GET/POST/PUT/DELETE API 端点。`/api/v1/download` 为静态文件分发路由，未计入 API 端点总数。
 
 ## 通用约定
 
-- Base URL: `http://localhost:8080`
-- 所有路径前缀：`/api/v1`
-- 写操作（POST/PUT/DELETE）需 `X-Admin-Token` 头或 `Authorization: Bearer <token>`
-- 响应：成功返回数据 JSON，失败返回 `{"error": "中文错误描述"}`
-- 分页：`?page=1&limit=20`，列表响应含 `total` 字段
+- Base URL：`http://localhost:8080`
+- 默认 API 前缀：`/api/v1`
+- 指标暴露端点：`/metrics` 不使用 `/api/v1` 前缀。
+- 写操作（POST/PUT/DELETE）通常需要 `X-Admin-Token` 请求头或 `Authorization: Bearer <token>`。
+- 登录态接口使用 `Authorization: Bearer <token>`。
+- 请求与响应默认使用 JSON；失败响应通常为 `{"error": "中文错误描述"}`。
+- 分页接口通常使用 `page`、`limit` 查询参数，列表响应通常包含 `total` 字段。
+- 本文档仅列出路由路径与用途说明；不展开请求体、查询参数或响应结构。路径参数以 `:id`、`:name`、`:ip`、`:key`、`:action` 等形式直接体现在路径中。
 
 ## 状态码
 
-| 码 | 含义 |
-|----|------|
+| 码值 | 含义 |
+|------|------|
 | 200 | 成功 |
 | 400 | 参数错误 |
 | 401 | 未认证 |
 | 403 | 无权限 |
 | 404 | 资源不存在 |
 | 500 | 内部错误 |
-| 503 | 依赖服务（如 Dify）不可用 |
+| 503 | 依赖服务不可用 |
 
 ---
 
-## 一、知识库案例（9 个）
+## AI 模型与对话
 
-### GET /api/v1/knowledge/cases
-分页查询案例。
+### GET /api/v1/models
+获取可用 AI 模型列表。
 
-**Query**：`page` (默认 1) / `limit` (默认 20，最大 200) / `keyword` (FULLTEXT 搜索) / `category`
+### POST /api/v1/chat
+发起普通对话请求。
 
-**响应**：
-```json
-{
-  "items": [
-    {
-      "id": "seed-001",
-      "metric_snapshot": {"cpu_usage_active": 95.3},
-      "root_cause_category": "cpu_high",
-      "root_cause_description": "...",
-      "treatment_steps": "...",
-      "keywords": "cpu,top,perf",
-      "dify_document_id": "",
-      "created_at": "2026-04-29T00:00:00Z",
-      "evaluation_avg": 4.5
-    }
-  ],
-  "total": 18,
-  "page": 1,
-  "limit": 20
-}
-```
+### GET /api/v1/chat/sessions
+获取对话会话列表。
 
-### GET /api/v1/knowledge/cases/:id
-单条案例详情。404 表示不存在。
+### POST /api/v1/chat/sessions
+创建新的对话会话。
 
-### POST /api/v1/knowledge/cases
-创建案例。**Body**：DiagnosisCase JSON（root_cause_category 和 root_cause_description 必填）。
+### GET /api/v1/chat/sessions/:id
+获取指定对话会话详情。
 
-### PUT /api/v1/knowledge/cases/:id
-更新案例。
+### PUT /api/v1/chat/sessions/:id
+重命名指定对话会话。
 
-### DELETE /api/v1/knowledge/cases/:id
-删除案例。响应：`{"ok": true}`。
+### DELETE /api/v1/chat/sessions/:id
+删除指定对话会话。
 
-### POST /api/v1/knowledge/cases/import
-批量导入。**Body**：DiagnosisCase 数组。响应：`{"imported": 18, "total": 18}`。
+### POST /api/v1/agent/llm/chat
+发起 Agent LLM 对话请求。
 
-### GET /api/v1/knowledge/cases/export
-导出全量。**Query**：`?category=cpu_high` 可选筛选。响应：JSON 数组（带 Content-Disposition 头）。
+## AIOps 智能运维
 
-### POST /api/v1/knowledge/cases/:id/sync
-同步到 Dify。Dify 不可用时返回 503 + `{"error": "Dify service unavailable", "fallback": true}`。
+### POST /api/v1/aiops/sessions
+创建 AIOps 智能运维会话。
 
----
+### POST /api/v1/aiops/sessions/:id/messages
+向指定 AIOps 会话发送消息。
 
-## 二、Runbook（6 个）
+### GET /api/v1/aiops/sessions/:id/messages
+获取指定 AIOps 会话的消息列表。
 
-### GET /api/v1/knowledge/runbooks
-分页查询 Runbook。**Query**：`page` / `limit` / `category`。
+### GET /api/v1/aiops/ws/sessions/:id
+建立指定 AIOps 会话的 WebSocket 连接。
 
-### GET /api/v1/knowledge/runbooks/:id
-单条详情。
+### POST /api/v1/aiops/sessions/:id/actions/execute
+执行指定 AIOps 会话中的动作。
 
-### POST /api/v1/knowledge/runbooks
-创建 Runbook。**Body**：
-```json
-{
-  "title": "CPU 用户态飙高",
-  "category": "cpu_high",
-  "trigger_conditions": "{\"metric\":\"cpu_usage_user\",\"operator\":\">\",\"threshold\":80}",
-  "steps": "## 1. 确认现状\n...",
-  "auto_executable": false
-}
-```
+### POST /api/v1/aiops/inspections
+创建 AIOps 巡检任务。
 
-### PUT /api/v1/knowledge/runbooks/:id
-更新 Runbook。
+### GET /api/v1/aiops/inspections/:id/progress
+获取指定 AIOps 巡检任务进度。
 
-### DELETE /api/v1/knowledge/runbooks/:id
-删除 Runbook。
+### GET /api/v1/aiops/inspections/:id/report
+获取指定 AIOps 巡检报告。
 
-### POST /api/v1/knowledge/runbooks/:id/sync
-同步 Runbook 到 Dify 知识库。
+### POST /api/v1/aiops/data/prometheus/query
+执行 AIOps Prometheus 即时查询。
 
----
+### POST /api/v1/aiops/data/prometheus/query_range
+执行 AIOps Prometheus 区间查询。
 
-## 三、诊断工作流（6 个）
+### POST /api/v1/aiops/data/catpaw/query
+执行 AIOps CatPaw 数据查询。
 
-### POST /api/v1/diagnosis/start
-发起诊断。**Body**：
-```json
-{
-  "hostname": "198.18.20.20",
-  "time_range": "1h",
-  "user_question": "为什么 CPU 这么高？",
-  "response_mode": "streaming"
-}
-```
+### POST /api/v1/aiops/topology/generate
+生成 AIOps 拓扑数据。
 
-- `response_mode = "blocking"`：返回完整 JSON
-- `response_mode = "streaming"`：返回 SSE 流（Content-Type: text/event-stream）
-- Dify 不可用时返回 503 + `{"fallback": true}`
+## 诊断
 
-### POST /api/v1/diagnosis/feedback
-提交反馈。**Body**：
-```json
-{
-  "diagnosis_id": "diag-001",
-  "rating": "accurate",
-  "comment": "很准确",
-  "dify_message_id": "msg-xxx"
-}
-```
+### POST /api/v1/diagnose
+启动诊断任务。
 
-`rating ∈ {accurate, partial, inaccurate}`。accurate→Dify like，inaccurate→Dify dislike，partial 跳过。
-
-**响应**：`{"ok": true, "id": "...", "sync_status": "ok|failed|skipped|dify_unavailable"}`
-
-### GET /api/v1/diagnosis/feedback
-查询某诊断的反馈。**Query**：`diagnosis_id` 必填。
-
-### GET /api/v1/diagnosis/feedback/all
-分页查询所有反馈。**Query**：`page` / `limit`。
-
-### POST /api/v1/diagnosis/archive
-归档诊断为案例。**Body**：
-```json
-{
-  "diagnosis_id": "diag-001",
-  "root_cause_category": "cpu_high",
-  "root_cause_description": "...",
-  "treatment_steps": "...",
-  "keywords": "cpu,top",
-  "sync_to_dify": true
-}
-```
-
-**响应**：`{"ok": true, "case": {...}, "sync_status": "ok|failed|skipped|dify_unavailable", "sync_error": "可选"}`
+### GET /api/v1/diagnose
+获取诊断任务列表。
 
 ### GET /api/v1/diagnose/compare
-诊断对比。**Query**：`ip` 必填，`limit` (默认 2)。
+对比诊断任务结果。
 
-**响应**（≥2 条诊断）：
-```json
-{
-  "ip": "198.18.20.20",
-  "current": {...},
-  "previous": {...},
-  "diff": {
-    "time_gap": "2h30m",
-    "current_at": "2026-04-29T10:00:00Z",
-    "previous_at": "2026-04-29T07:30:00Z",
-    "alert_changed": true
-  },
-  "comparable": true
-}
-```
+### DELETE /api/v1/diagnose
+清理诊断任务数据。
 
----
+### DELETE /api/v1/diagnose/:id
+删除指定诊断任务。
 
-## 四、指标映射（5 个）
+## CatPaw 探针
 
-### POST /api/v1/metrics/scan
-扫描 Prometheus 指标。**Body**：`{"datasource_id": "1776951891799"}`
+### POST /api/v1/catpaw/heartbeat
+接收 CatPaw 探针心跳。
 
-调用 Prometheus `/api/v1/label/__name__/values`，新增的指标 status=unmapped。**响应**：`{"added": 546}`。
+### POST /api/v1/catpaw/report
+接收 CatPaw 探针上报数据。
 
-### POST /api/v1/metrics/auto-adapt
-AI 自动适配。**Body**：`{"datasource_id": "...", "max_batches": 5}`
+### GET /api/v1/catpaw/agents
+获取 CatPaw 探针列表。
 
-每批 30 条发给 LLM，返回标准名 / exporter / 描述 / PromQL，写入数据库（status=auto）。**响应**：`{"processed": 150, "adapted": 142}`。
+### DELETE /api/v1/catpaw/agents/:ip
+删除指定 IP 的 CatPaw 探针记录。
 
-### GET /api/v1/metrics/mappings
-查询映射列表。**Query**：`datasource_id` (必填) / `status` (auto/confirmed/custom/unmapped) / `page` / `limit`。
+### GET /api/v1/catpaw/chat-ws
+建立 CatPaw 对话 WebSocket 连接。
 
-### PUT /api/v1/metrics/mappings/:id
-单条编辑映射。**Body**：MetricsMapping JSON。
+## 告警管理
 
-### POST /api/v1/metrics/mappings/confirm
-批量确认 auto 状态的映射。**Body**：`{"datasource_id": "..."}`。**响应**：`{"confirmed": 120}`。
+### POST /api/v1/alert/webhook
+接收外部告警 Webhook。
 
----
+### POST /api/v1/alert/catpaw
+接收 CatPaw 告警。
 
-## 五、AI 设置（5 个）
+### GET /api/v1/alerts
+获取告警列表。
 
-### GET /api/v1/settings/ai
-返回所有设置（敏感字段已掩码）。
+### PUT /api/v1/alerts/:id/resolve
+将指定告警标记为已解决。
 
-**响应**：
-```json
-{
-  "dify.base_url": "http://localhost:5001/v1",
-  "dify.app_api_key": "app-se...",
-  "dify.dataset_id": "abc-123-..."
-}
-```
+### PUT /api/v1/alerts/:id/:action
+对指定告警执行动作。
 
-### PUT /api/v1/settings/ai
-批量更新。**Body**：`map[string]string`。掩码值（含 "..."）会被自动跳过避免回写。**响应**：`{"ok": true, "updated": 3}`。
+### DELETE /api/v1/alerts/:id
+删除指定告警。
 
-### GET /api/v1/settings/ai/:key
-单条查询。**响应**：`{"key": "...", "value": "..."}`（敏感字段已掩码）。
+## 远程执行
 
-### PUT /api/v1/settings/ai/:key
-单条更新。**Body**：`{"value": "..."}`。
+### POST /api/v1/remote/exec
+执行远程命令。
 
-### DELETE /api/v1/settings/ai/:key
-删除单条设置。
+### POST /api/v1/remote/check-port
+检查远程端口连通性。
 
----
+### POST /api/v1/remote/install-catpaw
+远程安装 CatPaw 探针。
 
-## 敏感字段掩码规则
+### POST /api/v1/remote/uninstall-catpaw
+远程卸载 CatPaw 探针。
 
-key 包含以下任一关键字时（不区分大小写），value 长度 > 6 时显示前 6 位 + "..."：
-- `api_key`
-- `password`
-- `secret`
-- `token`
+### POST /api/v1/remote/install-cmd
+生成远程安装命令。
 
-写入时如检测到掩码值（结尾含 "..."），自动跳过避免破坏现有配置。
+## 平台与监控
 
----
+### GET /metrics
+暴露平台运行指标。
 
-## 审计追踪
+### GET /api/v1/platform/ip
+获取平台 IP 信息。
 
-所有写操作（创建/更新/删除/同步/扫描）都会记录到 `audit_events` 表，可通过 GET /api/v1/audit/events 查询。
+### GET /api/v1/prometheus/instances
+获取 Prometheus 实例列表。
 
----
+### GET /api/v1/prometheus/hosts
+获取 Prometheus 主机列表。
 
-## 降级行为
+### GET /api/v1/prometheus/metrics
+获取 Prometheus 指标列表。
 
-| 场景 | 行为 |
-|------|------|
-| Dify 不可用 | 503 + `{"fallback": true}` |
-| Prometheus 不可用 | scanner 返回错误，不写入指标 |
-| MySQL 不可用 | 自动降级到内存存储 |
-| Redis 不可用 | 探针在线状态降级 |
+### GET /api/v1/health/datasources
+检查数据源健康状态。
 
----
+### GET /api/v1/health/ai-providers
+检查 AI 提供商健康状态。
 
-## 完整路由表
+### GET /api/v1/health/storage
+检查存储健康状态。
 
-```
-GET    /api/v1/knowledge/cases
-GET    /api/v1/knowledge/cases/export
-POST   /api/v1/knowledge/cases
-POST   /api/v1/knowledge/cases/import
-GET    /api/v1/knowledge/cases/:id
-PUT    /api/v1/knowledge/cases/:id
-DELETE /api/v1/knowledge/cases/:id
-POST   /api/v1/knowledge/cases/:id/sync
+### GET /api/v1/audit/events
+获取审计事件列表。
 
-GET    /api/v1/knowledge/runbooks
-GET    /api/v1/knowledge/runbooks/:id
-POST   /api/v1/knowledge/runbooks
-PUT    /api/v1/knowledge/runbooks/:id
-DELETE /api/v1/knowledge/runbooks/:id
-POST   /api/v1/knowledge/runbooks/:id/sync
+## 值班管理
 
-POST   /api/v1/diagnosis/start
-POST   /api/v1/diagnosis/feedback
-GET    /api/v1/diagnosis/feedback
-GET    /api/v1/diagnosis/feedback/all
-POST   /api/v1/diagnosis/archive
-GET    /api/v1/diagnose/compare
+### GET /api/v1/oncall/config
+获取值班配置。
 
-POST   /api/v1/metrics/scan
-POST   /api/v1/metrics/auto-adapt
-GET    /api/v1/metrics/mappings
-PUT    /api/v1/metrics/mappings/:id
-POST   /api/v1/metrics/mappings/confirm
+### POST /api/v1/oncall/config
+保存值班配置。
 
-GET    /api/v1/settings/ai
-PUT    /api/v1/settings/ai
-GET    /api/v1/settings/ai/:key
-PUT    /api/v1/settings/ai/:key
-DELETE /api/v1/settings/ai/:key
-```
+### GET /api/v1/oncall/groups
+获取值班组列表。
 
-总计 31 个新增端点。
+### POST /api/v1/oncall/groups
+保存值班组。
 
----
+### DELETE /api/v1/oncall/groups/:id
+删除指定值班组。
 
-## 六、工作流管理（8 个）
+### GET /api/v1/oncall/channels
+获取值班通知渠道列表。
 
-### GET /api/v1/workflows
-分页查询工作流列表。
+### POST /api/v1/oncall/channels
+保存值班通知渠道。
 
-**Query**：`page` (默认 1) / `limit` (默认 20) / `category` (可选筛选)
+### DELETE /api/v1/oncall/channels/:id
+删除指定值班通知渠道。
 
-**响应**：
-```json
-{
-  "items": [
-    {
-      "id": "wf-001",
-      "name": "diagnosis",
-      "display_name": "主诊断工作流",
-      "category": "diagnosis",
-      "description": "知识检索→指标→巡检→LLM→置信度路由",
-      "builtin": true,
-      "enabled": true,
-      "created_at": "2026-04-29T00:00:00Z"
-    }
-  ],
-  "total": 12,
-  "page": 1,
-  "limit": 20
-}
-```
+### GET /api/v1/oncall/schedules
+获取值班排班列表。
 
-### GET /api/v1/workflows/:id
-单个工作流详情（含 DSL YAML）。
+### POST /api/v1/oncall/schedules
+保存值班排班。
 
-**响应**：
-```json
-{
-  "id": "wf-001",
-  "name": "diagnosis",
-  "dsl_yaml": "nodes:\n  - id: start\n    type: start\n...",
-  "builtin": true,
-  "enabled": true
-}
-```
+### DELETE /api/v1/oncall/schedules/:id
+删除指定值班排班。
 
-### POST /api/v1/workflows
-创建自定义工作流。**Body**：
-```json
-{
-  "name": "custom_check",
-  "display_name": "自定义检查",
-  "category": "custom",
-  "description": "...",
-  "dsl_yaml": "nodes:\n  - id: start\n    type: start\n..."
-}
-```
+### GET /api/v1/oncall/records
+获取值班记录列表。
 
-### PUT /api/v1/workflows/:id
-更新工作流。内置工作流仅允许修改 enabled 字段。
+### POST /api/v1/oncall/test-send
+发送值班通知测试消息。
 
-### DELETE /api/v1/workflows/:id
-删除自定义工作流。内置工作流不可删除，返回 403。
+## 拓扑管理
 
-### POST /api/v1/workflows/:id/execute
-执行工作流（阻塞模式）。**Body**：
-```json
-{
-  "inputs": {
-    "hostname": "198.18.20.20",
-    "time_range": "1h"
-  }
-}
-```
+### GET /api/v1/topology
+获取拓扑数据。
 
-**响应**：
-```json
-{
-  "run_id": "run-001",
-  "status": "completed",
-  "outputs": {"report": "..."},
-  "duration_ms": 3200,
-  "node_results": [
-    {"node_id": "start", "status": "completed", "duration_ms": 1},
-    {"node_id": "knowledge_retrieval", "status": "completed", "duration_ms": 450}
-  ]
-}
-```
+### POST /api/v1/topology
+保存拓扑数据。
 
-### POST /api/v1/workflows/:id/stream
-执行工作流（流式模式）。Body 同 execute。
+### GET /api/v1/topology/resources
+获取拓扑资源列表。
 
-**响应**：`Content-Type: text/event-stream`
+### POST /api/v1/topology/discover
+执行拓扑发现。
 
-```
-event: workflow_started
-data: {"run_id": "run-001", "workflow_id": "wf-001"}
+### POST /api/v1/topology/ai/generate
+使用 AI 生成拓扑。
 
-event: node_started
-data: {"node_id": "knowledge_retrieval", "node_type": "knowledge_retrieval"}
+### GET /api/v1/topology/businesses
+获取拓扑业务列表。
 
-event: node_completed
-data: {"node_id": "knowledge_retrieval", "outputs": {...}, "duration_ms": 450}
+### POST /api/v1/topology/businesses
+保存拓扑业务。
 
-event: text_chunk
-data: {"node_id": "llm_diagnosis", "text": "根据分析..."}
+### GET /api/v1/topology/businesses/:id
+获取指定拓扑业务详情。
 
-event: workflow_completed
-data: {"run_id": "run-001", "outputs": {...}, "duration_ms": 3200}
-```
+### GET /api/v1/topology/businesses/:id/inspect
+巡检指定拓扑业务。
 
-SSE 事件类型：`workflow_started` / `node_started` / `node_completed` / `text_chunk` / `workflow_completed` / `workflow_failed`
+### DELETE /api/v1/topology/businesses/:id
+删除指定拓扑业务。
 
-### GET /api/v1/workflows/:id/runs
-查询工作流执行历史。**Query**：`page` / `limit`
+## 配置管理
 
-**响应**：
-```json
-{
-  "items": [
-    {
-      "id": "run-001",
-      "workflow_id": "wf-001",
-      "status": "completed",
-      "inputs": {"hostname": "198.18.20.20"},
-      "duration_ms": 3200,
-      "created_at": "2026-04-29T20:00:00Z"
-    }
-  ],
-  "total": 5
-}
-```
+### GET /api/v1/ai-providers
+获取 AI 提供商配置。
 
----
+### POST /api/v1/ai-providers
+保存 AI 提供商配置。
 
-## 七、知识库文档管理（7 个）
+### GET /api/v1/data-sources
+获取数据源配置。
+
+### POST /api/v1/data-sources
+保存数据源配置。
+
+### GET /api/v1/credentials
+获取凭据列表。
+
+### POST /api/v1/credentials
+保存凭据。
+
+### DELETE /api/v1/credentials/:id
+删除指定凭据。
+
+## 认证与用户
+
+### POST /api/v1/auth/login
+用户登录。
+
+### POST /api/v1/auth/logout
+用户登出。
+
+### GET /api/v1/auth/me
+获取当前登录用户信息。
+
+### POST /api/v1/auth/change-password
+修改当前登录用户密码。
+
+### GET /api/v1/user-profiles
+获取用户画像列表。
+
+### POST /api/v1/user-profiles
+保存用户画像。
+
+### DELETE /api/v1/user-profiles/:id
+删除指定用户画像。
+
+## 仪表盘与关联
+
+### GET /api/v1/dashboard/summary
+获取仪表盘汇总数据。
+
+### GET /api/v1/correlate
+获取关联分析结果。
+
+### POST /api/v1/workflows/route-preview
+预览工作流路由结果。
+
+## N9e 集成
+
+### GET /api/v1/n9e/agents
+获取 N9e Agent 列表。
+
+### GET /api/v1/n9e/alerts
+获取 N9e 告警列表。
+
+## 知识库-案例
+
+### GET /api/v1/knowledge/cases
+获取知识库案例列表。
+
+### GET /api/v1/knowledge/cases/export
+导出知识库案例。
+
+### POST /api/v1/knowledge/cases
+创建知识库案例。
+
+### POST /api/v1/knowledge/cases/import
+导入知识库案例。
+
+### GET /api/v1/knowledge/cases/:id
+获取指定知识库案例详情。
+
+### PUT /api/v1/knowledge/cases/:id
+更新指定知识库案例。
+
+### DELETE /api/v1/knowledge/cases/:id
+删除指定知识库案例。
+
+## 知识库-文档
 
 ### POST /api/v1/knowledge/documents/upload
-上传文档。**Content-Type**: `multipart/form-data`
-
-**Form Fields**：
-- `file` — 文档文件（支持 .md / .txt / .pdf / .docx / .html）
-- `category` — 分类（可选）
-
-**响应**：
-```json
-{
-  "id": "doc-001",
-  "filename": "troubleshooting-guide.md",
-  "format": "markdown",
-  "size_bytes": 15360,
-  "chunk_count": 12,
-  "embedding_status": "pending",
-  "created_at": "2026-04-29T20:00:00Z"
-}
-```
+上传知识库文档。
 
 ### GET /api/v1/knowledge/documents
-分页查询文档列表。**Query**：`page` / `limit` / `format` (可选筛选)
-
-**响应**：
-```json
-{
-  "items": [
-    {
-      "id": "doc-001",
-      "filename": "troubleshooting-guide.md",
-      "format": "markdown",
-      "chunk_count": 12,
-      "embedding_status": "completed",
-      "created_at": "2026-04-29T20:00:00Z"
-    }
-  ],
-  "total": 5
-}
-```
+获取知识库文档列表。
 
 ### GET /api/v1/knowledge/documents/:id
-单个文档详情（含分块信息）。
+获取指定知识库文档详情。
 
 ### DELETE /api/v1/knowledge/documents/:id
-删除文档（同时清理分块和索引）。
-
-### POST /api/v1/knowledge/documents/search
-混合搜索。**Body**：
-```json
-{
-  "query": "CPU 使用率过高怎么排查",
-  "top_k": 10,
-  "search_mode": "hybrid",
-  "rerank": true
-}
-```
-
-`search_mode` 可选：`bm25`（仅关键词）/ `vector`（仅向量）/ `hybrid`（混合，默认）
-
-**响应**：
-```json
-{
-  "results": [
-    {
-      "document_id": "doc-001",
-      "chunk_id": "chunk-003",
-      "content": "CPU 使用率过高的常见原因包括...",
-      "score": 0.85,
-      "source": "troubleshooting-guide.md",
-      "metadata": {"section": "CPU 诊断"}
-    }
-  ],
-  "search_mode": "hybrid",
-  "reranked": true,
-  "total": 8
-}
-```
+删除指定知识库文档。
 
 ### POST /api/v1/knowledge/documents/:id/reindex
-重建单个文档的索引。文档内容变更后调用。
+重建指定知识库文档索引。
 
-**响应**：`{"ok": true, "chunk_count": 15}`
+### POST /api/v1/knowledge/search
+执行知识库检索。
 
-### POST /api/v1/knowledge/documents/preview-chunks
-分块预览（不入库）。**Body**：
-```json
-{
-  "content": "# 标题\n\n段落一...\n\n## 子标题\n\n段落二...",
-  "chunk_size": 500,
-  "overlap": 50
-}
-```
+### GET /api/v1/knowledge/search/stats
+获取知识库检索统计。
 
-**响应**：
-```json
-{
-  "chunks": [
-    {"index": 0, "content": "# 标题\n\n段落一...", "char_count": 120},
-    {"index": 1, "content": "## 子标题\n\n段落二...", "char_count": 95}
-  ],
-  "total_chunks": 2
-}
-```
+### POST /api/v1/knowledge/search/badcase
+提交知识库检索 badcase。
 
----
+### POST /api/v1/knowledge/reindex-all
+重建全部知识库索引。
 
-## 八、Runbook 执行与历史（2 个）
+## 知识库-Runbook
+
+### GET /api/v1/knowledge/runbooks
+获取 Runbook 列表。
+
+### GET /api/v1/knowledge/runbooks/:id
+获取指定 Runbook 详情。
+
+### POST /api/v1/knowledge/runbooks
+创建 Runbook。
+
+### PUT /api/v1/knowledge/runbooks/:id
+更新指定 Runbook。
+
+### DELETE /api/v1/knowledge/runbooks/:id
+删除指定 Runbook。
 
 ### POST /api/v1/knowledge/runbooks/:id/execute
-执行 Runbook。**Body**：
-```json
-{
-  "parameters": {
-    "target_host": "192.168.1.100",
-    "top_n": "10"
-  }
-}
-```
+执行指定 Runbook。
 
-模板变量 `{{target_host}}` 和 `{{top_n}}` 会被替换为实际值。
+### GET /api/v1/knowledge/runbooks/:id/history
+获取指定 Runbook 执行历史。
 
-**响应**：
-```json
-{
-  "execution_id": "exec-001",
-  "runbook_id": "rb-001",
-  "status": "running",
-  "started_at": "2026-04-29T20:00:00Z"
-}
-```
+## 诊断工作流与反馈
 
-执行状态：`running` / `success` / `failed` / `rolled_back`
+### POST /api/v1/diagnosis/start
+启动诊断工作流。
 
-### GET /api/v1/knowledge/runbooks/:id/executions
-查询 Runbook 执行历史。**Query**：`page` / `limit`
+### POST /api/v1/diagnosis/feedback
+提交诊断反馈。
 
-**响应**：
-```json
-{
-  "items": [
-    {
-      "id": "exec-001",
-      "runbook_id": "rb-001",
-      "status": "success",
-      "parameters": {"target_host": "192.168.1.100"},
-      "output": "步骤 1 完成...\n步骤 2 完成...",
-      "duration_ms": 5200,
-      "created_at": "2026-04-29T20:00:00Z"
-    }
-  ],
-  "total": 3
-}
-```
+### GET /api/v1/diagnosis/feedback
+获取指定诊断反馈列表。
 
----
+### GET /api/v1/diagnosis/feedback/all
+获取全部诊断反馈列表。
 
-## 完整路由表（更新）
+### GET /api/v1/diagnosis/feedback/stats
+获取诊断反馈统计。
 
-```
-# 知识库案例（9 个）
-GET    /api/v1/knowledge/cases
-GET    /api/v1/knowledge/cases/export
-POST   /api/v1/knowledge/cases
-POST   /api/v1/knowledge/cases/import
-GET    /api/v1/knowledge/cases/:id
-PUT    /api/v1/knowledge/cases/:id
-DELETE /api/v1/knowledge/cases/:id
-POST   /api/v1/knowledge/cases/:id/sync
+### GET /api/v1/diagnosis/verifications
+获取诊断验证列表。
 
-# Runbook（8 个，含执行和历史）
-GET    /api/v1/knowledge/runbooks
-GET    /api/v1/knowledge/runbooks/:id
-POST   /api/v1/knowledge/runbooks
-PUT    /api/v1/knowledge/runbooks/:id
-DELETE /api/v1/knowledge/runbooks/:id
-POST   /api/v1/knowledge/runbooks/:id/sync
-POST   /api/v1/knowledge/runbooks/:id/execute
-GET    /api/v1/knowledge/runbooks/:id/executions
+### POST /api/v1/diagnosis/archive
+归档诊断结果。
 
-# 诊断工作流（6 个）
-POST   /api/v1/diagnosis/start
-POST   /api/v1/diagnosis/feedback
-GET    /api/v1/diagnosis/feedback
-GET    /api/v1/diagnosis/feedback/all
-POST   /api/v1/diagnosis/archive
-GET    /api/v1/diagnose/compare
+## 工作流管理
 
-# 指标映射（5 个）
-POST   /api/v1/metrics/scan
-POST   /api/v1/metrics/auto-adapt
-GET    /api/v1/metrics/mappings
-PUT    /api/v1/metrics/mappings/:id
-POST   /api/v1/metrics/mappings/confirm
+### GET /api/v1/workflows
+获取工作流列表。
 
-# AI 设置（5 个）
-GET    /api/v1/settings/ai
-PUT    /api/v1/settings/ai
-GET    /api/v1/settings/ai/:key
-PUT    /api/v1/settings/ai/:key
-DELETE /api/v1/settings/ai/:key
+### GET /api/v1/workflows/:id
+获取指定工作流详情。
 
-# 工作流管理（8 个）
-GET    /api/v1/workflows
-GET    /api/v1/workflows/:id
-POST   /api/v1/workflows
-PUT    /api/v1/workflows/:id
-DELETE /api/v1/workflows/:id
-POST   /api/v1/workflows/:id/execute
-POST   /api/v1/workflows/:id/stream
-GET    /api/v1/workflows/:id/runs
+### POST /api/v1/workflows
+创建工作流。
 
-# 知识库文档管理（7 个）
-POST   /api/v1/knowledge/documents/upload
-GET    /api/v1/knowledge/documents
-GET    /api/v1/knowledge/documents/:id
-DELETE /api/v1/knowledge/documents/:id
-POST   /api/v1/knowledge/documents/search
-POST   /api/v1/knowledge/documents/:id/reindex
-POST   /api/v1/knowledge/documents/preview-chunks
-```
+### PUT /api/v1/workflows/:id
+更新指定工作流。
 
-总计 48 个新增端点。
+### DELETE /api/v1/workflows/:id
+删除指定工作流。
+
+### POST /api/v1/workflows/:id/run
+运行指定工作流。
+
+### POST /api/v1/workflows/:id/stream
+以流式方式运行指定工作流。
+
+### GET /api/v1/workflows/:id/runs
+获取指定工作流运行记录。
+
+## 定时调度
+
+### GET /api/v1/schedules
+获取定时调度列表。
+
+### POST /api/v1/schedules
+创建定时调度。
+
+### DELETE /api/v1/schedules/:id
+删除指定定时调度。
+
+## 通知渠道
+
+### GET /api/v1/notifications/channels
+获取通知渠道列表。
+
+### POST /api/v1/notifications/channels
+保存通知渠道。
+
+### DELETE /api/v1/notifications/channels/:id
+删除指定通知渠道。
+
+## 指标映射
+
+### POST /api/v1/metrics/scan
+扫描指标。
+
+### POST /api/v1/metrics/auto-adapt
+自动适配指标。
+
+### GET /api/v1/metrics/mappings
+获取指标映射列表。
+
+### PUT /api/v1/metrics/mappings/:id
+更新指定指标映射。
+
+### POST /api/v1/metrics/mappings/confirm
+确认指标映射。
+
+## Prompt 模板
+
+### GET /api/v1/prompts
+获取 Prompt 模板列表。
+
+### GET /api/v1/prompts/:name
+获取指定 Prompt 模板详情。
+
+### POST /api/v1/prompts
+创建 Prompt 模板。
+
+### PUT /api/v1/prompts/:name
+更新指定 Prompt 模板。
+
+### DELETE /api/v1/prompts/:name
+删除指定 Prompt 模板。
+
+## AI 设置
+
+### GET /api/v1/settings/ai
+获取 AI 设置列表。
+
+### PUT /api/v1/settings/ai
+更新 AI 设置列表。
+
+### GET /api/v1/settings/ai/:key
+获取指定 AI 设置项。
+
+### PUT /api/v1/settings/ai/:key
+更新指定 AI 设置项。
+
+### DELETE /api/v1/settings/ai/:key
+删除指定 AI 设置项。
+
+## Embedding 与 Reranker 设置
+
+### GET /api/v1/settings/embedding
+获取 Embedding 设置。
+
+### PUT /api/v1/settings/embedding
+更新 Embedding 设置。
+
+### POST /api/v1/settings/embedding/test
+测试 Embedding 连接。
+
+### GET /api/v1/settings/reranker
+获取 Reranker 设置。
+
+### PUT /api/v1/settings/reranker
+更新 Reranker 设置。

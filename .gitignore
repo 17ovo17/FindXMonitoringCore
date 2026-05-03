@@ -101,3 +101,6 @@ api/assets/*.exe
 # === 旧版冗余种子（v3 已取代）===
 api/assets/seed_cases_v2.json
 api/assets/seed_runbooks_v2.json
+
+# === Docker 测试配置 ===
+docker/targets/fake-business-categraf.yml
