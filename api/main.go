@@ -100,7 +100,7 @@ func main() {
 		v1.GET("/health/datasources", handler.CheckDataSourceHealth)
 		v1.GET("/health/ai-providers", handler.CheckAIProviderHealth)
 		v1.GET("/health/storage", handler.HealthStorage)
-		v1.GET("/audit/events", handler.ListAuditEvents)
+		v1.GET("/audit/events", readRequired, handler.ListAuditEvents)
 		v1.GET("/oncall/config", handler.GetOnCallConfig)
 		v1.POST("/oncall/config", adminRequired, handler.SaveOnCallConfig)
 		v1.GET("/oncall/groups", handler.ListOnCallGroups)
@@ -178,6 +178,8 @@ func main() {
 		v1.POST("/monitor/events/:id/assign", adminRequired, handler.AssignMonitorEvent)
 		v1.POST("/monitor/events/:id/resolve", adminRequired, handler.ResolveMonitorEvent)
 		v1.POST("/monitor/events/:id/archive", adminRequired, handler.ArchiveMonitorEvent)
+		v1.GET("/monitor/audit-logs", readRequired, handler.ListMonitorAuditLogs)
+		v1.GET("/monitor/audit-logs/:id", readRequired, handler.GetMonitorAuditLog)
 
 		v1.GET("/findx-agents", readRequired, handler.ListFindXAgents)
 		v1.POST("/findx-agents/register", handler.FindXAgentRegister)
