@@ -17,9 +17,9 @@
 
 ```json
 {
-  "nodes": [{"ip":"10.0.1.10","hostname":"gw-01","services":[{"name":"nginx","port":80,"role":"入口网关"}],"layer":"gateway"}],
-  "dependencies": [{"from":"10.0.1.10:80","to":"10.0.1.21:8080","type":"反向代理"}],
-  "health_status": {"10.0.1.10":{"score":95,"status":"healthy"}}
+  "nodes": [{"ip":"<GATEWAY_IP>","hostname":"gw-01","services":[{"name":"nginx","port":80,"role":"入口网关"}],"layer":"gateway"}],
+  "dependencies": [{"from":"<GATEWAY_IP>:80","to":"<APP_IP>:8080","type":"反向代理"}],
+  "health_status": {"<GATEWAY_IP>":{"score":95,"status":"healthy"}}
 }
 ```
 
@@ -48,7 +48,7 @@
 {
   "nodes": [{
     "id": "gw-01",
-    "ip": "10.0.1.10",
+    "ip": "<GATEWAY_IP>",
     "hostname": "prod-gateway-01",
     "layer": "gateway",
     "services": [{"name":"nginx","port":80,"role":"入口网关"}],
@@ -72,3 +72,56 @@
 ## Mermaid/D2 输出
 - 产品运行时优先输出标准 JSON。
 - 报告导出可追加 Mermaid `graph TD` 或 D2 静态图，但不能替代 JSON。
+
+## FindX Monitoring Core 约束补充
+
+Topo-Architect 在 FindX 主线中负责生成可巡检、可问诊、可挂载 evidence refs 的拓扑 JSON。旧 Catpaw/N9E 数据只作为兼容证据来源；新主线必须优先使用 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`。
+
+### FindX Agent 与 evidence refs
+
+拓扑节点不得把 Agent 当业务节点展示，但可以在节点证据中引用 FindX Agent 状态：
+
+```json
+{
+  "nodes": [{
+    "id": "app-01",
+    "layer": "app",
+    "services": [{"name": "order-api", "port": 8080}],
+    "evidence_refs": [
+      {"type": "target", "target_id": "<TARGET_ID>"},
+      {"type": "findx_agent", "agent_id": "<AGENT_ID>", "heartbeat_status": "online"},
+      {"type": "promql", "query_hash": "<QUERY_HASH>"}
+    ],
+    "compat_sources": []
+  }]
+}
+```
+
+兼容来源必须显式标记：
+
+```json
+{
+  "compat_sources": [
+    {"type": "catpaw", "scope": "legacy_report", "status": "compat_only"},
+    {"type": "n9e", "scope": "legacy_alert", "status": "compat_only"}
+  ]
+}
+```
+
+### 结构化工具白名单
+
+允许工具只包含：
+
+| 工具 | 允许动作 |
+|------|---------|
+| `monitor.targets.read` | 只读 Target 查询 |
+| `monitor.query` | 只读 PromQL 即时查询 |
+| `monitor.labels.read` | 只读 label/label-values 查询 |
+| `findx_agent.status` | 只读 Agent 状态查询 |
+| `topology.validate` | 本地 JSON schema 和拓扑规则校验 |
+
+禁止 raw command、任意 shell、任意 SQL、未授权 HTTP 探测、未登记插件和跨业务范围自动发现。证据不足时必须输出 `unknown` 与 `missing_evidence`，不得把未知伪装为健康。
+
+### 自动修复边界
+
+Topo-Architect 可以标记拓扑风险和建议修复方向，但 `/api/v1/remediation/*` 未实现并 QA PASS 前，不得输出已执行修复、已回滚或已审批。需要自动修复时只输出 plan 草案、precheck 要求、审批要求和 rollback 依赖。

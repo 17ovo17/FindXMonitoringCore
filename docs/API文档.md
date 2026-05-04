@@ -1,4 +1,91 @@
-# AI Workbench API 文档
+# FindX Monitoring Core API 文档
+
+更新时间：2026-05-04 07:30（UTC+8）
+
+本文档的主线是 FindX Monitoring Core。新功能、测试矩阵、运维手册和前端入口必须优先引用 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`；旧 `/api/v1/catpaw/*`、`/api/v1/n9e/*` 只作为兼容入口保留，不再描述为新主线。自动修复 `/api/v1/remediation/*` 目前属于规划待实现接口，未在代码路由中注册前不得写成已实现或 QA PASS。
+
+## FindX 主入口速览
+
+| 域 | 路径 | 状态 | 说明 |
+|----|------|------|------|
+| Monitoring Core 健康 | `GET /api/v1/monitor/health` | 已实现并 QA 回归 | 查询监控核心、默认 datasource 与 Query Gateway 健康 |
+| Datasource | `GET /api/v1/monitor/datasources` | 已实现并 QA 回归 | 当前以 Prometheus 兼容数据源为主 |
+| Query Gateway | `POST /api/v1/monitor/query`、`POST /api/v1/monitor/query-range` | 已实现并 QA 回归 | 即时/区间 PromQL 查询；上游失败应返回 503 |
+| 指标元数据 | `GET /api/v1/monitor/metrics`、`GET /api/v1/monitor/labels`、`GET /api/v1/monitor/label-values` | 已实现并 QA 回归 | 大基数候选必须有截断语义或等价风险记录 |
+| Target | `/api/v1/monitor/targets` | 已实现并 QA 回归 | 被监控对象登记、读取、更新、删除 |
+| Alert Rule | `/api/v1/monitor/alert-rules` | 已实现并 QA 回归 | 规则 CRUD、启停、克隆、试运行、回滚 |
+| Event | `/api/v1/monitor/events/current`、`/api/v1/monitor/events/history`、`/api/v1/monitor/events/:id/*` | 已实现并 QA 回归 | 当前/历史事件与 ack/assign/resolve/archive |
+| FindX Agents | `/api/v1/findx-agents`、`/api/v1/findx-agents/register`、`/api/v1/findx-agents/heartbeat` | 基础契约已落地 | Agent 注册、心跳、列表；深度巡检/安装发行仍属 P2 |
+| Remediation | `/api/v1/remediation/*` | 规划待实现 | plan/approve/execute/verify/rollback/audit 未注册前不得调用 |
+
+## 认证、脱敏与错误模型
+
+| 类型 | 约定 |
+|------|------|
+| 读接口 | 使用登录态 `Authorization: Bearer <TOKEN>`，未认证返回 401/403 |
+| 写接口 | 需要管理员权限，使用管理员登录态或 `X-Admin-Token: <TOKEN>` |
+| Agent 上报 | 使用 Agent token 或服务端约定认证，占位统一写 `<TOKEN>` |
+| 敏感值 | 文档和示例只能使用 `<TOKEN>`、`<API_KEY>`、`<DB_DSN>`、`<BASE_URL>`、`<LOGIN_USER>`、`<SSH_KEY>` |
+| 错误码 | 400 参数/PromQL 错误；401/403 认证权限错误；503 外部依赖不可用；500 内部错误 |
+
+## `/api/v1/monitor/*` 主入口
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/monitor/health` | 查询监控核心健康状态 | 登录态 |
+| GET | `/api/v1/monitor/datasources` | 列出监控数据源 | 登录态 |
+| POST | `/api/v1/monitor/query` | 执行即时 PromQL 查询 | 登录态 |
+| POST | `/api/v1/monitor/query-range` | 执行区间 PromQL 查询 | 登录态 |
+| GET | `/api/v1/monitor/metrics` | 查询指标名列表 | 登录态 |
+| GET | `/api/v1/monitor/labels` | 查询 label 名称列表 | 登录态 |
+| GET | `/api/v1/monitor/label-values` | 查询指定 label 的候选值 | 登录态 |
+| GET | `/api/v1/monitor/targets` | 获取 Target 列表 | 登录态 |
+| POST | `/api/v1/monitor/targets` | 新增或保存 Target | 管理员 |
+| GET | `/api/v1/monitor/targets/:id` | 获取 Target 详情 | 登录态 |
+| PUT | `/api/v1/monitor/targets/:id` | 更新 Target | 管理员 |
+| DELETE | `/api/v1/monitor/targets/:id` | 删除 Target | 管理员 |
+| GET | `/api/v1/monitor/alert-rules` | 获取告警规则列表 | 登录态 |
+| POST | `/api/v1/monitor/alert-rules` | 创建告警规则 | 管理员 |
+| GET | `/api/v1/monitor/alert-rules/:id` | 获取规则详情 | 登录态 |
+| PUT | `/api/v1/monitor/alert-rules/:id` | 更新规则 | 管理员 |
+| DELETE | `/api/v1/monitor/alert-rules/:id` | 删除规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/enable` | 启用规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/disable` | 禁用规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/clone` | 克隆规则 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/tryrun` | 试运行规则，不创建正式事件 | 管理员 |
+| POST | `/api/v1/monitor/alert-rules/:id/rollback` | 回滚规则版本 | 管理员 |
+| GET | `/api/v1/monitor/events/current` | 查询当前活跃事件 | 登录态 |
+| GET | `/api/v1/monitor/events/history` | 查询历史事件 | 登录态 |
+| GET | `/api/v1/monitor/events/:id` | 查询事件详情 | 登录态 |
+| POST | `/api/v1/monitor/events/:id/ack` | 确认事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/assign` | 分派事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/resolve` | 解决事件 | 管理员 |
+| POST | `/api/v1/monitor/events/:id/archive` | 归档事件 | 管理员 |
+
+Query Gateway 不得返回真实认证信息、完整 `<DB_DSN>`、Cookie 或平台内部连接串。非法 PromQL、非法时间范围和上游不可达必须向调用方返回可理解错误，Workflow/AI 调用方不得吞掉 400/503 后生成伪证据。
+
+## `/api/v1/findx-agents/*` 主入口
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/findx-agents` | 获取 FindX Agent 列表和心跳状态 | 登录态 |
+| POST | `/api/v1/findx-agents/register` | Agent 注册 | Agent token 或服务端约定 |
+| POST | `/api/v1/findx-agents/heartbeat` | Agent 心跳 | Agent token 或服务端约定 |
+
+## 兼容入口
+
+| 兼容入口 | 当前用途 | 新主入口 |
+|---------|---------|---------|
+| `/api/v1/catpaw/heartbeat` | 旧 Catpaw 探针心跳 | `/api/v1/findx-agents/heartbeat` |
+| `/api/v1/catpaw/report` | 旧 Catpaw 巡检报告 | FindX Agent 后续独立证据上报契约 |
+| `/api/v1/catpaw/agents` | 旧 Catpaw Agent 列表 | `/api/v1/findx-agents` |
+| `/api/v1/catpaw/chat-ws` | 旧 Catpaw 会话 | 未来 Remediation/结构化工具链 |
+| `/api/v1/n9e/agents` | N9E Agent 兼容查询 | `/api/v1/findx-agents` |
+| `/api/v1/n9e/alerts` | N9E 告警兼容查询 | `/api/v1/monitor/events/*` |
+
+以下历史 API 清单保留用于回归和迁移核对。
+
+# AI Workbench 历史 API 文档
 
 更新时间：2026-05-03 14:36（UTC+8）
 
