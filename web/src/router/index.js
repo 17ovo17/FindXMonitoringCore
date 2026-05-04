@@ -10,6 +10,7 @@ const router = createRouter({
     { path: '/knowledge', component: () => import('../views/KnowledgeCenter.vue') },
     { path: '/workflows', component: () => import('../views/WorkflowHub.vue') },
     { path: '/alerts', component: () => import('../views/Alerts.vue') },
+    { path: '/monitor', component: () => import('../views/monitoring/MonitorWorkbench.vue') },
     { path: '/topology', component: () => import('../views/TopologyHub.vue') },
     { path: '/settings/ai', component: () => import('../views/AIConfig.vue') },
     { path: '/settings', component: () => import('../views/SystemSettings.vue') },
