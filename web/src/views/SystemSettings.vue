@@ -1,79 +1,73 @@
 <template>
   <div class="sys-page">
-    <div class="page-head glass-panel">
+    <section class="page-head">
       <div>
-        <div class="panel-kicker">System Settings</div>
+        <div class="panel-kicker">Platform Governance</div>
         <h2>系统配置</h2>
-        <p class="page-desc">数据源、指标映射、凭证、常用地址、健康审计与值班通知</p>
+        <p class="page-desc">
+          平台系统配置页保留治理说明和入口指引；已拆分到一级导航的能力不在这里重复承载。
+        </p>
       </div>
-    </div>
+    </section>
 
-    <div class="tabs-wrap glass-panel">
-      <el-tabs v-model="activeTab" class="sys-tabs">
-        <el-tab-pane label="数据源" name="datasource">
-          <DataSourceView />
-        </el-tab-pane>
-        <el-tab-pane label="指标映射" name="metrics">
-          <MetricsMappingView />
-        </el-tab-pane>
-        <el-tab-pane label="常用地址" name="profiles">
-          <UserProfilesView />
-        </el-tab-pane>
-        <el-tab-pane label="凭证管理" name="credentials">
-          <CredentialsView />
-        </el-tab-pane>
-        <el-tab-pane label="健康审计" name="health-audit">
-          <HealthAuditView />
-        </el-tab-pane>
-        <el-tab-pane label="值班通知" name="oncall">
-          <OnCallView />
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+    <section class="settings-guide">
+      <div v-for="item in guideItems" :key="item.key" class="guide-item">
+        <div>
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.desc }}</p>
+        </div>
+        <el-button text type="primary" @click="router.push(item.to)">前往</el-button>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, defineAsyncComponent, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 
-const route = useRoute()
-const validTabs = new Set(['datasource', 'metrics', 'profiles', 'credentials', 'health-audit', 'oncall'])
-const activeTab = ref(validTabs.has(route.query.tab) ? route.query.tab : 'datasource')
+const router = useRouter()
 
-watch(() => route.query.tab, value => {
-  if (validTabs.has(value)) activeTab.value = value
-})
-
-const DataSourceView = defineAsyncComponent(() =>
-  import('./DataSource.vue')
-)
-const MetricsMappingView = defineAsyncComponent(() =>
-  import('./MetricsMapping.vue')
-)
-const UserProfilesView = defineAsyncComponent(() =>
-  import('./UserProfiles.vue')
-)
-const CredentialsView = defineAsyncComponent(() =>
-  import('./CredentialsPanel.vue')
-)
-const HealthAuditView = defineAsyncComponent(() =>
-  import('./HealthAuditPanel.vue')
-)
-const OnCallView = defineAsyncComponent(() =>
-  import('./OnCallConfig.vue')
-)
+const guideItems = [
+  {
+    key: 'datasources',
+    title: '数据源与查询',
+    desc: '数据源、指标查询和指标映射已归属数据查询导航。',
+    to: { path: '/query', query: { section: 'datasources' } },
+  },
+  {
+    key: 'credentials',
+    title: '凭证资产',
+    desc: '凭证资产已归属基础设施导航，系统配置页不重复展示敏感配置入口。',
+    to: { path: '/assets', query: { section: 'credentials' } },
+  },
+  {
+    key: 'self-check',
+    title: '平台运行自检',
+    desc: '平台自身依赖和治理链路自检已归属平台治理导航。',
+    to: { path: '/platform', query: { section: 'health' } },
+  },
+  {
+    key: 'notifications',
+    title: '通知策略',
+    desc: '通知媒介、模板、记录和全局参数已归属通知导航。',
+    to: { path: '/notifications', query: { section: 'rules' } },
+  },
+]
 </script>
 
 <style scoped>
 .sys-page { padding: 28px 32px; height: 100%; color: #243553; display: flex; flex-direction: column; gap: 18px; }
-.glass-panel { background: linear-gradient(145deg, rgba(255,255,255,.58), rgba(225,236,255,.42)); border: 1px solid rgba(255,255,255,.72); border-radius: 24px; box-shadow: 0 20px 54px rgba(63,100,160,.16), inset 0 1px 0 rgba(255,255,255,.78); backdrop-filter: blur(24px); }
+.page-head, .settings-guide { background: rgba(255,255,255,.86); border: 1px solid #e4e9f2; border-radius: 8px; box-shadow: 0 12px 34px rgba(31,45,61,.06); }
 .page-head { padding: 20px 26px; }
-.page-head h2 { margin: 6px 0 4px; font-size: 26px; letter-spacing: -.03em; color: #263653; }
-.page-desc { font-size: 13px; color: var(--muted); }
-.panel-kicker { font-size: 12px; color: #247cff; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
-.tabs-wrap { padding: 16px 20px 8px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-:deep(.el-tabs) { display: flex; flex-direction: column; height: 100%; }
-:deep(.el-tabs__content) { flex: 1; min-height: 0; overflow-y: auto; }
-.sys-tabs :deep(.el-tabs__header) { margin-bottom: 16px; }
+.page-head h2 { margin: 6px 0 4px; font-size: 26px; color: #263653; }
+.page-desc { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.panel-kicker { font-size: 12px; color: #247cff; text-transform: uppercase; font-weight: 800; }
+.settings-guide { padding: 8px; display: grid; gap: 8px; }
+.guide-item { min-height: 86px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 1px solid #edf1f7; border-radius: 8px; background: #f8fbff; }
+.guide-item h3 { margin: 0 0 6px; color: #1e3a5f; font-size: 16px; }
+.guide-item p { margin: 0; color: #60728e; font-size: 13px; line-height: 1.6; }
+@media (max-width: 760px) {
+  .sys-page { padding: 18px; }
+  .guide-item { align-items: flex-start; flex-direction: column; }
+}
 </style>

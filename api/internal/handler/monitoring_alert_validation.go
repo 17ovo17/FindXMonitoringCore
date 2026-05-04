@@ -81,7 +81,13 @@ func storeMonitorQueryHash(query string) string {
 	return monitoring.QueryHash(query)
 }
 
-func requestActor(c interface{ GetHeader(string) string }) string {
+func requestActor(c interface {
+	GetHeader(string) string
+	GetString(string) string
+}) string {
+	if username := strings.TrimSpace(c.GetString("username")); username != "" {
+		return username
+	}
 	if actor := strings.TrimSpace(c.GetHeader("X-Admin-Token")); actor != "" {
 		return "admin-token"
 	}
