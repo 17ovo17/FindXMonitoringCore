@@ -4,13 +4,22 @@
       <router-view />
     </template>
     <template v-else>
-      <aside class="platform-sidebar">
+      <aside class="platform-sidebar" :class="{ collapsed: isSidebarCollapsed }">
         <div class="brand-block">
           <div class="brand-mark">FX</div>
           <div class="brand-copy">
             <div class="brand-name">FindX</div>
             <div class="brand-subtitle">智能运维平台</div>
           </div>
+          <button
+            class="sidebar-toggle"
+            type="button"
+            :title="isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+            :aria-label="isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+            @click="toggleSidebar"
+          >
+            <el-icon><component :is="isSidebarCollapsed ? 'Expand' : 'Fold'" /></el-icon>
+          </button>
         </div>
 
         <div class="quick-jump">
@@ -32,13 +41,14 @@
               :to="group.to"
               class="menu-parent"
               :class="{ active: isGroupActive(group) }"
-              @click.prevent="toggleGroup(group)"
+              :title="isSidebarCollapsed ? group.label : ''"
+              @click="toggleGroup($event, group)"
             >
               <el-icon><component :is="group.icon" /></el-icon>
-              <span>{{ group.label }}</span>
+              <span class="menu-label">{{ group.label }}</span>
               <el-icon class="chevron" :class="{ open: openKeys.includes(group.key) }"><ArrowDown /></el-icon>
             </router-link>
-            <div v-show="openKeys.includes(group.key)" class="submenu">
+            <div v-show="!isSidebarCollapsed && openKeys.includes(group.key)" class="submenu">
               <router-link
                 v-for="item in group.children"
                 :key="`${group.key}-${item.section}`"
@@ -97,22 +107,31 @@ const router = useRouter()
 const theme = ref(localStorage.getItem('aiw-theme') || 'light')
 const quickValue = ref('')
 const openKeys = ref(navGroups.map(group => group.key))
+const isSidebarCollapsed = ref(false)
 const isAuthPage = computed(() => route.path === '/login' || route.path === '/settings/change-password')
 
 const activeNav = computed(() => findNavByRoute(route))
 const activeGroup = computed(() => activeNav.value.group)
 const activeChild = computed(() => activeNav.value.child)
-const currentUser = computed(() => {
-  try { return JSON.parse(localStorage.getItem('aiw-user') || '{}') } catch { return {} }
-})
+const currentUser = computed(() => { try { return JSON.parse(localStorage.getItem('aiw-user') || '{}') } catch { return {} } })
 const userInitial = computed(() => String(currentUser.value.username || '用').slice(0, 1).toUpperCase())
 
 const isGroupActive = group => route.path === group.path || route.path.startsWith(`${group.path}/`)
 const isChildActive = (group, section) => isGroupActive(group) && String(route.query.section || group.defaultSection) === section
 
-const toggleGroup = group => {
-  if (!openKeys.value.includes(group.key)) openKeys.value = [...openKeys.value, group.key]
+const toggleGroup = (event, group) => {
+  if (isSidebarCollapsed.value) return
+  event?.preventDefault()
+  if (openKeys.value.includes(group.key)) {
+    openKeys.value = openKeys.value.filter(key => key !== group.key)
+  } else {
+    openKeys.value = [...openKeys.value, group.key]
+  }
   router.push(group.to)
+}
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
 }
 
 const handleLogout = () => {
@@ -169,6 +188,10 @@ body {
 .platform-sidebar {
   width: 248px; flex: 0 0 248px; display: flex; flex-direction: column; min-height: 0;
   background: var(--fx-sidebar); border-right: 1px solid var(--fx-border);
+  transition: width .18s ease, flex-basis .18s ease;
+}
+.platform-sidebar.collapsed {
+  width: 78px; flex-basis: 78px;
 }
 .brand-block {
   height: 66px; display: flex; align-items: center; gap: 12px; padding: 0 18px;
@@ -181,6 +204,21 @@ body {
 }
 .brand-name { color: var(--fx-ink); font-size: 17px; font-weight: 800; line-height: 1; }
 .brand-subtitle { margin-top: 5px; color: var(--fx-muted); font-size: 12px; }
+.sidebar-toggle {
+  width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; margin-left: auto;
+  border: 1px solid rgba(23, 105, 255, .2); border-radius: 8px; color: var(--fx-blue);
+  background: var(--fx-blue-soft); cursor: pointer;
+}
+.sidebar-toggle:hover { border-color: rgba(23, 105, 255, .34); background: rgba(23, 105, 255, .12); }
+.platform-sidebar.collapsed .brand-block {
+  height: 82px; flex-direction: column; justify-content: center; gap: 8px; padding: 8px 0;
+}
+.platform-sidebar.collapsed .brand-copy,
+.platform-sidebar.collapsed .quick-jump,
+.platform-sidebar.collapsed .menu-label,
+.platform-sidebar.collapsed .submenu,
+.platform-sidebar.collapsed .chevron { display: none; }
+.platform-sidebar.collapsed .sidebar-toggle { margin-left: 0; }
 .quick-jump { padding: 10px 10px 8px; border-bottom: 1px solid var(--fx-border); }
 .quick-title { margin: 0 0 6px 2px; color: var(--fx-muted); font-size: 12px; font-weight: 800; }
 .quick-jump .el-select__wrapper {
@@ -193,6 +231,8 @@ body {
   height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 12px; border-radius: 8px;
   color: var(--fx-ink); text-decoration: none; font-size: 14px; font-weight: 800;
 }
+.platform-sidebar.collapsed .menu-scroll { padding: 12px 10px; }
+.platform-sidebar.collapsed .menu-parent { justify-content: center; padding: 0; }
 .menu-parent .el-icon { width: 18px; font-size: 18px; color: #7890b2; }
 .menu-parent:hover, .menu-parent.active { color: var(--fx-blue); background: var(--fx-blue-soft); }
 .menu-parent.active .el-icon { color: var(--fx-blue); }
@@ -203,9 +243,8 @@ body {
   height: 30px; display: flex; align-items: center; padding: 0 10px; border-radius: 7px;
   color: var(--fx-muted); text-decoration: none; font-size: 13px; font-weight: 700;
 }
-.submenu-item:hover, .submenu-item.active, .submenu-item.router-link-active {
-  color: var(--fx-blue); background: rgba(23, 105, 255, .09);
-}
+.submenu-item:hover { color: var(--fx-blue); background: rgba(23, 105, 255, .06); }
+.submenu-item.active { color: var(--fx-blue); background: rgba(23, 105, 255, .09); }
 .platform-workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .workspace-header {
   height: 66px; flex: 0 0 66px; display: flex; align-items: center; justify-content: space-between;
@@ -246,8 +285,9 @@ body {
 .el-input__wrapper, .el-textarea__inner, .el-select__wrapper { border-radius: 8px !important; }
 @media (max-width: 1024px) {
   .platform-sidebar { width: 78px; flex-basis: 78px; }
-  .brand-block { justify-content: center; padding: 0; }
-  .brand-copy, .quick-jump, .menu-parent span, .submenu, .chevron { display: none; }
+  .brand-block { height: 82px; flex-direction: column; justify-content: center; gap: 8px; padding: 8px 0; }
+  .brand-copy, .quick-jump, .menu-label, .submenu, .chevron { display: none; }
+  .sidebar-toggle { margin-left: 0; }
   .menu-parent { justify-content: center; padding: 0; }
   .workspace-header { padding: 0 16px; }
 }
