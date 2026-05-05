@@ -154,8 +154,8 @@ web/src/
 
 P0 前端重构和验收必须遵守以下导航归属规则：
 
-- 图表分享不是独立侧边栏入口，归入仪表盘列表、详情或模板中的分享动作。
-- 聚合视图不是独立侧边栏入口，归入事件中心的聚合总览能力。
+- 图表的分享能力不是独立侧边栏入口，归入仪表盘列表、详情或模板中的分享动作。
+- 事件聚合能力不是独立侧边栏入口，归入事件中心的聚合总览能力。
 - 事件流水线不是独立侧边栏入口，归入告警规则或事件中心的事件处理与路由规则配置。
 - 接入任务不是独立侧边栏入口，归入探针与采集页内的安装任务、接入记录、远程安装和本机安装指令。
 - 指标映射不是独立侧边栏入口，归入 AI SRE / 知识库的指标语义、指标字典、指标知识；数据源页只做引用或跳转。
@@ -164,7 +164,7 @@ P0 前端重构和验收必须遵守以下导航归属规则：
 - 通知配置如只是系统配置型入口，不做常驻侧边栏入口，归入平台治理或通知规则页面内配置。
 - 操作权限不是独立侧边栏入口，归入角色管理页面内的权限矩阵、资源范围和操作授权配置。
 
-最终侧边栏不应出现以下独立项：接入任务、指标映射、图表分享、记录规则、聚合视图、告警订阅、事件流水线、通知配置、操作权限。对应功能归属保持为：接入任务归探针与采集；指标映射归知识库指标语义和指标字典；图表分享归仪表盘详情动作；记录规则归告警规则模板或高级配置；聚合视图归事件中心；告警订阅归通知规则或事件关注；事件流水线归告警规则或事件处理规则；通知配置归通知规则或平台治理配置；操作权限归角色管理。
+最终侧边栏不应出现以下独立项：接入任务、指标映射、图表的分享入口、记录规则、事件聚合入口、告警订阅、事件流水线、通知配置、操作权限。对应功能归属保持为：接入任务归探针与采集；指标映射归知识库指标语义和指标字典；图表的分享动作归仪表盘详情动作；记录规则归告警规则模板或高级配置；事件聚合能力归事件中心；告警订阅归通知规则或事件关注；事件流水线归告警规则或事件处理规则；通知配置归通知规则或平台治理配置；操作权限归角色管理。
 
 该门禁只收敛导航入口，不改变 P0-Gate 闭环、P0-T1 准入、健康检查归 AI SRE、findx-agents 作为采集器与主机接入控制面的定位。
 
@@ -193,7 +193,7 @@ findx-agents 控制面
 ### 3.4 敏感信息边界
 
 - 示例不得写真实密钥、Cookie、Token、DSN、SSH 私钥或完整连接串。
-- 示例统一使用 `<TOKEN>`、`<API_KEY>`、`<DB_DSN>`、`<LOGIN_USER>`、`<SSH_KEY_REF>` 等占位符。
+- 认证、密钥、凭证类示例统一只使用 `<TOKEN>` 占位符。
 - 凭证只允许以引用方式出现在任务、审计和配置中，不展示明文。
 - 远程执行、调试、自升级、自动修复、通知测试必须记录审计日志并脱敏输出。
 
@@ -274,9 +274,15 @@ PUT    /api/v1/host-assets/:id/workspace
 
 ### P0-T3：监控仪表盘
 
-**场景**：创建、查看、编辑、克隆监控仪表盘，支撑日常巡检和资产总览。
+**场景**：创建、查看、编辑、删除、克隆监控仪表盘，支撑日常巡检视图编排。监控仪表盘不等于运维总览或资产大盘，资产汇总继续归入资产总览。
 
-**建议 API**：
+**当前代码核对状态（2026-05-05 16:20 UTC+8）**：后端真实路由已注册 `/api/v1/monitor/dashboards` 路由组，覆盖列表、创建、详情、更新、删除、克隆和分享动作；模型、存储和表初始化已出现对应实现。本节状态更新为“代码已落地，待主代理验收”，不得写成最终 PASS、已验证或 QA PASS。
+
+**契约标记**：`API_CONTRACT_CHANGE`：新增监控仪表盘 API 组。`DATA_CHANGE`：新增 `monitor_dashboards` 表，字段包括 `id`、`title`、`description`、`workspace_id`、`resource_group_id`、`tags`、`variables`、`panels`、`version`、`status`、`shared`、`share_token_hash`、`created_by`、`updated_by`、`created_at`、`updated_at`；索引包括 `workspace_id`、`resource_group_id`、`status`、`updated_at`。回滚和迁移策略仍需主代理结合数据库状态验收。
+
+**命名边界**：用户侧主入口统一为 **监控仪表盘**。Dashboard 不等于运维总览或资产大盘；资产汇总归入资产总览，旧 `/api/v1/dashboard/summary` 不代表 P0-T3 监控仪表盘 CRUD 能力。
+
+**已落地 API（待主代理验收）**：
 
 ```text
 GET    /api/v1/monitor/dashboards
@@ -287,6 +293,8 @@ DELETE /api/v1/monitor/dashboards/:id
 POST   /api/v1/monitor/dashboards/:id/clone
 POST   /api/v1/monitor/dashboards/:id/share
 ```
+
+仪表盘接口使用 `monitorRequired("monitor.dashboard", action)` / `RequireMonitorPermission("monitor.dashboard", action)` 风格的监控权限矩阵。权限动作包括 `read`、`create`、`update`、`delete`、`clone`、`share`；普通 user 仅允许 `read`，admin 允许全部动作。分享动作只返回 `id`、`share_enabled`、`share_summary`，不返回 `share_token_set`、明文 token、hash 或 URL。
 
 **配置示例**：
 
@@ -305,16 +313,38 @@ POST   /api/v1/monitor/dashboards/:id/share
       "position": { "x": 0, "y": 0, "w": 12, "h": 8 }
     }
   ],
-  "variables": [],
-  "time_range": { "from": "now-1h", "to": "now" }
+  "variables": {},
+  "status": "active"
 }
 ```
 
-**验收**：
+**请求与响应字段**：
 
-- 创建、编辑、删除、克隆、查看均可用。
-- 查询失败时展示用户可理解错误，不暴露内部路径、SQL、完整连接串。
+- 请求字段：客户端可写字段仅包括 `title`、`description`、`workspace_id`、`resource_group_id`、`tags`、`variables`、`panels`、`status`；客户端传入 `shared`、`share_token_set`、`share_summary`、`created_by`、`updated_by` 会被后端忽略。
+- `title` 必填且最长 120 字符；`description`、`workspace_id`、`resource_group_id`、`tags`、`variables`、`panels`、`status` 可选。
+- `status` 允许 `active`、`draft`、`archived`，为空时默认为 `active`。
+- `variables` 非空时必须是 JSON 对象；`panels` 非空时必须是 JSON 数组。
+- 响应字段：`id`、`title`、`description`、`workspace_id`、`resource_group_id`、`tags`、`variables`、`panels`、`version`、`status`、`shared`、`share_token_set`、`share_summary`、`created_by`、`updated_by`、`created_at`、`updated_at`。
+- PUT 更新指定监控仪表盘时，目标不存在返回 404，不执行 upsert。
+- 克隆标题追加中文 `副本`，不复制分享状态。
+- 删除响应 `{"ok": true}`；分享响应仅包含 `id`、`share_enabled`、`share_summary`。
+
+**错误与安全边界**：
+
+- 400：JSON 无法解析、标题为空、标题超长、状态非法、变量或面板 JSON 类型错误。
+- 401/403：未登录、登录态无效或普通 user 执行 `create`、`update`、`delete`、`clone`、`share` 动作。
+- 404：指定监控仪表盘不存在。
+- 500：列表、详情、保存、删除、克隆或分享过程中的内部错误。
+- 响应会递归脱敏 `variables` 和 `panels` 内的 token、cookie、dsn、password、secret、api_key、apikey、authorization 等敏感语义；含敏感查询参数或疑似携带凭据的 URL 字符串会返回 `REDACTED_URL`。
+
+**验收状态**：
+
+- 后端代码已落地，等待主代理执行 WSL 构建、API 正常/异常/权限验证和 QA 回归。
+- 创建、编辑、删除、克隆、查看和分享需由主代理验收后才能写 PASS。
+- 查询失败时展示用户可理解错误，不暴露内部路径、SQL、完整连接串、真实密钥、Cookie、DSN 或 SSH 私钥。
 - 仪表盘可绑定业务空间和资源组。
+- API 文档必须以后端真实 handler、store、model 和前端 API 封装为准；字段未确认时不得扩写为已实现能力。
+- 分享能力只能作为监控仪表盘详情或动作能力承载，不作为独立导航主入口。
 
 ### P0-T4：内置监控仪表盘模板
 
@@ -385,7 +415,7 @@ POST   /api/v1/notifications/channels/:id/test
 
 - 渠道创建、编辑、禁用、删除可用。
 - `token`、`secret`、`password`、`webhook` 等字段脱敏返回。
-- 示例只使用 `<TOKEN>`、`<API_KEY>`。
+- 认证、密钥、凭证类示例只使用 `<TOKEN>`。
 
 ### P1-T2：消息模板
 
@@ -770,7 +800,7 @@ GET    /api/v1/findx-agents/config-runs/:run_id
 
 - 配置变更可比较、可发布、可回滚。
 - 发布失败不影响上一版本采集。
-- 凭证只以 `<SSH_KEY_REF>` 或内部凭证引用出现。
+- 凭证只以内部凭证引用出现，示例占位只使用 `<TOKEN>`。
 - 配置 diff 脱敏展示。
 
 ### P3-T5：远程安装与本机安装指令
@@ -1441,7 +1471,7 @@ POST /api/v1/aiops/postmortems/:id/publish
 
 ## 敏感信息规则
 - 不写真实密钥、Cookie、Token、DSN、SSH 私钥。
-- 示例统一使用 <TOKEN>、<API_KEY>、<DB_DSN>、<LOGIN_USER>、<SSH_KEY_REF>。
+- 认证、密钥、凭证类示例统一只使用 <TOKEN>。
 
 ## 验收标准
 1. 构建或文档验证通过。

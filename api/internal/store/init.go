@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"ai-workbench-api/internal/model"
@@ -20,34 +21,35 @@ import (
 )
 
 var (
-	mu                 sync.RWMutex
-	records            []*model.DiagnoseRecord
-	agents             = map[string]*model.CatpawAgent{}
-	credentials        = map[string]*model.Credential{}
-	alerts             []*model.AlertRecord
-	chatSessions       = map[string]*model.ChatSession{}
-	chatMessages       = map[string][]model.ChatMessage{}
-	topologyNodes      = map[string]*model.TopologyNode{}
-	topologyEdges      = map[string]*model.TopologyEdge{}
-	topologyBusinesses = map[string]*model.TopologyBusiness{}
-	diagnosisCases     = map[string]*model.DiagnosisCase{}
-	metricsMappings    = map[string]*model.MetricsMapping{}
-	monitorTargets     = map[string]*model.MonitorTarget{}
-	findxAgents        = map[string]*model.FindXAgent{}
-	monitorAlertRules  = map[string]*model.MonitorAlertRule{}
-	monitorRuleVersions = map[string][]model.MonitorAlertRuleVersion{}
+	mu                   sync.RWMutex
+	records              []*model.DiagnoseRecord
+	agents               = map[string]*model.CatpawAgent{}
+	credentials          = map[string]*model.Credential{}
+	alerts               []*model.AlertRecord
+	chatSessions         = map[string]*model.ChatSession{}
+	chatMessages         = map[string][]model.ChatMessage{}
+	topologyNodes        = map[string]*model.TopologyNode{}
+	topologyEdges        = map[string]*model.TopologyEdge{}
+	topologyBusinesses   = map[string]*model.TopologyBusiness{}
+	diagnosisCases       = map[string]*model.DiagnosisCase{}
+	metricsMappings      = map[string]*model.MetricsMapping{}
+	monitorTargets       = map[string]*model.MonitorTarget{}
+	findxAgents          = map[string]*model.FindXAgent{}
+	monitorDashboards    = map[string]*model.MonitorDashboard{}
+	monitorAlertRules    = map[string]*model.MonitorAlertRule{}
+	monitorRuleVersions  = map[string][]model.MonitorAlertRuleVersion{}
 	monitorEventsCurrent = map[string]*model.MonitorAlertEvent{}
 	monitorEventsHistory = map[string]*model.MonitorAlertEvent{}
-	monitorEventActions = map[string][]model.MonitorAlertAction{}
-	runbooks           = map[string]*model.Runbook{}
-	runbookExecs       = map[string]*model.RunbookExecution{}
-	diagnosisFeedbacks []*model.DiagnosisFeedback
-	aiSettings         = map[string]*model.AISetting{}
-	knowledgeDocs      = map[string]*model.KnowledgeDocument{}
-	searchEvents       []*model.KnowledgeSearchEvent
-	searchBadcases     []*model.KnowledgeSearchBadcase
-	auditEvents        []AuditEvent
-	maxRecs            = 100
+	monitorEventActions  = map[string][]model.MonitorAlertAction{}
+	runbooks             = map[string]*model.Runbook{}
+	runbookExecs         = map[string]*model.RunbookExecution{}
+	diagnosisFeedbacks   []*model.DiagnosisFeedback
+	aiSettings           = map[string]*model.AISetting{}
+	knowledgeDocs        = map[string]*model.KnowledgeDocument{}
+	searchEvents         []*model.KnowledgeSearchEvent
+	searchBadcases       []*model.KnowledgeSearchBadcase
+	auditEvents          []AuditEvent
+	maxRecs              = 100
 
 	db          *sql.DB
 	redisClient *redis.Client
@@ -55,6 +57,13 @@ var (
 	redisOK     bool
 	lastDBError string
 )
+
+const (
+	newIDNumberBase = 10
+	newIDSeparator  = "-"
+)
+
+var newIDSequence uint64
 
 // AuditEvent represents an audit log entry.
 type AuditEvent struct {
@@ -176,7 +185,9 @@ func Health() map[string]any {
 func initMySQL() {
 	dsn := strings.TrimSpace(viper.GetString("mysql.dsn"))
 	if dsn == "" {
-		dsn = "root:root@tcp(127.0.0.1:3306)/ai_workbench?charset=utf8mb4&parseTime=true&loc=Local"
+		lastDBError = "mysql.dsn is empty"
+		logrus.Warn("mysql not configured, using memory store")
+		return
 	}
 	conn, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -207,7 +218,8 @@ func initMySQL() {
 func initRedis() {
 	addr := strings.TrimSpace(viper.GetString("redis.addr"))
 	if addr == "" {
-		addr = "127.0.0.1:6379"
+		logrus.Warn("redis not configured, using mysql/memory for online state")
+		return
 	}
 	client := redis.NewClient(&redis.Options{Addr: addr, Password: viper.GetString("redis.password"), DB: viper.GetInt("redis.db")})
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -253,6 +265,7 @@ var createTableStatements = []string{
 	`CREATE TABLE IF NOT EXISTS metrics_mappings (id VARCHAR(64) PRIMARY KEY,datasource_id VARCHAR(64) NOT NULL COMMENT '关联数据源',raw_name VARCHAR(255) NOT NULL COMMENT '原始指标名',standard_name VARCHAR(255) COMMENT '标准名',exporter VARCHAR(64) COMMENT '来源exporter',description VARCHAR(500) COMMENT '中文描述',transform VARCHAR(500) COMMENT 'PromQL转换公式',status ENUM('auto','confirmed','custom','unmapped') DEFAULT 'unmapped',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,UNIQUE KEY uniq_ds_raw(datasource_id,raw_name),INDEX idx_mapping_standard(standard_name),INDEX idx_mapping_status(status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	`CREATE TABLE IF NOT EXISTS monitor_targets (id VARCHAR(64) PRIMARY KEY,ident VARCHAR(255) UNIQUE NOT NULL,name VARCHAR(255),ip VARCHAR(64),hostname VARCHAR(255),os VARCHAR(64),arch VARCHAR(64),environment VARCHAR(64),business_group VARCHAR(128),owner VARCHAR(128),status VARCHAR(32),source VARCHAR(64),labels JSON,metadata JSON,last_seen DATETIME NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,INDEX idx_monitor_target_ip(ip),INDEX idx_monitor_target_status(status),INDEX idx_monitor_target_bg(business_group)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	`CREATE TABLE IF NOT EXISTS findx_agents (id VARCHAR(64) PRIMARY KEY,ident VARCHAR(255) UNIQUE NOT NULL,target_id VARCHAR(64),ip VARCHAR(64),hostname VARCHAR(255),os VARCHAR(64),arch VARCHAR(64),version VARCHAR(128),collector VARCHAR(64),status VARCHAR(32),capabilities JSON,global_labels JSON,config_version VARCHAR(128),last_seen DATETIME NOT NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,INDEX idx_findx_agent_ip(ip),INDEX idx_findx_agent_status(status),INDEX idx_findx_agent_target(target_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+	`CREATE TABLE IF NOT EXISTS monitor_dashboards (id VARCHAR(64) PRIMARY KEY,title VARCHAR(255) NOT NULL,description TEXT,workspace_id VARCHAR(64),resource_group_id VARCHAR(64),tags JSON,variables JSON,panels JSON,version INT NOT NULL DEFAULT 1,status VARCHAR(32),shared TINYINT(1) DEFAULT 0,share_token_hash VARCHAR(128),created_by VARCHAR(128),updated_by VARCHAR(128),created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,INDEX idx_md_workspace(workspace_id),INDEX idx_md_resource_group(resource_group_id),INDEX idx_md_status(status),INDEX idx_md_updated(updated_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	`CREATE TABLE IF NOT EXISTS resource_groups (id VARCHAR(64) PRIMARY KEY,name VARCHAR(255) NOT NULL,description TEXT,workspace_id VARCHAR(64),parent_id VARCHAR(64),status VARCHAR(32),tags JSON,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,INDEX idx_rg_workspace_status(workspace_id,status),INDEX idx_rg_status(status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	`CREATE TABLE IF NOT EXISTS monitor_alert_rules (id VARCHAR(64) PRIMARY KEY,name VARCHAR(255) NOT NULL,query LONGTEXT NOT NULL,severity VARCHAR(32) NOT NULL,datasource_id VARCHAR(64) NOT NULL,target_selector JSON,labels JSON,annotations JSON,enabled TINYINT(1) DEFAULT 1,version INT NOT NULL DEFAULT 1,for_duration VARCHAR(64),no_data_policy VARCHAR(32),status VARCHAR(32),created_by VARCHAR(128),updated_by VARCHAR(128),created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,INDEX idx_mar_ds(datasource_id),INDEX idx_mar_status(status),INDEX idx_mar_enabled(enabled)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 	`CREATE TABLE IF NOT EXISTS monitor_alert_rule_versions (id VARCHAR(96) PRIMARY KEY,rule_id VARCHAR(64) NOT NULL,version INT NOT NULL,name VARCHAR(255) NOT NULL,query LONGTEXT NOT NULL,severity VARCHAR(32) NOT NULL,datasource_id VARCHAR(64) NOT NULL,target_selector JSON,labels JSON,annotations JSON,enabled TINYINT(1) DEFAULT 1,for_duration VARCHAR(64),no_data_policy VARCHAR(32),status VARCHAR(32),created_by VARCHAR(128),created_at DATETIME NOT NULL,UNIQUE KEY uniq_marv_rule_version(rule_id,version),INDEX idx_marv_rule(rule_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -391,5 +404,9 @@ func RedisClient() (*redis.Client, bool) {
 	return redisClient, redisOK
 }
 
-// NewID generates a unique ID based on current nanosecond timestamp.
-func NewID() string { return fmt.Sprintf("%d", time.Now().UnixNano()) }
+// NewID 生成包含时间戳和进程内递增序列的唯一 ID。
+func NewID() string {
+	now := time.Now().UnixNano()
+	seq := atomic.AddUint64(&newIDSequence, 1)
+	return strconv.FormatInt(now, newIDNumberBase) + newIDSeparator + strconv.FormatUint(seq, newIDNumberBase)
+}
