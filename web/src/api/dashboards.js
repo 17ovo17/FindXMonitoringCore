@@ -44,6 +44,7 @@ const qs = params => Object.fromEntries(
 )
 
 const dashboardPath = id => `/monitor/dashboards/${encodeURIComponent(id)}`
+const templatePath = id => `/monitor/dashboard-templates/${encodeURIComponent(id)}`
 
 export const normalizeDashboardList = value => {
   if (Array.isArray(value)) return value
@@ -62,4 +63,7 @@ export const dashboardsApi = {
   remove: id => http.delete(dashboardPath(id)),
   clone: id => http.post(`${dashboardPath(id)}/clone`),
   share: (id, body) => http.post(`${dashboardPath(id)}/share`, body),
+  listTemplates: params => http.get('/monitor/dashboard-templates', { params: qs(params) }),
+  getTemplate: id => http.get(templatePath(id)),
+  importTemplate: (id, body) => http.post(`${templatePath(id)}/import`, body),
 }

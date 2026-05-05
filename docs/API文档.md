@@ -1,6 +1,6 @@
 # FindX Monitoring Core API 文档
 
-更新时间：2026-05-05 16:20（UTC+8）
+更新时间：2026-05-05 16:31（UTC+8）
 
 本文档的主线是 FindX Monitoring Core。新功能、测试矩阵、运维手册和前端入口必须优先引用 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`；旧 Catpaw 与旧告警平台兼容入口只作为兼容入口保留，不再描述为新主线。自动修复 `/api/v1/remediation/*` 目前属于规划待实现接口，未在代码路由中注册前不得写成已实现或 QA PASS。
 
@@ -18,6 +18,7 @@
 | 业务空间 | `/api/v1/workspaces` | 已实现并 QA 回归 | 复用现有拓扑业务存储作为 P0-T1 兼容层 |
 | 资源组与主机资产 | `/api/v1/resource-groups`、`/api/v1/host-assets` | 已实现并 QA 回归 | P0-T2 资源分组、主机归属、主机标签和空间绑定 |
 | 监控仪表盘 | `/api/v1/monitor/dashboards` | P0-T3 后端代码已落地，待主代理验收 | 主入口是监控仪表盘；不等于运维总览或资产大盘，当前不得写成 QA PASS |
+| 内置监控仪表盘模板 | `/api/v1/monitor/dashboard-templates` | P0-T4 代码计划/待主代理验收 | 模板只作为监控仪表盘页面内能力，不新增侧边栏入口 |
 | FindX Agents | `/api/v1/findx-agents`、`/api/v1/findx-agents/register`、`/api/v1/findx-agents/heartbeat` | 基础契约已落地 | Agent 注册、心跳、列表；深度巡检/安装发行仍属 P2 |
 | Remediation | `/api/v1/remediation/*` | 规划待实现 | plan/approve/execute/verify/rollback/audit 未注册前不得调用 |
 
@@ -64,6 +65,9 @@
 | POST | `/api/v1/monitor/events/:id/assign` | 分派事件 | 管理员 |
 | POST | `/api/v1/monitor/events/:id/resolve` | 解决事件 | 管理员 |
 | POST | `/api/v1/monitor/events/:id/archive` | 归档事件 | 管理员 |
+| GET | `/api/v1/monitor/dashboard-templates` | 获取内置监控仪表盘模板列表 | `monitor.dashboard:read` |
+| GET | `/api/v1/monitor/dashboard-templates/:id` | 获取内置监控仪表盘模板详情 | `monitor.dashboard:read` |
+| POST | `/api/v1/monitor/dashboard-templates/:id/import` | 导入模板为普通监控仪表盘 | `monitor.dashboard:create` |
 
 Query Gateway 不得返回真实认证信息、Cookie 或平台内部连接串。非法 PromQL、非法时间范围和上游不可达必须向调用方返回可理解错误，Workflow/AI 调用方不得吞掉 400/503 后生成伪证据。
 
@@ -154,6 +158,75 @@ POST 与 PUT 请求体使用 JSON。客户端可写字段仅包括 `title`、`de
 - 分享能力只能作为监控仪表盘详情或动作能力承载，不作为独立导航主入口；响应不返回明文 token。
 - 监控仪表盘不承载运维总览或资产大盘职责；资产数量、在线率、告警汇总等应由资产总览或对应监控事件接口承载。
 - 本节只说明代码契约已落地并待主代理验收，未声明构建通过、UI 回归通过或 QA PASS。
+
+## P0-T4 内置监控仪表盘模板（代码计划/待主代理验收）
+
+P0-T4 是 `API_CONTRACT_CHANGE`：新增内置监控仪表盘模板 API。P0-T4 不是 `DATA_CHANGE`：模板属于内置静态能力，不新增数据库表，不修改既有 schema。本文档只同步契约计划和验收边界，不声明构建通过、UI 回归通过或 QA PASS。
+
+模板只作为监控仪表盘页面内能力出现，用于在创建监控仪表盘时选择、预览并导入常用模板；不新增独立侧边栏入口。导入结果是一条普通监控仪表盘，后续查看、更新、删除、克隆和分享继续复用 P0-T3 `/api/v1/monitor/dashboards` 能力。
+
+### 路由与权限
+
+| 方法 | 路径 | 摘要 | 权限 | 状态 |
+|------|------|------|------|------|
+| GET | `/api/v1/monitor/dashboard-templates` | 获取内置监控仪表盘模板列表 | `monitor.dashboard:read` | 代码计划/待主代理验收 |
+| GET | `/api/v1/monitor/dashboard-templates/:id` | 获取内置监控仪表盘模板详情 | `monitor.dashboard:read` | 代码计划/待主代理验收 |
+| POST | `/api/v1/monitor/dashboard-templates/:id/import` | 导入指定模板，生成一条普通监控仪表盘 | `monitor.dashboard:create` | 代码计划/待主代理验收 |
+
+### 内置模板
+
+| 模板 ID 建议 | 名称 | 用途 |
+|------|------|------|
+| `linux-host-basic` | Linux 主机基础 | Linux 主机 CPU、内存、磁盘、网络等基础观测 |
+| `windows-host-basic` | Windows 主机基础 | Windows 主机 CPU、内存、磁盘、网络等基础观测 |
+| `mysql-basic` | MySQL 基础 | MySQL 连接、吞吐、延迟和错误等基础观测 |
+| `redis-basic` | Redis 基础 | Redis 内存、命令、连接、持久化等基础观测 |
+| `kubernetes-node-basic` | Kubernetes 节点基础 | Kubernetes 节点资源、Pod 承载和运行状态基础观测 |
+
+### 模板详情响应
+
+模板列表返回模板摘要数组；模板详情返回单个模板对象。模板对象用于页面预览和导入前确认，不代表已创建的监控仪表盘记录。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 内置模板 ID |
+| `name` | string | 模板名称 |
+| `description` | string | 模板说明 |
+| `category` | string | 模板分类，如 `host`、`database`、`kubernetes` |
+| `tags` | string[] | 模板标签 |
+| `variables` | object | 模板变量定义；不得包含真实认证、连接或凭据信息 |
+| `panels` | object[] | 面板定义；不得包含真实认证、连接或凭据信息 |
+| `preview` | object | 页面预览所需的非敏感摘要 |
+
+### 导入请求与响应
+
+导入请求体使用 JSON。客户端可选择业务空间、资源组、标签和变量覆盖值；导入后由后端创建一条普通监控仪表盘。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `workspace_id` | string | 否 | 导入后监控仪表盘归属的业务空间 ID |
+| `resource_group_id` | string | 否 | 导入后监控仪表盘归属的资源组 ID |
+| `tags` | string[] | 否 | 导入后附加到监控仪表盘的标签 |
+| `variables` | object | 否 | 导入变量覆盖值；必须是 JSON 对象 |
+
+导入响应返回普通监控仪表盘对象，字段与 P0-T3 监控仪表盘详情一致，至少包含 `id`、`title`、`workspace_id`、`resource_group_id`、`tags`、`variables`、`panels`、`version`、`status`、`created_at`、`updated_at`。响应不得返回模板内部敏感配置或导入过程中的凭据信息。
+
+### 错误模型
+
+| 状态码 | 场景 | 响应示例 |
+|------|------|------|
+| 400 | 导入请求 JSON 无法解析、`variables` 不是对象、标签格式非法 | `{"error":"invalid template import request"}` |
+| 401 | 未登录或登录态无效 | `{"error":"unauthorized"}` |
+| 403 | 无 `monitor.dashboard` 对应动作权限 | `{"error":"forbidden"}` |
+| 404 | 指定模板不存在 | `{"error":"dashboard template not found"}` |
+| 500 | 模板加载或导入创建失败 | `{"error":"dashboard template import failed"}` |
+
+### 安全与兼容边界
+
+- 模板和导入响应不得包含真实 token、Cookie、DSN、URL、密码或 SSH 私钥；示例中的认证或凭证类字段只能使用 `<TOKEN>` 等占位符。
+- 导入生成的是普通监控仪表盘，不新增模板持久化表，不改变 P0-T3 `monitor_dashboards` 数据语义。
+- 权限复用 `monitor.dashboard`：模板列表和详情使用 read，导入使用 create。
+- 本切片状态为代码计划/待主代理验收；若后续代码已落地，只能改为“代码已落地待主代理验收”，不得直接写 PASS 或 QA PASS。
 
 ## `/api/v1/workspaces` 主入口
 

@@ -22,6 +22,43 @@ func ListMonitorDashboards(c *gin.Context) {
 	c.JSON(http.StatusOK, sanitizeDashboards(items))
 }
 
+func ListMonitorDashboardTemplates(c *gin.Context) {
+	c.JSON(http.StatusOK, sanitizeDashboardTemplates(store.ListMonitorDashboardTemplates()))
+}
+
+func GetMonitorDashboardTemplate(c *gin.Context) {
+	item, ok := store.GetMonitorDashboardTemplate(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "dashboard template not found"})
+		return
+	}
+	c.JSON(http.StatusOK, sanitizeDashboardTemplate(*item))
+}
+
+func ImportMonitorDashboardTemplate(c *gin.Context) {
+	tpl, ok := store.GetMonitorDashboardTemplate(c.Param("id"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "dashboard template not found"})
+		return
+	}
+	var payload model.MonitorDashboardTemplateImportInput
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dashboard template import payload"})
+		return
+	}
+	item, checks := dashboardFromTemplate(*tpl, payload)
+	if len(checks) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dashboard template import", "checks": checks})
+		return
+	}
+	out, err := store.SaveMonitorDashboard(item, requestActor(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "dashboard template import failed"})
+		return
+	}
+	c.JSON(http.StatusOK, sanitizeDashboard(*out))
+}
+
 func CreateMonitorDashboard(c *gin.Context) {
 	saveMonitorDashboard(c, "")
 }
@@ -130,6 +167,52 @@ func monitorDashboardFromInput(input model.MonitorDashboardInput) model.MonitorD
 	}
 }
 
+func dashboardFromTemplate(tpl model.MonitorDashboardTemplate, input model.MonitorDashboardTemplateImportInput) (*model.MonitorDashboard, []string) {
+	title := strings.TrimSpace(input.Title)
+	if title == "" {
+		title = tpl.Title
+	}
+	item := &model.MonitorDashboard{
+		Title:           title,
+		Description:     tpl.Description,
+		WorkspaceID:     input.WorkspaceID,
+		ResourceGroupID: input.ResourceGroupID,
+		Tags:            templateImportTags(tpl.Tags, input.Tags),
+		Variables:       mergeTemplateVariables(tpl.Variables, input.Variables),
+		Panels:          append([]byte{}, tpl.Panels...),
+		Status:          model.MonitorDashboardStatusActive,
+	}
+	return item, validateMonitorDashboardPayload(item)
+}
+
+func templateImportTags(defaults, input []string) []string {
+	if input != nil {
+		return input
+	}
+	return defaults
+}
+
+func mergeTemplateVariables(base, override json.RawMessage) json.RawMessage {
+	if len(override) == 0 {
+		return append([]byte{}, base...)
+	}
+	var baseObj, overrideObj map[string]any
+	if err := json.Unmarshal(base, &baseObj); err != nil {
+		return override
+	}
+	if err := json.Unmarshal(override, &overrideObj); err != nil {
+		return override
+	}
+	for key, value := range overrideObj {
+		baseObj[key] = value
+	}
+	out, err := json.Marshal(baseObj)
+	if err != nil {
+		return override
+	}
+	return out
+}
+
 func validateMonitorDashboardPayload(item *model.MonitorDashboard) []string {
 	checks := []string{}
 	title := strings.TrimSpace(item.Title)
@@ -184,6 +267,21 @@ func sanitizeDashboards(items []model.MonitorDashboard) []model.MonitorDashboard
 	return out
 }
 
+func sanitizeDashboardTemplates(items []model.MonitorDashboardTemplate) []model.MonitorDashboardTemplate {
+	out := make([]model.MonitorDashboardTemplate, 0, len(items))
+	for _, item := range items {
+		out = append(out, sanitizeDashboardTemplate(item))
+	}
+	return out
+}
+
+func sanitizeDashboardTemplate(item model.MonitorDashboardTemplate) model.MonitorDashboardTemplate {
+	item.Tags = append([]string{}, item.Tags...)
+	item.Variables = sanitizeJSONPayload(item.Variables)
+	item.Panels = sanitizeJSONPayload(item.Panels)
+	return item
+}
+
 func sanitizeDashboard(item model.MonitorDashboard) model.MonitorDashboard {
 	item.Variables = sanitizeJSONPayload(item.Variables)
 	item.Panels = sanitizeJSONPayload(item.Panels)
@@ -233,7 +331,7 @@ func sanitizeJSONValue(value any) any {
 
 func dashboardSensitiveKey(key string) bool {
 	lower := strings.ToLower(strings.TrimSpace(key))
-	for _, marker := range []string{"token", "cookie", "dsn", "password", "secret", "api_key", "apikey", "authorization"} {
+	for _, marker := range []string{"token", "cookie", "dsn", "password", "secret", "api_key", "apikey", "authorization", "hash"} {
 		if strings.Contains(lower, marker) {
 			return true
 		}

@@ -348,6 +348,20 @@ POST   /api/v1/monitor/dashboards/:id/share
 
 ### P0-T4：内置监控仪表盘模板
 
+**状态**：代码计划/待主代理验收。本文只同步契约计划，不声明构建通过、UI 回归通过或 QA PASS。
+
+**契约标记**：
+
+- `API_CONTRACT_CHANGE`：新增内置监控仪表盘模板 API。
+- 非 `DATA_CHANGE`：模板为内置静态能力，不新增表，不修改既有 schema。
+- 权限复用 `monitor.dashboard`：列表和详情为 read，导入为 create。
+
+**定位边界**：
+
+- 模板只作为监控仪表盘页面内能力，用于选择、预览和导入常用仪表盘。
+- 不新增独立侧边栏入口。
+- 导入结果是一条普通监控仪表盘，后续查看、更新、删除、克隆和分享继续复用 P0-T3 监控仪表盘能力。
+
 **范围**：
 
 - Linux 主机基础模板
@@ -356,11 +370,27 @@ POST   /api/v1/monitor/dashboards/:id/share
 - Redis 基础模板
 - Kubernetes 节点基础模板
 
+**API 契约**：
+
+```text
+GET  /api/v1/monitor/dashboard-templates
+GET  /api/v1/monitor/dashboard-templates/:id
+POST /api/v1/monitor/dashboard-templates/:id/import
+```
+
+**请求与响应边界**：
+
+- 列表接口返回内置模板摘要；详情接口返回单个内置模板定义，用于页面预览和导入前确认。
+- 导入请求可选择 `workspace_id`、`resource_group_id`、`tags`、`variables`，其中 `variables` 必须是 object。
+- 导入响应返回普通监控仪表盘对象，不返回独立模板实例。
+- 模板和导入响应不得包含真实 token、Cookie、DSN、URL、密码或 SSH 私钥；认证和凭证类示例只能使用 `<TOKEN>` 等占位符。
+
 **验收**：
 
-- 模板可预览、导入、克隆。
-- 导入时可选择业务空间和资源组。
+- 模板可预览、导入；导入后生成的普通监控仪表盘可按 P0-T3 能力克隆。
+- 导入时可选择业务空间、资源组、标签和变量 object。
 - 模板变量能与主机资产标签、资源组绑定。
+- 主代理验收前只能写“代码计划/待主代理验收”或“代码已落地待主代理验收”，不得写 PASS 或 QA PASS。
 
 ### P0-T5：资产总览
 

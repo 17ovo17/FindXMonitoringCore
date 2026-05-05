@@ -32,6 +32,36 @@ func TestMonitorDashboardRoutesRequireAuthAndPermission(t *testing.T) {
 	}
 }
 
+func TestMonitorDashboardTemplateRoutesRequireAuthAndPermission(t *testing.T) {
+	r := monitorDashboardTestRouter()
+	if w := performDashboardRequest(t, r, http.MethodGet, "/monitor/dashboard-templates", "", nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /monitor/dashboard-templates without auth should be 401, got %d", w.Code)
+	}
+	seedDashboardToken("dashboard-template-user-token", "u1", "alice", "user")
+	listResp := performDashboardRequest(t, r, http.MethodGet, "/monitor/dashboard-templates", "dashboard-template-user-token", nil)
+	if listResp.Code != http.StatusOK {
+		t.Fatalf("user template list should be 200, got %d body=%s", listResp.Code, listResp.Body.String())
+	}
+	templates := decodeDashboardTemplates(t, listResp)
+	if len(templates) != 5 {
+		t.Fatalf("template list should contain 5 builtins, got %d", len(templates))
+	}
+	detailResp := performDashboardRequest(t, r, http.MethodGet, "/monitor/dashboard-templates/linux-host-basic", "dashboard-template-user-token", nil)
+	if detailResp.Code != http.StatusOK {
+		t.Fatalf("user template detail should be 200, got %d body=%s", detailResp.Code, detailResp.Body.String())
+	}
+	detail := decodeDashboardTemplate(t, detailResp)
+	if detail.ID != "linux-host-basic" || len(detail.Variables) == 0 || len(detail.Panels) == 0 {
+		t.Fatalf("template detail should include variables and panels preview: %+v", detail)
+	}
+	importResp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-user-token", nil)
+	if importResp.Code != http.StatusForbidden {
+		t.Fatalf("user template import should be 403, got %d body=%s", importResp.Code, importResp.Body.String())
+	}
+	assertTemplateResponseSanitized(t, listResp.Body.String())
+	assertTemplateResponseSanitized(t, detailResp.Body.String())
+}
+
 func TestAdminMonitorDashboardCRUDCloneShare(t *testing.T) {
 	r := monitorDashboardTestRouter()
 	seedDashboardToken("dashboard-admin-token", "a1", "root", "admin")
@@ -127,6 +157,62 @@ func TestMonitorDashboardRejectsInvalidPanelsAndVariables(t *testing.T) {
 	}
 }
 
+func TestAdminImportsMonitorDashboardTemplate(t *testing.T) {
+	r := monitorDashboardTestRouter()
+	seedDashboardToken("dashboard-template-admin-token", "a1", "root", "admin")
+	payload := map[string]any{
+		"title":             "导入 Linux 主机",
+		"workspace_id":      "ws-template",
+		"resource_group_id": "rg-template",
+		"variables":         map[string]any{"ident": "host-a", "instance": "node-a:9100"},
+		"tags":              []string{"ops", "prod"},
+	}
+	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-admin-token", payload)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("admin template import should be 200, got %d body=%s", resp.Code, resp.Body.String())
+	}
+	dashboard := decodeDashboard(t, resp)
+	if dashboard.Title != "导入 Linux 主机" || dashboard.Status != model.MonitorDashboardStatusActive {
+		t.Fatalf("imported dashboard title/status mismatch: %+v", dashboard)
+	}
+	if dashboard.WorkspaceID != "ws-template" || dashboard.ResourceGroupID != "rg-template" {
+		t.Fatalf("imported dashboard scope mismatch: %+v", dashboard)
+	}
+	if strings.Join(dashboard.Tags, ",") != "ops,prod" {
+		t.Fatalf("imported dashboard tags should use request tags: %+v", dashboard.Tags)
+	}
+	var variables map[string]any
+	if err := json.Unmarshal(dashboard.Variables, &variables); err != nil {
+		t.Fatalf("decode imported variables: %v", err)
+	}
+	if variables["ident"] != "host-a" || variables["instance"] != "node-a:9100" || variables["job"] != "node" {
+		t.Fatalf("imported variables should merge request values with template defaults: %+v", variables)
+	}
+	if dashboard.Shared || dashboard.ShareTokenSet || dashboard.ShareSummary != "" {
+		t.Fatalf("imported dashboard must not enable sharing: %+v", dashboard)
+	}
+	assertDashboardResponseSanitized(t, resp.Body.String())
+}
+
+func TestMonitorDashboardTemplateImportRejectsInvalidRequests(t *testing.T) {
+	r := monitorDashboardTestRouter()
+	seedDashboardToken("dashboard-template-invalid-admin-token", "a1", "root", "admin")
+	missing := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/not-found/import", "dashboard-template-invalid-admin-token", nil)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing template import should be 404, got %d body=%s", missing.Code, missing.Body.String())
+	}
+	badVariables := map[string]any{"variables": []any{"not-object"}}
+	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", badVariables)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("non-object template variables should be 400, got %d body=%s", resp.Code, resp.Body.String())
+	}
+	longTitle := map[string]any{"title": strings.Repeat("x", maxDashboardTitleLen+1)}
+	resp = performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", longTitle)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("too long template import title should be 400, got %d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
 func TestMonitorDashboardResponsesRedactSensitivePayload(t *testing.T) {
 	r := monitorDashboardTestRouter()
 	seedDashboardToken("dashboard-sanitize-admin-token", "a1", "root", "admin")
@@ -153,6 +239,9 @@ func monitorDashboardTestRouter() *gin.Engine {
 	r := gin.New()
 	r.GET("/monitor/dashboards", RequireMonitorPermission("monitor.dashboard", "read"), ListMonitorDashboards)
 	r.POST("/monitor/dashboards", RequireMonitorPermission("monitor.dashboard", "create"), CreateMonitorDashboard)
+	r.GET("/monitor/dashboard-templates", RequireMonitorPermission("monitor.dashboard", "read"), ListMonitorDashboardTemplates)
+	r.GET("/monitor/dashboard-templates/:id", RequireMonitorPermission("monitor.dashboard", "read"), GetMonitorDashboardTemplate)
+	r.POST("/monitor/dashboard-templates/:id/import", RequireMonitorPermission("monitor.dashboard", "create"), ImportMonitorDashboardTemplate)
 	r.GET("/monitor/dashboards/:id", RequireMonitorPermission("monitor.dashboard", "read"), GetMonitorDashboard)
 	r.PUT("/monitor/dashboards/:id", RequireMonitorPermission("monitor.dashboard", "update"), UpdateMonitorDashboard)
 	r.DELETE("/monitor/dashboards/:id", RequireMonitorPermission("monitor.dashboard", "delete"), DeleteMonitorDashboard)
@@ -219,6 +308,24 @@ func decodeDashboard(t *testing.T, w *httptest.ResponseRecorder) model.MonitorDa
 	return item
 }
 
+func decodeDashboardTemplates(t *testing.T, w *httptest.ResponseRecorder) []model.MonitorDashboardTemplate {
+	t.Helper()
+	var items []model.MonitorDashboardTemplate
+	if err := json.Unmarshal(w.Body.Bytes(), &items); err != nil {
+		t.Fatalf("decode dashboard templates response: %v body=%s", err, w.Body.String())
+	}
+	return items
+}
+
+func decodeDashboardTemplate(t *testing.T, w *httptest.ResponseRecorder) model.MonitorDashboardTemplate {
+	t.Helper()
+	var item model.MonitorDashboardTemplate
+	if err := json.Unmarshal(w.Body.Bytes(), &item); err != nil {
+		t.Fatalf("decode dashboard template response: %v body=%s", err, w.Body.String())
+	}
+	return item
+}
+
 func assertDashboardResponseSanitized(t *testing.T, body string) {
 	t.Helper()
 	lower := strings.ToLower(body)
@@ -235,6 +342,16 @@ func assertDashboardShareResponseSanitized(t *testing.T, body string) {
 	for _, forbidden := range []string{"token", "hash", "cookie", "dsn", "://", "<token>", "<cookie>", "<db_dsn>"} {
 		if strings.Contains(lower, forbidden) {
 			t.Fatalf("dashboard response leaked sensitive marker %q: %s", forbidden, body)
+		}
+	}
+}
+
+func assertTemplateResponseSanitized(t *testing.T, body string) {
+	t.Helper()
+	lower := strings.ToLower(body)
+	for _, forbidden := range []string{"<token>", "<cookie>", "<db_dsn>", "mysql://", "://", "password=", "secret=", "hash="} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("dashboard template response leaked sensitive marker %q: %s", forbidden, body)
 		}
 	}
 }

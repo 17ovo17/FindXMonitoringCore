@@ -31,6 +31,24 @@ func ListMonitorDashboards() ([]model.MonitorDashboard, error) {
 	return out, nil
 }
 
+func ListMonitorDashboardTemplates() []model.MonitorDashboardTemplate {
+	templates := builtinMonitorDashboardTemplates()
+	out := make([]model.MonitorDashboardTemplate, 0, len(templates))
+	for _, item := range templates {
+		out = append(out, *copyMonitorDashboardTemplate(&item))
+	}
+	return out
+}
+
+func GetMonitorDashboardTemplate(id string) (*model.MonitorDashboardTemplate, bool) {
+	for _, item := range builtinMonitorDashboardTemplates() {
+		if item.ID == strings.TrimSpace(id) {
+			return copyMonitorDashboardTemplate(&item), true
+		}
+	}
+	return nil, false
+}
+
 func GetMonitorDashboard(id string) (*model.MonitorDashboard, bool, error) {
 	if mysqlOK {
 		row := db.QueryRow(`SELECT id,title,description,workspace_id,resource_group_id,COALESCE(tags,'[]'),COALESCE(variables,'{}'),COALESCE(panels,'[]'),version,status,shared,share_token_hash,created_by,updated_by,created_at,updated_at FROM monitor_dashboards WHERE id=?`, id)
@@ -255,4 +273,66 @@ func shareTokenHashForPersist(item *model.MonitorDashboard) string {
 func dashboardShareHash(id, actor string, at time.Time) string {
 	sum := sha256.Sum256([]byte(id + ":" + actor + ":" + at.Format(time.RFC3339Nano)))
 	return fmt.Sprintf("%x", sum)
+}
+
+func builtinMonitorDashboardTemplates() []model.MonitorDashboardTemplate {
+	return []model.MonitorDashboardTemplate{
+		monitorDashboardTemplate("linux-host-basic", "Linux 主机基础", "Linux 主机 CPU、内存、磁盘、网络基础视图", []string{"linux", "host"}, linuxTemplateVars(), linuxTemplatePanels()),
+		monitorDashboardTemplate("windows-host-basic", "Windows 主机基础", "Windows 主机 CPU、内存、磁盘、网络基础视图", []string{"windows", "host"}, windowsTemplateVars(), windowsTemplatePanels()),
+		monitorDashboardTemplate("mysql-basic", "MySQL 基础", "MySQL 连接、吞吐、慢查询、可用性基础视图", []string{"mysql", "database"}, mysqlTemplateVars(), mysqlTemplatePanels()),
+		monitorDashboardTemplate("redis-basic", "Redis 基础", "Redis 内存、连接、命令、可用性基础视图", []string{"redis", "cache"}, redisTemplateVars(), redisTemplatePanels()),
+		monitorDashboardTemplate("kubernetes-node-basic", "Kubernetes 节点基础", "Kubernetes 节点 CPU、内存、Pod、文件系统基础视图", []string{"kubernetes", "node"}, kubernetesTemplateVars(), kubernetesTemplatePanels()),
+	}
+}
+
+func monitorDashboardTemplate(id, title, desc string, tags []string, vars, panels string) model.MonitorDashboardTemplate {
+	return model.MonitorDashboardTemplate{ID: id, Title: title, Description: desc, Tags: tags, Variables: json.RawMessage(vars), Panels: json.RawMessage(panels)}
+}
+
+func copyMonitorDashboardTemplate(in *model.MonitorDashboardTemplate) *model.MonitorDashboardTemplate {
+	cp := *in
+	cp.Tags = append([]string{}, in.Tags...)
+	cp.Variables = append([]byte{}, in.Variables...)
+	cp.Panels = append([]byte{}, in.Panels...)
+	return &cp
+}
+
+func linuxTemplateVars() string {
+	return `{"ident":"$ident","instance":"$instance","job":"node","resource_group_id":"$resource_group_id"}`
+}
+
+func linuxTemplatePanels() string {
+	return `[{"title":"CPU 使用率","type":"timeseries","query":"100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\",ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}[5m])) * 100)"},{"title":"内存使用率","type":"timeseries","query":"(1 - node_memory_MemAvailable_bytes{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"} / node_memory_MemTotal_bytes{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}) * 100"},{"title":"磁盘使用率","type":"timeseries","query":"(1 - node_filesystem_avail_bytes{ident=\"$ident\",instance=~\"$instance\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{ident=\"$ident\",instance=~\"$instance\",fstype!~\"tmpfs|overlay\"}) * 100"},{"title":"网络流量","type":"timeseries","query":"rate(node_network_receive_bytes_total{ident=\"$ident\",instance=~\"$instance\",device!=\"lo\"}[5m])"}]`
+}
+
+func windowsTemplateVars() string {
+	return `{"ident":"$ident","instance":"$instance","job":"windows","resource_group_id":"$resource_group_id"}`
+}
+
+func windowsTemplatePanels() string {
+	return `[{"title":"CPU 使用率","type":"timeseries","query":"100 - avg by (instance) (windows_cpu_time_total{mode=\"idle\",ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}) * 100"},{"title":"可用内存","type":"timeseries","query":"windows_memory_available_bytes{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"磁盘空闲率","type":"timeseries","query":"windows_logical_disk_free_bytes{ident=\"$ident\",instance=~\"$instance\",volume!=\"HarddiskVolume*\"} / windows_logical_disk_size_bytes{ident=\"$ident\",instance=~\"$instance\",volume!=\"HarddiskVolume*\"} * 100"},{"title":"网络接收速率","type":"timeseries","query":"rate(windows_net_bytes_received_total{ident=\"$ident\",instance=~\"$instance\"}[5m])"}]`
+}
+
+func mysqlTemplateVars() string {
+	return `{"ident":"$ident","instance":"$instance","job":"mysql","resource_group_id":"$resource_group_id"}`
+}
+
+func mysqlTemplatePanels() string {
+	return `[{"title":"MySQL Up","type":"stat","query":"mysql_up{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"当前连接数","type":"timeseries","query":"mysql_global_status_threads_connected{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"QPS","type":"timeseries","query":"rate(mysql_global_status_questions{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}[5m])"},{"title":"慢查询速率","type":"timeseries","query":"rate(mysql_global_status_slow_queries{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}[5m])"}]`
+}
+
+func redisTemplateVars() string {
+	return `{"ident":"$ident","instance":"$instance","job":"redis","resource_group_id":"$resource_group_id"}`
+}
+
+func redisTemplatePanels() string {
+	return `[{"title":"Redis Up","type":"stat","query":"redis_up{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"内存使用","type":"timeseries","query":"redis_memory_used_bytes{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"客户端连接","type":"timeseries","query":"redis_connected_clients{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}"},{"title":"命令速率","type":"timeseries","query":"rate(redis_commands_processed_total{ident=\"$ident\",instance=~\"$instance\",job=~\"$job\"}[5m])"}]`
+}
+
+func kubernetesTemplateVars() string {
+	return `{"namespace":"$namespace","instance":"$instance","job":"kubelet","resource_group_id":"$resource_group_id"}`
+}
+
+func kubernetesTemplatePanels() string {
+	return `[{"title":"节点 CPU 使用率","type":"timeseries","query":"sum by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\",instance=~\"$instance\"}[5m]))"},{"title":"节点内存使用率","type":"timeseries","query":"(1 - node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"}) * 100"},{"title":"Pod 数量","type":"timeseries","query":"count by (node) (kube_pod_info{namespace=~\"$namespace\",node=~\"$instance\"})"},{"title":"文件系统使用率","type":"timeseries","query":"(1 - node_filesystem_avail_bytes{instance=~\"$instance\",mountpoint=\"/\"} / node_filesystem_size_bytes{instance=~\"$instance\",mountpoint=\"/\"}) * 100"}]`
 }

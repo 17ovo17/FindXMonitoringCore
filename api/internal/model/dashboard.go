@@ -47,3 +47,20 @@ type MonitorDashboardShareResult struct {
 	ShareEnabled bool   `json:"share_enabled"`
 	ShareSummary string `json:"share_summary"`
 }
+
+type MonitorDashboardTemplate struct {
+	ID          string          `json:"id"`
+	Title       string          `json:"title"`
+	Description string          `json:"description,omitempty"`
+	Tags        []string        `json:"tags,omitempty"`
+	Variables   json.RawMessage `json:"variables,omitempty"`
+	Panels      json.RawMessage `json:"panels,omitempty"`
+}
+
+type MonitorDashboardTemplateImportInput struct {
+	Title           string          `json:"title,omitempty"`
+	WorkspaceID     string          `json:"workspace_id,omitempty"`
+	ResourceGroupID string          `json:"resource_group_id,omitempty"`
+	Variables       json.RawMessage `json:"variables,omitempty"`
+	Tags            []string        `json:"tags,omitempty"`
+}
