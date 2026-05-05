@@ -2,8 +2,8 @@
   <div class="mm-page">
     <div class="page-head glass-panel">
       <div>
-        <div class="panel-kicker">Metrics Mapping</div>
-        <h2>指标映射管理</h2>
+        <div class="panel-kicker">Metrics Semantics</div>
+        <h2>指标语义管理</h2>
         <p class="page-desc">扫描 Prometheus 指标 → AI 自动适配 → 用户确认 → 同步到知识库</p>
       </div>
       <div class="head-actions">
@@ -67,7 +67,7 @@
       />
     </div>
 
-    <el-dialog v-model="editVisible" title="编辑指标映射" width="560px">
+    <el-dialog v-model="editVisible" title="编辑指标语义" width="560px">
       <el-form :model="editing" label-width="100px">
         <el-form-item label="原始名">
           <el-input v-model="editing.raw_name" disabled />

@@ -22,26 +22,14 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const validSections = new Set(['list', 'templates', 'shares'])
+const validSections = new Set(['list'])
 const section = computed(() => validSections.has(route.query.section) ? route.query.section : 'list')
 const copy = {
   list: {
     title: '仪表盘列表',
-    desc: 'Dashboard 作为监控中心核心域独立承载。',
+    desc: '统一承载看板列表、模板库、导入导出、复制、版本回滚和分享动作，不把这些低频动作拆成侧边栏菜单。',
     empty: '仪表盘列表尚未接入真实接口。',
     hint: '不会展示示例看板，待后端看板能力就绪后展示真实数据。',
-  },
-  templates: {
-    title: '仪表盘模板',
-    desc: '管理可复用的仪表盘模板。',
-    empty: '仪表盘模板尚未接入真实接口。',
-    hint: '模板中心仍在集成中心下独立承载通用集成模板。',
-  },
-  shares: {
-    title: '图表分享',
-    desc: '沉淀图表分享链接与访问权限。',
-    empty: '暂无图表分享记录。',
-    hint: '当前未发现分享接口，保持真实空态。',
   },
 }
 const current = computed(() => copy[section.value])

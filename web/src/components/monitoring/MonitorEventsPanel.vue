@@ -134,7 +134,7 @@ const act = async (row, action, extra = {}) => {
 
 const assign = async row => {
   try {
-    const { value } = await ElMessageBox.prompt('请输入处理人或值班组', 'assign', { inputPattern: /^.{1,40}$/, inputErrorMessage: '1-40 个字符' })
+    const { value } = await ElMessageBox.prompt('请输入处理人或团队', 'assign', { inputPattern: /^.{1,40}$/, inputErrorMessage: '1-40 个字符' })
     await act(row, 'assign', { assignee: value.trim(), reason: 'assign' })
   } catch (e) {
     if (e !== 'cancel') ElMessage.error(formatError(e))

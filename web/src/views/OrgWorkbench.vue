@@ -22,14 +22,12 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const validSections = new Set(['users', 'teams', 'roles', 'permissions', 'tokens'])
+const validSections = new Set(['users', 'teams', 'roles'])
 const section = computed(() => validSections.has(route.query.section) ? route.query.section : 'users')
 const copy = {
-  users: { title: '用户管理', desc: '维护用户资料、登录状态和个人令牌边界。', empty: '用户管理尚未接入真实接口。', hint: '当前不展示临时用户列表。' },
-  teams: { title: '团队组织', desc: '通知接收、资源授权和订阅对象都复用团队组织。', empty: '团队组织管理尚未接入真实接口。', hint: '接收人归并到团队组织和通知规则。' },
-  roles: { title: '角色管理', desc: '配置角色和功能权限。', empty: '角色管理尚未接入真实接口。', hint: '待权限模型落库后展示。' },
-  permissions: { title: '操作权限', desc: '按角色、资源和动作查看权限边界。', empty: '操作权限尚未接入真实接口。', hint: '当前保持真实空态。' },
-  tokens: { title: 'Token 管理', desc: '管理用户 Token、SourceToken 和外部调用令牌。', empty: 'Token 管理尚未接入真实接口。', hint: '不会展示示例 Token 或敏感配置。' },
+  users: { title: '用户管理', desc: '维护用户资料、登录状态和个人令牌入口，敏感令牌只允许摘要展示。', empty: '用户管理尚未接入真实接口。', hint: '当前不展示临时用户列表。' },
+  teams: { title: '团队组织', desc: '通知接收、资源授权和协作对象都复用团队组织机制。', empty: '团队组织管理尚未接入真实接口。', hint: '接收人归并到团队组织和通知规则。' },
+  roles: { title: '角色管理', desc: '统一承载角色、权限矩阵、资源范围和操作授权配置。', empty: '角色管理尚未接入真实接口。', hint: '待权限模型落库后展示。' },
 }
 const current = computed(() => copy[section.value])
 </script>

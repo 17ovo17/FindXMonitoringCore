@@ -5,7 +5,7 @@
         <div class="panel-kicker">Platform Governance</div>
         <h2>系统配置</h2>
         <p class="page-desc">
-          平台系统配置页保留治理说明和入口指引；已拆分到一级导航的能力不在这里重复承载。
+          平台系统配置页只保留治理说明和入口指引；已拆分到一级导航的能力不在这里重复承载。
         </p>
       </div>
     </section>
@@ -31,14 +31,14 @@ const guideItems = [
   {
     key: 'datasources',
     title: '数据源与查询',
-    desc: '数据源、指标查询和指标映射已归属数据查询导航。',
+    desc: '数据源、指标查询、日志查询和 Trace 查询已归属数据查询导航。',
     to: { path: '/query', query: { section: 'datasources' } },
   },
   {
-    key: 'credentials',
-    title: '凭证资产',
-    desc: '凭证资产已归属基础设施导航，系统配置页不重复展示敏感配置入口。',
-    to: { path: '/assets', query: { section: 'credentials' } },
+    key: 'agents',
+    title: '探针与采集',
+    desc: '安全配置引用、远程安装、采集配置和插件配置统一归属探针与采集入口。',
+    to: { path: '/assets', query: { section: 'agents' } },
   },
   {
     key: 'self-check',
@@ -49,7 +49,7 @@ const guideItems = [
   {
     key: 'notifications',
     title: '通知策略',
-    desc: '通知媒介、模板、记录和全局参数已归属通知导航。',
+    desc: '通知媒介和投递策略已归属通知导航，消息正文和投递追踪在通知规则详情中承载。',
     to: { path: '/notifications', query: { section: 'rules' } },
   },
 ]

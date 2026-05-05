@@ -7,11 +7,11 @@ const monitorSectionRedirects = {
   datasource: { path: '/query', section: 'datasources' },
   datasources: { path: '/query', section: 'datasources' },
   query: { path: '/query', section: 'metrics' },
-  metrics: { path: '/query', section: 'metric-mapping' },
+  metrics: { path: '/aiops', section: 'knowledge' },
   dashboard: { path: '/dashboards', section: 'list' },
   dashboards: { path: '/dashboards', section: 'list' },
   collection: { path: '/assets', section: 'agents' },
-  templates: { path: '/dashboards', section: 'templates' },
+  templates: { path: '/dashboards', section: 'list' },
   agent: { path: '/assets', section: 'agents' },
   targets: { path: '/assets', section: 'hosts' },
   rules: { path: '/alerts', section: 'rules' },
@@ -19,9 +19,9 @@ const monitorSectionRedirects = {
 }
 
 const settingsTabRedirects = {
-  credentials: { path: '/assets', section: 'credentials' },
+  credentials: { path: '/assets', section: 'agents' },
   datasource: { path: '/query', section: 'datasources' },
-  metrics: { path: '/query', section: 'metric-mapping' },
+  metrics: { path: '/aiops', section: 'knowledge' },
   oncall: { path: '/org', section: 'teams' },
   'health-audit': { path: '/platform', section: 'health' },
   profiles: { path: '/org', section: 'users' },
@@ -31,19 +31,49 @@ const alertSectionRedirects = {
   notification: { path: '/notifications', section: 'channels' },
   notify: { path: '/notifications', section: 'channels' },
   oncall: { path: '/org', section: 'teams' },
-  pipeline: { path: '/alerts', section: 'pipeline' },
+  'recording-rules': { path: '/alerts', section: 'rules' },
+  'aggr-views': { path: '/alerts', section: 'events' },
+  subscribes: { path: '/notifications', section: 'rules' },
+  pipeline: { path: '/alerts', section: 'rules' },
+  mutes: { path: '/alerts', section: 'events' },
   audit: { path: '/platform', section: 'audit' },
 }
 
 const notificationSectionRedirects = {
   oncall: { path: '/org', section: 'teams' },
-  pipeline: { path: '/alerts', section: 'pipeline' },
+  pipeline: { path: '/alerts', section: 'rules' },
+  configs: { path: '/notifications', section: 'rules' },
+  templates: { path: '/notifications', section: 'rules' },
+  records: { path: '/notifications', section: 'rules' },
+}
+
+const assetSectionRedirects = {
+  installs: { path: '/assets', section: 'agents' },
+  credentials: { path: '/assets', section: 'agents' },
+}
+
+const querySectionRedirects = {
+  'metric-mapping': { path: '/aiops', section: 'knowledge' },
+}
+
+const dashboardSectionRedirects = {
+  shares: { path: '/dashboards', section: 'list' },
+  templates: { path: '/dashboards', section: 'list' },
+}
+
+const orgSectionRedirects = {
+  permissions: { path: '/org', section: 'roles' },
+  tokens: { path: '/org', section: 'users' },
+}
+
+const aiopsSectionRedirects = {
+  'asset-chat': { path: '/aiops', section: 'diagnosis' },
 }
 
 const integrationSectionRedirects = {
-  templates: { path: '/dashboards', section: 'templates' },
+  templates: { path: '/dashboards', section: 'list' },
   collection: { path: '/assets', section: 'agents' },
-  labels: { path: '/query', section: 'metric-mapping' },
+  labels: { path: '/aiops', section: 'knowledge' },
   system: { path: '/platform', section: 'settings' },
   cmdb: { path: '/assets', section: 'hosts' },
 }
@@ -69,8 +99,28 @@ const normalizeLegacyRoute = to => {
     const hit = alertSectionRedirects[String(to.query.section || '')]
     if (hit) return redirectWithSection(hit.path, hit.section)
   }
+  if (to.path === '/query') {
+    const hit = querySectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
+  }
+  if (to.path === '/dashboards') {
+    const hit = dashboardSectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
+  }
+  if (to.path === '/assets') {
+    const hit = assetSectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
+  }
   if (to.path === '/notifications') {
     const hit = notificationSectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
+  }
+  if (to.path === '/org') {
+    const hit = orgSectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
+  }
+  if (to.path === '/aiops') {
+    const hit = aiopsSectionRedirects[String(to.query.section || '')]
     if (hit) return redirectWithSection(hit.path, hit.section)
   }
   if (to.path === '/integrations') {

@@ -3,13 +3,12 @@
     <section v-if="section === 'diagnosis'" class="embedded-panel"><Workbench /></section>
     <section v-else-if="section === 'knowledge'" class="embedded-panel"><KnowledgeCenter /></section>
     <section v-else-if="section === 'workflow'" class="embedded-panel"><WorkflowHub /></section>
-    <section v-else-if="section === 'asset-chat'" class="embedded-panel"><CatpawChatPanel /></section>
     <section v-else class="aiops-panel">
       <div class="section-head">
         <div>
           <div class="kicker">AI SRE</div>
           <h2>自动修复</h2>
-          <p>将诊断结论、知识库和工作流串联为可审计的处置动作。</p>
+          <p>将诊断结论、知识库、证据链和工作流串联为可审计的处置动作。</p>
         </div>
       </div>
       <div class="empty-state">
@@ -27,13 +26,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const validSections = new Set(['diagnosis', 'knowledge', 'workflow', 'remediation', 'asset-chat'])
+const validSections = new Set(['diagnosis', 'knowledge', 'workflow', 'remediation'])
 const section = computed(() => validSections.has(route.query.section) ? route.query.section : 'diagnosis')
 
 const Workbench = defineAsyncComponent(() => import('./Workbench.vue'))
 const KnowledgeCenter = defineAsyncComponent(() => import('./KnowledgeCenter.vue'))
 const WorkflowHub = defineAsyncComponent(() => import('./WorkflowHub.vue'))
-const CatpawChatPanel = defineAsyncComponent(() => import('./CatpawChatPanel.vue'))
 </script>
 
 <style scoped>

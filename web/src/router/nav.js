@@ -10,8 +10,6 @@ export const navGroups = [
       { section: 'business', label: '业务空间' },
       { section: 'hosts', label: '主机资产' },
       { section: 'agents', label: '探针与采集' },
-      { section: 'installs', label: '接入任务' },
-      { section: 'credentials', label: '凭证资产' },
     ],
   },
   {
@@ -25,7 +23,6 @@ export const navGroups = [
       { section: 'metrics', label: '指标查询' },
       { section: 'logs', label: '日志查询' },
       { section: 'traces', label: 'Trace 查询' },
-      { section: 'metric-mapping', label: '指标映射' },
     ],
   },
   {
@@ -36,8 +33,6 @@ export const navGroups = [
     defaultSection: 'list',
     children: [
       { section: 'list', label: '仪表盘列表' },
-      { section: 'templates', label: '仪表盘模板' },
-      { section: 'shares', label: '图表分享' },
     ],
   },
   {
@@ -48,12 +43,7 @@ export const navGroups = [
     defaultSection: 'events',
     children: [
       { section: 'rules', label: '告警规则' },
-      { section: 'recording-rules', label: '记录规则' },
       { section: 'events', label: '事件中心' },
-      { section: 'aggr-views', label: '聚合视图' },
-      { section: 'mutes', label: '告警静默' },
-      { section: 'subscribes', label: '告警订阅' },
-      { section: 'pipeline', label: '事件流水线' },
     ],
   },
   {
@@ -65,9 +55,6 @@ export const navGroups = [
     children: [
       { section: 'rules', label: '通知规则' },
       { section: 'channels', label: '通知媒介' },
-      { section: 'templates', label: '消息模板' },
-      { section: 'records', label: '通知记录' },
-      { section: 'configs', label: '通知配置' },
     ],
   },
   {
@@ -81,7 +68,6 @@ export const navGroups = [
       { section: 'knowledge', label: '知识库' },
       { section: 'workflow', label: '工作流' },
       { section: 'remediation', label: '自动修复' },
-      { section: 'asset-chat', label: '单机对话' },
     ],
   },
   {
@@ -94,8 +80,6 @@ export const navGroups = [
       { section: 'users', label: '用户管理' },
       { section: 'teams', label: '团队组织' },
       { section: 'roles', label: '角色管理' },
-      { section: 'permissions', label: '操作权限' },
-      { section: 'tokens', label: 'Token 管理' },
     ],
   },
   {

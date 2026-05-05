@@ -22,38 +22,20 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const validSections = new Set(['rules', 'channels', 'templates', 'records', 'configs'])
+const validSections = new Set(['rules', 'channels'])
 const section = computed(() => validSections.has(route.query.section) ? route.query.section : 'rules')
 const copy = {
   rules: {
     title: '通知规则',
-    desc: '按事件条件、接收对象和媒介策略决定通知如何投递。',
+    desc: '按事件条件、接收对象和媒介策略决定通知如何投递，订阅偏好、消息正文和投递追踪在规则详情内承载。',
     empty: '通知规则尚未接入真实接口。',
-    hint: '接收对象复用团队组织和业务空间，不再维护独立接收组。',
+    hint: '接收对象复用用户、团队组织和业务空间，不再维护独立接收组。',
   },
   channels: {
     title: '通知媒介',
     desc: '邮件、Webhook、飞书、钉钉、企微、PagerDuty 等媒介统一在这里配置。',
     empty: '通知媒介尚未接入真实接口。',
     hint: '后续响应只返回 secret_set 和目标摘要，不回显 Webhook Token。',
-  },
-  templates: {
-    title: '消息模板',
-    desc: '维护通知正文、变量和预览。',
-    empty: '消息模板尚未接入真实接口。',
-    hint: '模板内容不得包含真实密钥，预览结果需要脱敏。',
-  },
-  records: {
-    title: '通知记录',
-    desc: '追踪通知投递结果、失败原因和重试状态。',
-    empty: '通知记录尚未接入真实接口。',
-    hint: '通知正文和联系人信息只展示脱敏摘要。',
-  },
-  configs: {
-    title: '通知配置',
-    desc: '管理全局通知配置、联系人字段和媒介默认参数。',
-    empty: '通知配置尚未接入真实接口。',
-    hint: '通知配置复用团队组织和用户机制，不再建设独立接收组。',
   },
 }
 const current = computed(() => copy[section.value] || copy.rules)
