@@ -18,15 +18,34 @@ const isSessionAuthRequest = config => {
   return url.includes('/auth/me') || url.includes('/auth/change-password')
 }
 
-axios.interceptors.response.use(r => r, err => {
-  if (err.response?.status === 401 && !isLoginPage()) {
-    localStorage.removeItem('aiw-token')
-    localStorage.removeItem('aiw-user')
-    delete axios.defaults.headers.common['Authorization']
-    window.location.href = '/login'
+let loginRedirecting = false
+
+const redirectToLogin = () => {
+  if (loginRedirecting || isLoginPage()) {
+    return
+  }
+  loginRedirecting = true
+  localStorage.removeItem('aiw-token')
+  localStorage.removeItem('aiw-user')
+  delete axios.defaults.headers.common['Authorization']
+  window.location.href = '/login'
+}
+
+const handleAuthExpired = err => {
+  if (err.response?.status === 401) {
+    redirectToLogin()
   }
   return Promise.reject(err)
-})
+}
+
+const attachAuthExpiredInterceptor = client => {
+  client.interceptors.response.use(r => r, handleAuthExpired)
+  return client
+}
+
+const createAxios = axios.create.bind(axios)
+axios.create = (...args) => attachAuthExpiredInterceptor(createAxios(...args))
+attachAuthExpiredInterceptor(axios)
 
 const app = createApp(App)
 app.use(ElementPlus)
