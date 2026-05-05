@@ -1,6 +1,6 @@
 # FindX Monitoring Core API 文档
 
-更新时间：2026-05-04 07:30（UTC+8）
+更新时间：2026-05-05 14:30（UTC+8）
 
 本文档的主线是 FindX Monitoring Core。新功能、测试矩阵、运维手册和前端入口必须优先引用 `/api/v1/monitor/*` 与 `/api/v1/findx-agents/*`；旧 `/api/v1/catpaw/*`、`/api/v1/n9e/*` 只作为兼容入口保留，不再描述为新主线。自动修复 `/api/v1/remediation/*` 目前属于规划待实现接口，未在代码路由中注册前不得写成已实现或 QA PASS。
 
@@ -15,6 +15,7 @@
 | Target | `/api/v1/monitor/targets` | 已实现并 QA 回归 | 被监控对象登记、读取、更新、删除 |
 | Alert Rule | `/api/v1/monitor/alert-rules` | 已实现并 QA 回归 | 规则 CRUD、启停、克隆、试运行、回滚 |
 | Event | `/api/v1/monitor/events/current`、`/api/v1/monitor/events/history`、`/api/v1/monitor/events/:id/*` | 已实现并 QA 回归 | 当前/历史事件与 ack/assign/resolve/archive |
+| 业务空间 | `/api/v1/workspaces` | 已实现并 QA 回归 | 复用现有拓扑业务存储作为 P0-T1 兼容层 |
 | FindX Agents | `/api/v1/findx-agents`、`/api/v1/findx-agents/register`、`/api/v1/findx-agents/heartbeat` | 基础契约已落地 | Agent 注册、心跳、列表；深度巡检/安装发行仍属 P2 |
 | Remediation | `/api/v1/remediation/*` | 规划待实现 | plan/approve/execute/verify/rollback/audit 未注册前不得调用 |
 
@@ -63,6 +64,88 @@
 | POST | `/api/v1/monitor/events/:id/archive` | 归档事件 | 管理员 |
 
 Query Gateway 不得返回真实认证信息、完整 `<DB_DSN>`、Cookie 或平台内部连接串。非法 PromQL、非法时间范围和上游不可达必须向调用方返回可理解错误，Workflow/AI 调用方不得吞掉 400/503 后生成伪证据。
+
+## `/api/v1/workspaces` 主入口
+
+P0-T1 新增业务空间 API，用于按业务边界组织主机、端点、负责人、标签和运行状态。该切片为 `API_CONTRACT_CHANGE`：新增 API；`DATA_CHANGE`：无，不新增表、不修改 schema，数据复用现有拓扑业务存储，业务空间的 `description`、`owner`、`status`、`tags` 字段映射到 `topology_businesses.attributes`。
+
+| 方法 | 路径 | 摘要 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/workspaces` | 获取业务空间列表 | 登录态 |
+| POST | `/api/v1/workspaces` | 创建业务空间 | 管理员 |
+| GET | `/api/v1/workspaces/:id` | 获取业务空间详情 | 登录态 |
+| PUT | `/api/v1/workspaces/:id` | 更新业务空间 | 管理员 |
+| DELETE | `/api/v1/workspaces/:id` | 删除业务空间 | 管理员 |
+
+### 请求字段
+
+POST 与 PUT 请求体使用 JSON：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `name` | string | 是 | 业务空间名称，去除首尾空白后不能为空，最长 120 个字符 |
+| `description` | string | 否 | 业务空间描述，最长 500 个字符，存入 `topology_businesses.attributes.description` |
+| `owner` | string | 否 | 负责人或团队，最长 120 个字符，存入 `topology_businesses.attributes.owner` |
+| `status` | string | 否 | 状态，允许 `active`、`disabled`、`archived`；为空时默认为 `active`，存入 `topology_businesses.attributes.status` |
+| `tags` | string[] | 否 | 标签列表；服务端会去空、去重、排序，并以逗号分隔存入 `topology_businesses.attributes.tags` |
+| `hosts` | string[] | 否 | 主机名或 IP 列表；服务端会去空、去重、排序，映射到拓扑业务存储的主机字段 |
+| `endpoints` | object[] | 否 | 端点列表，映射到拓扑业务存储的端点字段 |
+
+`endpoints` 元素字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `ip` | string | 是 | 端点 IP，必须能被服务端解析为合法 IP；为空元素会被忽略 |
+| `port` | number | 否 | 端口号，允许 0-65535 |
+| `service_name` | string | 否 | 服务名称，服务端会去除首尾空白 |
+| `protocol` | string | 否 | 协议，服务端会去除首尾空白 |
+
+示例：
+
+```bash
+curl -X POST '<BASE_URL>/api/v1/workspaces' \
+  -H 'Authorization: Bearer <TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "支付核心链路",
+    "description": "支付核心链路的业务空间",
+    "owner": "SRE",
+    "status": "active",
+    "tags": ["payment", "core"],
+    "hosts": ["pay-app-01"],
+    "endpoints": [
+      {"ip": "192.0.2.10", "port": 8080, "service_name": "payment-api", "protocol": "HTTP"}
+    ]
+  }'
+```
+
+### 响应字段
+
+GET 列表返回业务空间数组；POST、GET by id、PUT 返回单个业务空间对象；DELETE 返回 `{"ok": true}`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 业务空间 ID，复用拓扑业务存储 ID |
+| `name` | string | 业务空间名称 |
+| `description` | string | 业务空间描述，来自 `topology_businesses.attributes.description` |
+| `owner` | string | 负责人或团队，来自 `topology_businesses.attributes.owner` |
+| `status` | string | 状态，来自 `topology_businesses.attributes.status`；缺失或非法时响应为 `active` |
+| `tags` | string[] | 标签列表，由 `topology_businesses.attributes.tags` 拆分并标准化 |
+| `hosts` | string[] | 主机名或 IP 列表 |
+| `endpoints` | object[] | 端点列表，字段为 `ip`、`port`、`service_name`、`protocol` |
+| `resource_count` | number | 资源计数，按主机集合与端点数量计算 |
+| `created_at` | string | 创建时间 |
+| `updated_at` | string | 更新时间 |
+
+### 错误码
+
+| 状态码 | 场景 | 响应示例 |
+|------|------|------|
+| 400 | JSON 无法解析、`name` 为空、字段超长、`status` 非法、端点 IP 或端口非法 | `{"error":"name is required"}` |
+| 401 | 未提供登录态或登录态无效 | `{"error":"unauthorized"}` |
+| 403 | 非管理员执行 POST、PUT、DELETE | `{"error":"forbidden"}` |
+| 404 | 指定业务空间不存在 | `{"error":"workspace not found"}` |
+| 500 | 内部错误 | `{"error":"内部错误描述"}` |
 
 ## `/api/v1/findx-agents/*` 主入口
 

@@ -43,6 +43,7 @@ func main() {
 	r.GET("/metrics", handler.Metrics)
 	adminRequired := requireAdminToken()
 	readRequired := handler.RequireAuth()
+	roleAdminRequired := handler.RequireRole("admin")
 	monitorRequired := handler.RequireMonitorPermission
 
 	v1 := r.Group("/api/v1")
@@ -126,6 +127,12 @@ func main() {
 		v1.GET("/topology/businesses/:id", handler.GetTopologyBusiness)
 		v1.GET("/topology/businesses/:id/inspect", handler.InspectTopologyBusiness)
 		v1.DELETE("/topology/businesses/:id", adminRequired, handler.DeleteTopologyBusiness)
+
+		v1.GET("/workspaces", readRequired, handler.ListWorkspaces)
+		v1.POST("/workspaces", roleAdminRequired, handler.CreateWorkspace)
+		v1.GET("/workspaces/:id", readRequired, handler.GetWorkspace)
+		v1.PUT("/workspaces/:id", roleAdminRequired, handler.UpdateWorkspace)
+		v1.DELETE("/workspaces/:id", roleAdminRequired, handler.DeleteWorkspace)
 
 		v1.GET("/ai-providers", handler.GetAIProviders)
 		v1.POST("/ai-providers", adminRequired, handler.SaveAIProviders)
