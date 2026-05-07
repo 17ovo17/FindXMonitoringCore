@@ -58,7 +58,6 @@ const querySectionRedirects = {
 
 const dashboardSectionRedirects = {
   shares: { path: '/dashboards', section: 'list' },
-  templates: { path: '/dashboards', section: 'list' },
 }
 
 const orgSectionRedirects = {

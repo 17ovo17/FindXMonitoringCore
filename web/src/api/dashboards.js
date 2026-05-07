@@ -58,11 +58,14 @@ export const normalizeDashboardList = value => {
 
 export const dashboardsApi = {
   list: params => http.get('/monitor/dashboards', { params: qs(params) }),
+  get: id => http.get(dashboardPath(id)),
+  detail: id => http.get(dashboardPath(id)),
   create: body => http.post('/monitor/dashboards', body),
   update: (id, body) => http.put(dashboardPath(id), body),
   remove: id => http.delete(dashboardPath(id)),
   clone: id => http.post(`${dashboardPath(id)}/clone`),
   share: (id, body) => http.post(`${dashboardPath(id)}/share`, body),
+  export: id => http.get(`${dashboardPath(id)}/export`),
   listTemplates: params => http.get('/monitor/dashboard-templates', { params: qs(params) }),
   getTemplate: id => http.get(templatePath(id)),
   importTemplate: (id, body) => http.post(`${templatePath(id)}/import`, body),
