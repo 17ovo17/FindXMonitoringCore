@@ -4,7 +4,7 @@
       <div>
         <div class="kicker">FindX Monitoring</div>
         <h2>监控运维工作台</h2>
-        <p>在 FindX 主平台内融合 Nightingale 监控能力，统一承载监控对象、数据源、查询、告警、事件、通知协同，并把 AI、知识库和工作流作为增强层接入。</p>
+        <p>在 FindX 主平台内统一承载监控对象、数据源、查询、告警、事件、通知协同，并把 AI、知识库和工作流作为增强层接入。</p>
       </div>
       <el-button :loading="refreshing" @click="refresh">
         <el-icon><Refresh /></el-icon>刷新当前视图
@@ -83,7 +83,7 @@ function item(key, label, icon, statusPair, desc, panel = '', routePath = '') {
 
 const monitorGroups = [
   {
-    label: 'Nightingale 基础监控',
+    label: 'FindX 基础监控',
     items: [
       item('overview', '监控总览', 'DataBoard', connectedStatus, '健康状态、接入模式与核心指标概览'),
       item('business', '业务组', 'FolderOpened', pendingStatus, '按团队、业务域和权限组组织监控视图'),

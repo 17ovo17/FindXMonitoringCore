@@ -90,8 +90,8 @@ ${config}
 PLUGINEOF
 pkill -HUP catpaw 2>/dev/null || true && echo "plugins config applied"`
   try {
-    await ElMessageBox.confirm(`Apply Catpaw plugin config to ${targetAgent.value}? This writes /etc/catpaw/conf.d/plugins.toml and reloads Catpaw.`, 'Confirm remote config apply', {
-      type: 'warning', confirmButtonText: 'Confirm', cancelButtonText: 'Cancel'
+    await ElMessageBox.confirm(`确认将插件配置应用到 ${targetAgent.value}？这会写入 FindX Agent 兼容运行时配置并触发运行时重载。`, '确认远程应用配置', {
+      type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消'
     })
     const { data } = await axios.post('/api/v1/remote/exec', { ...cred, command: cmd, safety_confirm: 'ALLOW-L3' })
     applyOutput.value = data.output || 'No output'

@@ -11,7 +11,7 @@
           @keyup.enter="startDiagnose"
         />
         <el-select v-model="targetIP" filterable placeholder="从监控/探针选择" style="width:220px">
-          <el-option v-for="a in agents" :key="`agent-${a.ip}`" :label="`${a.ip} ${a.hostname || 'Catpaw'}`" :value="a.ip" />
+          <el-option v-for="a in agents" :key="`agent-${a.ip}`" :label="`${a.ip} ${a.hostname || 'FindX Agent'}`" :value="a.ip" />
           <el-option v-for="i in promInstances" :key="`prom-${i}`" :label="i" :value="i.split(':')[0]" />
         </el-select>
         <el-button type="primary" :loading="launching" @click="startDiagnose">发起诊断</el-button>
@@ -26,7 +26,7 @@
           <el-option label="业务巡检" value="business_inspection" />
           <el-option label="手动诊断" value="manual" />
           <el-option label="告警触发" value="alert" />
-          <el-option label="Catpaw" value="catpaw" />
+          <el-option label="FindX Agent" value="catpaw" />
           <el-option label="Prometheus" value="prometheus" />
         </el-select>
         <el-input v-model="keyword" clearable placeholder="搜索业务、IP、标题、来源" style="width:280px" />
@@ -46,7 +46,7 @@
         </div>
         <div class="record-meta">
           <span class="source-badge" :class="r.source">{{ sourceLabel(r) }}</span>
-          <span class="trigger-badge">{{ r.trigger === 'alert' ? '告警触发' : r.trigger === 'catpaw' ? 'Catpaw 上报' : '手动' }}</span>
+          <span class="trigger-badge">{{ r.trigger === 'alert' ? '告警触发' : r.trigger === 'catpaw' ? 'FindX Agent 上报' : '手动' }}</span>
           <span class="time">{{ formatTime(r.create_time) }}</span>
         </div>
         <div v-if="r.alert_title" class="alert-title">{{ r.alert_title }}</div>
@@ -122,8 +122,8 @@ const renderMd = t => renderMarkdown(t)
 const formatTime = t => new Date(t).toLocaleString('zh-CN')
 const statusType = s => ({ pending: 'info', running: 'warning', done: 'success', failed: 'danger' }[s] || 'info')
 const statusLabel = s => ({ pending: '等待中', running: '诊断中', done: '已完成', failed: '失败' }[s] || s)
-const sourceLabel = r => ({ business_inspection: '业务巡检', prometheus: 'Prometheus', catpaw: 'Catpaw', manual: '手动诊断', alert: '告警触发' }[r?.source] || { business_inspection: '业务巡检', prometheus: 'Prometheus', catpaw: 'Catpaw', manual: '手动诊断', alert: '告警触发' }[r?.data_source] || r?.source || r?.data_source || '未知目标')
-const triggerLabel = trigger => ({ business_inspection: '业务巡检', alert: '告警触发', catpaw: 'Catpaw 上报', manual: '手动' }[trigger] || trigger || '手动')
+const sourceLabel = r => ({ business_inspection: '业务巡检', prometheus: 'Prometheus', catpaw: 'FindX Agent', manual: '手动诊断', alert: '告警触发' }[r?.source] || { business_inspection: '业务巡检', prometheus: 'Prometheus', catpaw: 'FindX Agent', manual: '手动诊断', alert: '告警触发' }[r?.data_source] || r?.source || r?.data_source || '未知目标')
+const triggerLabel = trigger => ({ business_inspection: '业务巡检', alert: '告警触发', catpaw: 'FindX Agent 上报', manual: '手动' }[trigger] || trigger || '手动')
 const displayTarget = r => String(r?.target_ip || '').startsWith('business:') ? '业务级统一诊断' : (r?.target_ip || '未知目标')
 const searchable = r => [r.id, r.target_ip, r.trigger, r.source, r.data_source, r.alert_title, r.summary_report].join(' ').toLowerCase()
 const visibleRecords = computed(() => {

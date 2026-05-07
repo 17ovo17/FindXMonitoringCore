@@ -2,7 +2,7 @@
   <div class="catpaw-chat">
     <div class="chat-head">
       <div>
-        <div class="panel-kicker">Catpaw Chat</div>
+        <div class="panel-kicker">FindX Agent Chat</div>
         <h3>探针交互诊断</h3>
       </div>
       <div class="head-right">
@@ -24,7 +24,7 @@
     <div class="input-row">
       <el-input
         v-model="inputText"
-        placeholder="输入巡检问题或只读排查命令，发送给 Catpaw 子 Agent..."
+        placeholder="输入巡检问题或只读排查命令，发送给 FindX Agent..."
         :disabled="!connected"
         @keydown.enter.exact.prevent="send"
         size="small"

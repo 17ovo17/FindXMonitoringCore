@@ -9,7 +9,19 @@ export const navGroups = [
       { section: 'overview', label: '资产中心' },
       { section: 'business', label: '业务空间' },
       { section: 'hosts', label: '主机资产' },
-      { section: 'agents', label: '探针与采集' },
+      { section: 'agents', label: 'FindX Agent' },
+    ],
+  },
+  {
+    key: 'integrations',
+    label: '集成中心',
+    icon: 'Connection',
+    path: '/integrations',
+    defaultSection: 'overview',
+    children: [
+      { section: 'overview', label: '集成总览' },
+      { section: 'collectors', label: '采集接入' },
+      { section: 'templates', label: '模板导入' },
     ],
   },
   {
@@ -27,7 +39,7 @@ export const navGroups = [
   },
   {
     key: 'dashboards',
-    label: '监控仪表盘',
+    label: '仪表盘',
     icon: 'TrendCharts',
     path: '/dashboards',
     defaultSection: 'list',
@@ -58,6 +70,44 @@ export const navGroups = [
     ],
   },
   {
+    key: 'tracing',
+    label: '链路监控',
+    icon: 'Share',
+    path: '/tracing',
+    defaultSection: 'overview',
+    children: [
+      { section: 'overview', label: '链路总览' },
+      { section: 'services', label: '服务拓扑' },
+      { section: 'traces', label: 'Trace 检索' },
+    ],
+  },
+  {
+    key: 'logs',
+    label: '日志中心',
+    icon: 'Document',
+    path: '/logs',
+    defaultSection: 'overview',
+    children: [
+      { section: 'overview', label: '日志总览' },
+      { section: 'query', label: '日志检索' },
+      { section: 'pipelines', label: '接入管道' },
+    ],
+  },
+  {
+    key: 'agents',
+    label: 'Agent 管理中心',
+    icon: 'Cpu',
+    path: '/agents',
+    defaultSection: 'overview',
+    children: [
+      { section: 'overview', label: 'FindX Agent' },
+      { section: 'install', label: '安装计划' },
+      { section: 'command', label: '生成命令' },
+      { section: 'ops', label: '远程运维' },
+      { section: 'chat', label: '探针对话' },
+    ],
+  },
+  {
     key: 'aiops',
     label: 'AI SRE',
     icon: 'ChatDotRound',
@@ -72,7 +122,7 @@ export const navGroups = [
   },
   {
     key: 'org',
-    label: '人员组织',
+    label: '组织权限',
     icon: 'User',
     path: '/org',
     defaultSection: 'users',

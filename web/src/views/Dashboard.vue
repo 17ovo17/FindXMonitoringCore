@@ -55,10 +55,10 @@
       <div class="glass-card quick-actions">
         <h3>快捷入口</h3>
         <div class="action-grid">
-          <button class="action-btn" @click="$router.push('/workbench')"><el-icon><ChatDotRound /></el-icon>智能问诊</button>
-          <button class="action-btn" @click="$router.push('/topology')"><el-icon><Share /></el-icon>业务拓扑</button>
-          <button class="action-btn" @click="$router.push({ path: '/topology', query: { tab: 'catpaw' } })"><el-icon><Connection /></el-icon>探针管理</button>
-          <button class="action-btn" @click="$router.push({ path: '/settings', query: { tab: 'profiles' } })"><el-icon><User /></el-icon>常用地址</button>
+          <button class="action-btn" @click="$router.push({ path: '/aiops', query: { section: 'diagnosis' } })"><el-icon><ChatDotRound /></el-icon>智能问诊</button>
+          <button class="action-btn" @click="$router.push({ path: '/assets', query: { section: 'business' } })"><el-icon><Share /></el-icon>业务拓扑</button>
+          <button class="action-btn" @click="$router.push({ path: '/agents', query: { section: 'overview' } })"><el-icon><Connection /></el-icon>探针管理</button>
+          <button class="action-btn" @click="$router.push({ path: '/org', query: { section: 'users' } })"><el-icon><User /></el-icon>常用地址</button>
         </div>
       </div>
     </section>

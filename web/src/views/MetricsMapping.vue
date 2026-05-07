@@ -77,7 +77,7 @@
         </el-form-item>
         <el-form-item label="Exporter">
           <el-select v-model="editing.exporter" placeholder="选择来源">
-            <el-option label="categraf" value="categraf" />
+            <el-option label="FindX Agent 兼容采集" value="categraf" />
             <el-option label="node_exporter" value="node_exporter" />
             <el-option label="mysqld_exporter" value="mysqld_exporter" />
             <el-option label="redis_exporter" value="redis_exporter" />

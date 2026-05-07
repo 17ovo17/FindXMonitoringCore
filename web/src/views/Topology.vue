@@ -132,7 +132,7 @@
     <el-dialog v-model="businessDialog" :title="editingBusiness ? '编辑业务端口' : '新增业务端口'" width="680px">
       <el-form label-position="top">
         <el-form-item label="业务名称">
-          <el-input v-model="draft.name" placeholder="例如：订单系统 / AI WorkBench / 数据库集群" />
+          <el-input v-model="draft.name" placeholder="例如：订单系统 / FindX / 数据库集群" />
         </el-form-item>
         <el-form-item label="业务属性（负责人、用途、SLO、等级等）">
           <el-input v-model="draft.attributesText" type="textarea" :rows="4" placeholder="owner=张三&#10;purpose=订单交易核心链路&#10;slo=99.9%&#10;level=P1" />

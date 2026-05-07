@@ -217,6 +217,33 @@ Kubernetes：
 - Helm、Operator、Admission Webhook、DaemonSet、Sidecar、InitContainer、RBAC、ServiceAccount、TLS、Secret、ConfigMap。
 - 支持命名空间级灰度、工作负载选择器、自动注入、卸载清理和回滚。
 
+本机脚本安装方案纳入 P5 Agent 阶段，不在 P0/P1 页面闭环中提前编码。后续实现必须同时支持以下入口：
+
+- Linux 本机安装：通过 `curl -kfsSL` 从 FindX 下载安装脚本，再执行脚本并传入短期安装 token、服务端地址、安装模式和能力包清单。
+- Windows CMD 本机安装：通过 `certutil -urlcache -f` 下载 `.bat` 安装脚本，再执行脚本并传入短期安装 token 和服务端地址。
+- Windows PowerShell 本机安装：通过 `Invoke-WebRequest -UseBasicParsing` 下载 `.ps1` 安装脚本，再使用 `powershell -NoProfile -ExecutionPolicy Bypass -File` 执行，并传入短期安装 token 和服务端地址。
+- 远程安装：Linux 走 SSH/shell/systemd，Windows 走 WinRM/PowerShell/Windows Service，Kubernetes 走 Helm/Operator/Manifest；远程方式和本机脚本方式必须复用同一套安装计划、包仓库、配置模板、审计和 Evidence Chain。
+- 安装包：FindX 必须内置离线包仓库和包签名/校验能力，不依赖公网临时下载。外部成熟探针、采集插件、巡检工具只能作为 FindX Agent 能力包来源进入包仓库。
+- 安全：安装 token 必须短期有效、可撤销、可绑定租户/团队/业务组/主机/安装计划，不在页面、日志、脚本输出中回显真实值。文档和测试只能使用 `<TOKEN>`、`<FINDX_URL>`、`<PACKAGE_SHA256>` 等占位符。
+
+示例命令仅作为未来 P5 实现验收口径，不代表当前已经存在接口：
+
+```bash
+curl -kfsSL "<FINDX_URL>/api/v1/agent-install/scripts/linux" -o /tmp/findx-agent-install.sh
+sudo sh /tmp/findx-agent-install.sh --server "<FINDX_URL>" --token "<TOKEN>" --mode run
+```
+
+```cmd
+certutil -urlcache -f "<FINDX_URL>/api/v1/agent-install/scripts/windows-cmd" "%TEMP%\findx-agent-install.bat"
+"%TEMP%\findx-agent-install.bat" "<TOKEN>" "<FINDX_URL>"
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'findx-agent-install.ps1'; Invoke-WebRequest -UseBasicParsing -Uri '<FINDX_URL>/api/v1/agent-install/scripts/windows-powershell' -OutFile $p; & powershell -NoProfile -ExecutionPolicy Bypass -File $p -Token '<TOKEN>' -ServerUrl '<FINDX_URL>'"
+```
+
+后续实现这些脚本下载、包仓库、安装计划、心跳和数据到达接口时，必须显式标记 `API_CONTRACT_CHANGE` 和 `DATA_CHANGE`，并补齐 401/403/404/409/503、重复执行、token 过期、包校验失败、权限不足、杀软拦截、网络不可达和回滚失败的脱敏错误态。
+
 ### 8.3 商业化 Agent 控制面能力
 
 - 覆盖率分析：主机、服务、语言、集群、命名空间、业务组。

@@ -10,10 +10,15 @@
       </div>
 
       <MonitorDatasourceQueryPanel v-if="section === 'datasources' || section === 'metrics'" />
-      <div v-else class="empty-state">
-        <el-empty :description="current.empty">
-          <el-alert :title="current.hint" type="info" show-icon :closable="false" />
-        </el-empty>
+      <div v-else class="blocked-state">
+        <div class="blocked-head">
+          <el-tag type="danger" effect="dark" round>BLOCKED</el-tag>
+          <strong>{{ current.empty }}</strong>
+        </div>
+        <el-alert :title="current.hint" type="error" show-icon :closable="false" />
+        <div class="check-grid">
+          <div v-for="item in current.checks" :key="item" class="check-item">{{ item }}</div>
+        </div>
       </div>
     </section>
   </div>
@@ -32,15 +37,17 @@ const copy = {
   metrics: { title: '指标查询', desc: '执行 PromQL 即时或区间查询，支持后续补充指标目录和下拉检索能力。' },
   logs: {
     title: '日志查询',
-    desc: '日志检索入口预留，后续接入 Doris 或兼容日志存储后展示真实数据。',
-    empty: '日志查询后端能力尚未接入。',
-    hint: '当前保持真实空态，不展示示例日志或静态假数据。',
+    desc: '日志检索入口预留，后续接入真实日志服务后展示真实数据。',
+    empty: '日志查询服务尚未接入',
+    hint: '当前不会展示示例日志或静态假数据；请从日志中心查看阻断项。',
+    checks: ['日志采集管道', '解析规则', '查询存储', '权限与脱敏'],
   },
   traces: {
     title: 'Trace 查询',
-    desc: '链路追踪查询入口预留，后续接入 OpenTelemetry Trace 存储和服务分析。',
-    empty: 'Trace 查询后端能力尚未接入。',
-    hint: '当前保持真实空态，待 Trace 数据源接入后展示。',
+    desc: '链路追踪查询入口预留，后续接入真实 Trace 存储和服务分析。',
+    empty: 'Trace 查询服务尚未接入',
+    hint: '当前不会展示示例 Trace 或静态假数据；请从链路监控查看阻断项。',
+    checks: ['Trace 采集入口', '链路分析服务', '存储索引', '权限与审计'],
   },
 }
 const current = computed(() => copy[section.value])
@@ -53,6 +60,11 @@ const current = computed(() => copy[section.value])
 .kicker { color: #1769ff; font-size: 12px; font-weight: 800; }
 h2 { margin: 6px 0 0; color: #1e3a5f; font-size: 24px; }
 p { margin: 8px 0 0; color: #60728e; font-size: 13px; line-height: 1.6; }
-.empty-state { min-height: 420px; display: grid; place-items: center; border: 1px dashed #d8e1ee; border-radius: 8px; background: #f8fbff; }
+.blocked-state { min-height: 420px; display: flex; flex-direction: column; justify-content: center; gap: 16px; border: 1px dashed #d8e1ee; border-radius: 8px; background: #f8fbff; padding: 22px; }
+.blocked-head { display: flex; align-items: center; gap: 10px; color: #1e3a5f; }
+.check-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.check-item { border: 1px solid #e4e9f2; border-radius: 8px; padding: 12px; color: #60728e; background: #fff; font-size: 12px; }
 :deep(.config-page) { padding: 0; min-height: auto; }
+@media (max-width: 900px) { .check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .check-grid { grid-template-columns: 1fr; } }
 </style>

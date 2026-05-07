@@ -28,7 +28,7 @@ const open = ref(true)
 const ACTION_LABELS = {
   entity_extraction: '实体提取',
   prometheus_query: 'Prometheus 查询',
-  catpaw_query: 'Catpaw 交叉验证',
+  catpaw_query: 'FindX Agent 交叉验证',
   root_cause_inference: '根因推断',
   business_inspection: '业务巡检',
   inspection_alive: '主机存活与采集状态',

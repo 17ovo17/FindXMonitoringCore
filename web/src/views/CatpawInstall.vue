@@ -1,7 +1,7 @@
 ﻿<template>
   <div class="catpaw-page">
     <div class="page-head">
-      <div><div class="panel-kicker">Catpaw Agent</div><h2>探针管理</h2></div>
+      <div><div class="panel-kicker">FindX Agent</div><h2>FindX Agent 管理中心</h2></div>
     </div>
 
     <div class="workspace">
@@ -172,13 +172,13 @@
               <el-form-item label="执行类型">
                 <el-radio-group v-model="execType">
                   <el-radio-button value="cmd">自定义命令</el-radio-button>
-                  <el-radio-button value="catpaw">catpaw 模式</el-radio-button>
+                  <el-radio-button value="catpaw">FindX Agent 模式</el-radio-button>
                 </el-radio-group>
               </el-form-item>
               <el-form-item v-if="execType==='cmd'" label="命令">
                 <el-input v-model="execForm.command" type="textarea" :rows="3" />
               </el-form-item>
-              <el-form-item v-else label="catpaw 模式">
+              <el-form-item v-else label="Agent 模式">
                 <el-select v-model="catpawMode" style="width:100%">
                   <el-option value="run" label="run — 持续监控采集，后台运行" />
                   <el-option value="chat" label="chat — 交互式 AI 排障" />
@@ -233,12 +233,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import PluginConfig from './PluginConfig.vue'
 import CatpawChatPanel from './CatpawChatPanel.vue'
 
+const route = useRoute()
+const router = useRouter()
 const agents = ref([])
 const credentials = ref([])
 const tab = ref('creds')
@@ -268,6 +271,10 @@ const execType = ref('cmd')
 const catpawMode = ref('run')
 const sshAuthMode = ref('cred')
 
+const sectionToTab = { overview: 'creds', install: 'ssh', command: 'cmd', ops: 'exec', chat: 'catpaw-chat' }
+const tabToSection = { creds: 'overview', ssh: 'install', cmd: 'command', exec: 'ops', 'catpaw-chat': 'chat' }
+const normalizeAgentSection = value => sectionToTab[String(value || 'overview')] ? String(value || 'overview') : 'overview'
+
 const onPluginConfig = (config) => { pluginConfigOutput.value = config }
 
 const sshForm = ref({ protocol: 'ssh', ip: '', port: 22, username: 'root', password: '', ssh_key: '', mode: 'run', os: 'linux' })
@@ -276,8 +283,8 @@ const execForm = ref({ protocol: 'ssh', ip: '', port: 22, username: 'root', pass
 const fmt = t => t ? new Date(t).toLocaleString('zh-CN') : '-'
 const dangerCommandPattern = /(rm\s+-rf|Remove-Item\s+.*-Recurse|\bdel\s+|\brd\s+\/s|DROP\s+DATABASE|TRUNCATE\s+TABLE|FLUSHALL|\bformat\s+|\bmkfs|Stop-Process|\bpkill\b|schtasks\s+\/Delete)/i
 
-const confirmDangerAction = async ({ title, target, command, risk = 'L3', scope = '白名单 Catpaw 测试范围' }) => {
-  const escaped = (command || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
+const confirmDangerAction = async ({ title, target, command, displayCommand, risk = 'L3', scope = '白名单 FindX Agent 测试范围' }) => {
+  const escaped = (displayCommand || command || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
   await ElMessageBox.confirm(
     `<div style="line-height:1.7"><p><b>目标：</b>${target || '-'}</p><p><b>风险：</b>${risk}，仅允许${scope}。</p>${escaped ? `<pre style="white-space:pre-wrap;max-height:160px;overflow:auto">${escaped}</pre>` : ''}<p>确认结果会回传后端，后端仍会二次校验主机、路径和命令安全边界。</p></div>`,
     title || '确认高风险操作',
@@ -293,8 +300,8 @@ const agentOS = agent => {
 }
 
 const uninstallPlan = agent => agentOS(agent) === 'windows'
-  ? { protocol: 'winrm', port: 5985, command: '停止 Catpaw 计划任务/进程；仅删除 C:\\catpaw', scope: 'Windows 目标的 C:\\catpaw、Catpaw 任务和 Catpaw 进程' }
-  : { protocol: 'ssh', port: 22, command: '停止 catpaw；仅删除 /usr/local/bin/catpaw、/etc/catpaw、/var/log/catpaw*', scope: 'Linux 目标的 /usr/local/bin/catpaw、/etc/catpaw、/var/log/catpaw*' }
+  ? { protocol: 'winrm', port: 5985, command: '停止 FindX Agent 兼容运行时计划任务/进程；仅删除运行时目录', scope: 'Windows 目标的 FindX Agent 兼容运行时目录、任务和进程' }
+  : { protocol: 'ssh', port: 22, command: '停止 FindX Agent 兼容运行时；仅删除运行时二进制、配置和日志目录', scope: 'Linux 目标的 FindX Agent 兼容运行时二进制、配置和日志目录' }
 
 const loadAgents = async () => {
   const { data } = await axios.get('/api/v1/catpaw/agents')
@@ -352,7 +359,7 @@ const installSSH = async () => {
     if (sshForm.value.os === 'windows' && !payload.protocol) {
       payload.protocol = 'winrm'
     }
-    await confirmDangerAction({ title: 'Confirm Catpaw remote install', target: `${payload.ip}:${payload.port || ''}`, command: `install catpaw (${payload.protocol || 'ssh'})`, risk: 'L3' })
+    await confirmDangerAction({ title: '确认远程安装 FindX Agent', target: `${payload.ip}:${payload.port || ''}`, command: `安装 FindX Agent 兼容运行时（${payload.protocol || 'ssh'}）`, risk: 'L3' })
     const { data } = await axios.post('/api/v1/remote/install-catpaw', payload, {
       headers: { 'X-Platform-URL': reportURL.value }
     })
@@ -368,7 +375,7 @@ const installSSH = async () => {
 const uninstall = async (agent) => {
   const ip = agent?.ip || agent
   const plan = uninstallPlan(agent)
-  const safetyConfirm = await confirmDangerAction({ title: '确认卸载 Catpaw 探针', target: `${ip}（${agentOS(agent) === 'windows' ? 'Windows' : 'Linux'}）`, command: plan.command, risk: 'L3', scope: plan.scope })
+  const safetyConfirm = await confirmDangerAction({ title: '确认卸载 FindX Agent', target: `${ip}（${agentOS(agent) === 'windows' ? 'Windows' : 'Linux'}）`, command: plan.command, risk: 'L3', scope: plan.scope })
   const cred = { ...sshForm.value }
   cred.protocol = plan.protocol
   cred.port = cred.port || plan.port
@@ -403,7 +410,7 @@ const switchMode = async (agent) => {
   const cred = credentials.value.find(c => c.ip === agent.ip) || sshForm.value
   const cmd = `pkill -f 'catpaw' 2>/dev/null; nohup catpaw ${agent._mode} --configs /etc/catpaw/conf.d > /var/log/catpaw.log 2>&1 & echo "已切换到 ${agent._mode} 模式"`
   try {
-    const safetyConfirm = await confirmDangerAction({ title: 'Confirm Catpaw mode switch', target: agent.ip, command: cmd, risk: 'L3' })
+    const safetyConfirm = await confirmDangerAction({ title: '确认切换 FindX Agent 模式', target: agent.ip, command: cmd, displayCommand: `切换 FindX Agent 兼容运行时到 ${agent._mode} 模式`, risk: 'L3' })
     const { data } = await axios.post('/api/v1/remote/exec', { ...cred, ip: agent.ip, command: cmd, safety_confirm: safetyConfirm })
     ElMessage.success(data.output || `已切换到 ${agent._mode}`)
   } catch (e) {
@@ -464,7 +471,13 @@ const execRemote = async () => {
     if (execType.value === 'catpaw') {
       cred.command = `catpaw ${catpawMode.value} --configs /etc/catpaw/conf.d`
     }
-    cred.safety_confirm = await confirmDangerAction({ title: 'Confirm remote command execution', target: cred.ip, command: cred.command, risk: 'L3' })
+    cred.safety_confirm = await confirmDangerAction({
+      title: '确认远程命令执行',
+      target: cred.ip,
+      command: cred.command,
+      displayCommand: execType.value === 'catpaw' ? `执行 FindX Agent 兼容运行时 ${catpawMode.value} 模式` : cred.command,
+      risk: 'L3'
+    })
     const { data } = await axios.post('/api/v1/remote/exec', cred)
     execOutput.value = data.output
   } catch (e) {
@@ -473,6 +486,17 @@ const execRemote = async () => {
     executing.value = false
   }
 }
+
+watch(() => route.query.section, value => {
+  tab.value = sectionToTab[normalizeAgentSection(value)]
+}, { immediate: true })
+
+watch(tab, value => {
+  const section = tabToSection[value] || 'overview'
+  if (String(route.query.section || 'overview') !== section) {
+    router.replace({ path: '/agents', query: { ...route.query, section } })
+  }
+})
 
 let timer
 onMounted(() => { loadAgents(); loadCreds(); loadPlatformIP(); timer = setInterval(loadAgents, 15000) })

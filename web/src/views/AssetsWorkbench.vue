@@ -19,19 +19,20 @@
       <ResourceGroupsPanel v-else-if="section === 'resource-groups'" class="content-block" @count-change="resourceGroupCount = $event" />
       <section v-else-if="section === 'agents'" class="content-block">
         <div class="summary-grid">
-          <div class="summary-item" v-loading="agentLoading"><strong>{{ onlineAgentCount }}</strong><span>在线 Agent</span></div>
-          <div class="summary-item" v-loading="agentLoading"><strong>{{ agentTotal }}</strong><span>Agent 总数</span></div>
+          <div class="summary-item" v-loading="agentLoading"><strong>{{ onlineAgentCount }}</strong><span>在线 FindX Agent</span></div>
+          <div class="summary-item" v-loading="agentLoading"><strong>{{ agentTotal }}</strong><span>FindX Agent 总数</span></div>
           <div class="summary-item" v-loading="hostLoading"><strong>{{ hostCount }}</strong><span>关联主机</span></div>
         </div>
         <el-alert v-if="agentError" class="state-alert" :type="agentPermission ? 'warning' : 'error'" show-icon :closable="false" :title="agentPermission ? '权限不足' : '加载失败'" :description="agentError" />
-        <el-empty v-if="!agentLoading && !agentError && !agentTotal" class="empty-box" description="暂无探针存活数据" />
+        <el-button class="agent-entry" type="primary" @click="router.push({ path: '/agents', query: { section: 'overview' } })">进入 FindX Agent 管理中心</el-button>
+        <el-empty v-if="!agentLoading && !agentError && !agentTotal" class="empty-box" description="暂无 FindX Agent 存活数据" />
       </section>
       <section v-else class="content-block">
         <div class="summary-grid">
           <div class="summary-item" v-loading="businessLoading"><strong>{{ businessCount }}</strong><span>业务空间</span></div>
           <div class="summary-item" v-loading="groupLoading"><strong>{{ resourceGroupCount }}</strong><span>资源组</span></div>
           <div class="summary-item" v-loading="hostLoading"><strong>{{ hostCount }}</strong><span>主机资产</span></div>
-          <div class="summary-item" v-loading="agentLoading"><strong>{{ onlineAgentCount }}</strong><span>在线 Agent</span></div>
+          <div class="summary-item" v-loading="agentLoading"><strong>{{ onlineAgentCount }}</strong><span>在线 FindX Agent</span></div>
         </div>
         <el-alert v-if="overviewError" class="state-alert" :type="overviewPermission ? 'warning' : 'error'" show-icon :closable="false" :title="overviewPermission ? '权限不足' : '加载失败'" :description="overviewError" />
         <div class="quick-row">
@@ -76,7 +77,7 @@ const copy = {
   overview: { title: '资产中心', desc: '统一查看业务空间、资源组、主机资产和探针存活摘要，所有统计均来自真实接口。' },
   business: { title: '业务空间', desc: '按业务边界组织主机、端点、负责人和状态。' },
   hosts: { title: '主机资产', desc: '管理主机标签、资源组绑定和业务空间绑定。' },
-  agents: { title: '探针与采集', desc: '查看探针存活摘要，采集控制面入口保留在安全边界内。' },
+  agents: { title: 'FindX Agent', desc: '查看 FindX Agent 存活摘要，并进入安装、凭据、远程运维和插件配置控制面。' },
   'resource-groups': { title: '资源组', desc: '管理资产中心资源组，并为主机资产提供归集边界。' },
 }
 const current = computed(() => copy[section.value] || copy.overview)
@@ -129,8 +130,8 @@ const loadAgentSummary = async (forOverview = false) => {
     onlineAgentCount.value = agents.filter(agent => agent.online === true || agent.status === 'online').length
   } catch (e) {
     agentTotal.value = 0
-    if (forOverview) setError(overviewError, overviewPermission, e, '探针存活摘要')
-    else setError(agentError, agentPermission, e, '探针存活摘要')
+    if (forOverview) setError(overviewError, overviewPermission, e, 'FindX Agent 存活摘要')
+    else setError(agentError, agentPermission, e, 'FindX Agent 存活摘要')
   } finally {
     agentLoading.value = false
   }
@@ -160,6 +161,7 @@ p { margin: 8px 0 0; color: #60728e; font-size: 13px; line-height: 1.6; }
 .summary-item span { color: #60728e; font-size: 12px; }
 .state-alert { margin-top: 14px; border-radius: 8px; }
 .quick-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.agent-entry { margin-top: 14px; }
 .empty-box { min-height: 300px; border: 1px dashed #d8e1ee; border-radius: 8px; background: #f8fbff; margin-top: 16px; }
 @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .section-head { flex-direction: column; } .summary-grid { grid-template-columns: 1fr; } }

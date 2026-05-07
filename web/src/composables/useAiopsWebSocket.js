@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 /**
- * AIOps WebSocket 连接管理 composable
+ * AI SRE WebSocket 连接管理 composable
  * 负责 WS 连接、重连、消息分发
  */
 export function useAiopsWebSocket({
@@ -37,7 +37,7 @@ export function useAiopsWebSocket({
       msg = {
         messageId: pendingAssistantId.value,
         role: 'assistant',
-        content: '正在执行 AIOps 推理链...',
+        content: '正在执行 AI SRE 推理链...',
         reasoningChain: [],
         createdAt: new Date().toISOString(),
       }

@@ -2,7 +2,7 @@
   <div class="aiops-page">
     <aside class="session-rail glass-card">
       <div class="rail-head">
-        <div><span>AI WorkBench</span><h2>智能问诊</h2></div>
+        <div><span>FindX AI SRE</span><h2>智能问诊</h2></div>
         <button type="button" aria-label="新建会话" @click="createSession"><el-icon><Plus /></el-icon></button>
       </div>
       <div class="mode-pills">
@@ -41,7 +41,7 @@
         <div v-if="!messages.length" class="empty-state">
           <div class="empty-orb"></div>
           <h3>问诊、指标、拓扑联动</h3>
-          <p>试试：10.10.1.21 CPU 飙高了 / AI WorkBench 巡检 / 10.10.1.21 和 10.10.1.22 CPU 都很高。</p>
+          <p>试试：10.10.1.21 CPU 飙高了 / FindX 巡检 / 10.10.1.21 和 10.10.1.22 CPU 都很高。</p>
         </div>
         <article v-for="message in messages" :key="message.messageId || message.id" class="message" :class="message.role">
           <div class="bubble">
@@ -71,7 +71,7 @@
         <div class="quick-row">
           <button v-for="prompt in quickPrompts" :key="prompt" type="button" @click="inputText = prompt">{{ prompt }}</button>
         </div>
-        <el-input v-model="inputText" type="textarea" :rows="3" resize="none" placeholder="输入 AIOps 问诊问题，Enter 发送，Shift+Enter 换行" @keydown.enter.exact.prevent="sendMessage" />
+        <el-input v-model="inputText" type="textarea" :rows="3" resize="none" placeholder="输入 AI SRE 问诊问题，Enter 发送，Shift+Enter 换行" @keydown.enter.exact.prevent="sendMessage" />
         <div class="composer-foot">
           <span>WS 实时推理；断开时自动 HTTP fallback</span>
           <div class="composer-buttons">
@@ -83,7 +83,7 @@
     </main>
 
     <el-dialog v-model="topologyOpen" title="拓扑联动面板" width="85%" top="5vh" destroy-on-close>
-      <BusinessTopologyCanvas :graph="topologyGraph" :hosts="topologyHosts" title="AIOps 联动拓扑" @select-node="handleTopologyNode" @host-missing="fillQuestion" style="min-height:520px" />
+      <BusinessTopologyCanvas :graph="topologyGraph" :hosts="topologyHosts" title="AI SRE 联动拓扑" @select-node="handleTopologyNode" @host-missing="fillQuestion" style="min-height:520px" />
     </el-dialog>
 
     <RealtimePanel
@@ -138,7 +138,7 @@ const activeAudience = ref(localStorage.getItem('aiops-audience') || 'user')
 const routeDiagnosisStarted = ref(false)
 const feedbackSent = ref({})
 const modes = [{ key: 'diagnostic', label: '诊断' }, { key: 'inspection', label: '巡检' }, { key: 'report', label: '上报' }, { key: 'topology', label: '拓扑' }]
-const quickPrompts = ['10.10.1.21 CPU 飙高了', 'AI WorkBench 巡检', '生成 AI WorkBench 拓扑', '10.10.1.21 和 10.10.1.22 CPU 都很高']
+const quickPrompts = ['10.10.1.21 CPU 飙高了', 'FindX 巡检', '生成 FindX 拓扑', '10.10.1.21 和 10.10.1.22 CPU 都很高']
 marked.setOptions({ gfm: true, breaks: true, highlight(code, lang) { return hljs.highlight(code, { language: hljs.getLanguage(lang) ? lang : 'plaintext' }).value } })
 
 const scrollBottom = () => nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight })
@@ -152,7 +152,7 @@ const { wsStatus, connectWS, closeWS, sendWS } = useAiopsWebSocket({
   messages, loading, topologyGraph, topologyHighlight, metricUpdates,
   actionResult, pendingAssistantId, scrollBottom, normalizeTopologyGraph, subscribeSuggestedMetrics,
 })
-const activeTitle = computed(() => sessions.value.find(s => s.id === activeSessionId.value)?.title || 'AIOps 智能问诊')
+const activeTitle = computed(() => sessions.value.find(s => s.id === activeSessionId.value)?.title || 'AI SRE 智能问诊')
 const modelOptions = computed(() => models.value.map(item => typeof item === 'string' ? item : (item.id || item.name || item.model)).filter(Boolean))
 const latestAssistant = computed(() => [...messages.value].reverse().find(item => item.role === 'assistant'))
 const latestPromSteps = computed(() => (latestAssistant.value?.reasoningChain || []).filter(step => step.action === 'prometheus_query'))
@@ -200,7 +200,7 @@ const saveModel = value => {
   else localStorage.removeItem('selectedModel')
 }
 
-const createSessionWithTitle = async (title = 'AIOps 智能问诊', mode = sessionDraft.value.mode) => {
+const createSessionWithTitle = async (title = 'AI SRE 智能问诊', mode = sessionDraft.value.mode) => {
   const { data } = await axios.post('/api/v1/aiops/sessions', { title, mode, scope: {}, model: currentModel.value })
   const session = { id: data.data.sessionId, title: data.data.title, mode: data.data.mode, createdAt: data.data.createdAt, updatedAt: data.data.createdAt }
   sessions.value.unshift(session)
@@ -211,7 +211,7 @@ const createSessionWithTitle = async (title = 'AIOps 智能问诊', mode = sessi
 }
 
 const createSession = async () => {
-  let title = 'AIOps 智能问诊'
+  let title = 'AI SRE 智能问诊'
   try {
     const { value } = await ElMessageBox.prompt('请输入会话标题', '新建会话', {
       inputValue: title,
@@ -334,7 +334,7 @@ const sendMessageFeedback = async (message, rating) => {
 }
 
 const archiveMessageCase = async message => {
-  const description = messagePlainText(message) || 'AIOps 诊断结论'
+  const description = messagePlainText(message) || 'AI SRE 诊断结论'
   try {
     await axios.post('/api/v1/knowledge/cases', {
       root_cause_category: message.root_cause_category || 'AI诊断',

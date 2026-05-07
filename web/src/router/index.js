@@ -71,15 +71,14 @@ const aiopsSectionRedirects = {
 }
 
 const integrationSectionRedirects = {
-  templates: { path: '/dashboards', section: 'list' },
-  collection: { path: '/assets', section: 'agents' },
+  collection: { path: '/integrations', section: 'collectors' },
   labels: { path: '/aiops', section: 'knowledge' },
   system: { path: '/platform', section: 'settings' },
   cmdb: { path: '/assets', section: 'hosts' },
 }
 
 const normalizeLegacyRoute = to => {
-  if (to.path === '/catpaw') return redirectWithSection('/assets', 'agents')
+  if (to.path === '/catpaw') return redirectWithSection('/agents', 'overview')
   if (to.path === '/settings/ai') return redirectWithSection('/platform', 'models')
   if (to.path === '/workbench') return redirectWithSection('/aiops', 'diagnosis')
   if (to.path === '/knowledge') return redirectWithSection('/aiops', 'knowledge')
@@ -124,8 +123,8 @@ const normalizeLegacyRoute = to => {
     if (hit) return redirectWithSection(hit.path, hit.section)
   }
   if (to.path === '/integrations') {
-    const hit = integrationSectionRedirects[String(to.query.section || 'templates')] || integrationSectionRedirects.templates
-    return redirectWithSection(hit.path, hit.section)
+    const hit = integrationSectionRedirects[String(to.query.section || '')]
+    if (hit) return redirectWithSection(hit.path, hit.section)
   }
   return null
 }
@@ -141,7 +140,10 @@ const router = createRouter({
     { path: '/dashboards', component: () => import('../views/DashboardsWorkbench.vue') },
     { path: '/alerts', component: () => import('../views/AlertingWorkbench.vue') },
     { path: '/notifications', component: () => import('../views/NotificationsWorkbench.vue') },
-    { path: '/integrations', redirect: to => normalizeLegacyRoute(to) || redirectWithSection('/assets', 'agents') },
+    { path: '/integrations', component: () => import('../views/IntegrationsWorkbench.vue') },
+    { path: '/tracing', component: () => import('../views/TracingWorkbench.vue') },
+    { path: '/logs', component: () => import('../views/LogsWorkbench.vue') },
+    { path: '/agents', component: () => import('../views/CatpawInstall.vue') },
     { path: '/aiops', component: () => import('../views/AiopsWorkbench.vue') },
     { path: '/org', component: () => import('../views/OrgWorkbench.vue') },
     { path: '/platform', component: () => import('../views/PlatformWorkbench.vue') },
@@ -151,7 +153,7 @@ const router = createRouter({
     { path: '/workflows', redirect: '/aiops?section=workflow' },
     { path: '/topology', redirect: '/assets?section=business' },
     { path: '/diagnose', redirect: '/aiops?section=knowledge' },
-    { path: '/catpaw', redirect: '/assets?section=agents' },
+    { path: '/catpaw', redirect: '/agents?section=overview' },
     { path: '/settings/ai', redirect: '/platform?section=models' },
     { path: '/settings/profiles', redirect: '/org?section=users' },
     { path: '/settings/oncall', redirect: '/org?section=teams' },
