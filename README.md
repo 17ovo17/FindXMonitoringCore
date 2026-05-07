@@ -32,12 +32,20 @@ FindX 是一个面向可观测、Agent 管理、AI SRE 和 Evidence Chain 的长
 
 文档收敛完成后，从 `P0-SOURCE-MATRIX-LOCK` 开始：
 
+当前源码矩阵总入口：
+
+- [源码矩阵总索引](docs/aiops/source-matrix/README.md)
+
+已闭环的编码前门禁包括：
+
 1. 基础监控页面/路由/API/状态流矩阵。
 2. SkyWalking OAP/UI/Agent 仓库矩阵。
 3. SigNoZ 日志中心矩阵。
 4. AutoOps/AIOps CMDB 矩阵。
 5. Categraf/Catpaw 到 FindX Agent 的能力矩阵。
-6. 统一配置与数据源契约。
-7. React-first FindX 自有壳层与导航。
+6. AI SRE / Evidence Chain 矩阵。
+7. 知识库 / Qdrant 向量索引矩阵。
+8. 统一配置与数据源契约。
+9. React-first FindX 自有壳层与导航。
 
 任何实现切片都必须先通过源码证据门禁，再进入编码、WSL 构建、MCP 浏览器回归和敏感信息扫描。

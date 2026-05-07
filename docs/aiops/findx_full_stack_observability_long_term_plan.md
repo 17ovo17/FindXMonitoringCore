@@ -318,13 +318,19 @@ Evidence Chain 必须接入：
 
 接入多语言探针、采集插件、巡检工具、远程安装、配置下发、包仓库、灰度、回滚和卸载。SkyWalking Agent 生态必须进入 FindX Agent 管理中心的包目录、安装向导、配置模板、心跳、数据到达验证、版本治理、漂移检测、升级回滚、卸载和 Evidence Chain。
 
+编码前门禁参考：[P4 Agent Suite 同源矩阵](source-matrix/p4_categraf_catpaw_agent_suite_matrix.md) 和 [P0 SkyWalking Agent 到 FindX Agent 控制面矩阵](source-matrix/p0_skywalking_agent_real_matrix.md)。
+
 ### P6-AISRE-EVIDENCE-CHAIN
 
 完成 Evidence Chain、诊断会话、工作流、复盘报告、自动修复编排、AI 模型统一配置。
 
+编码前门禁参考：[P5 AI SRE / Evidence Chain 同源矩阵](source-matrix/p5_aisre_evidence_chain_matrix.md)。
+
 ### P7-KNOWLEDGE-VECTOR
 
 完成 MySQL 权威知识库、Qdrant 向量索引、BM25、RRF、索引任务、权限和引用链。
+
+编码前门禁参考：[P6 知识库 / Qdrant 向量索引同源矩阵](source-matrix/p6_knowledge_qdrant_vector_matrix.md)。源码矩阵文件名按文档闭环顺序落地，实施阶段按本主计划推进。
 
 ### P8-SLO-INCIDENT-CHANGE
 

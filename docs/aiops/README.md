@@ -15,15 +15,25 @@
 - [统一测试基准](../testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](../compliance/third-party-sources.md)
 - [AGENTS.md](../../AGENTS.md)
-- [P0 源码矩阵](source-matrix/p0_source_matrix_lock.md)
+- [源码矩阵总索引](source-matrix/README.md)
+
+## 源码矩阵入口
+
+源码矩阵按实际闭环顺序维护，作为所有实现切片的编码前门禁。当前已覆盖基础监控、链路监控、日志中心、Agent Suite、AI SRE / Evidence Chain、知识库 / 向量索引等矩阵。
+
+- [源码矩阵总索引](source-matrix/README.md)
+- [P0 源码矩阵锁定表](source-matrix/p0_source_matrix_lock.md)
+- [P5 AI SRE / Evidence Chain 同源矩阵](source-matrix/p5_aisre_evidence_chain_matrix.md)
+- [P6 知识库 / Qdrant 向量索引同源矩阵](source-matrix/p6_knowledge_qdrant_vector_matrix.md)
+
+说明：长期主计划的实施阶段仍按平台建设顺序推进；源码矩阵文件名按当前文档闭环顺序落地，执行时以矩阵总索引和具体矩阵内容为准，不能只按编号猜测范围。
 
 ## 仍有效的专题文档
 
 | 文档 | 用途 | 状态 |
 | --- | --- | --- |
 | [findx_monitoring_core_api_contract.md](findx_monitoring_core_api_contract.md) | 历史 API 契约和已有接口证据 | 参考，实施时需与新主计划重新校准 |
-| [findx_nightingale_one_to_one_baseline_matrix.md](findx_nightingale_one_to_one_baseline_matrix.md) | 页面结构门禁历史矩阵 | 参考，后续需改写为 P0 源码矩阵 |
-| [findx_page_structure_one_to_one_baseline.md](findx_page_structure_one_to_one_baseline.md) | 页面结构基线历史材料 | 参考，不能替代源码证据 |
+| [源码矩阵总索引](source-matrix/README.md) | 当前页面、API、Agent、AI SRE、知识库编码前门禁 | 有效 |
 | [../compliance/third-party-sources.md](../compliance/third-party-sources.md) | 第三方来源、许可、品牌脱敏边界 | 有效 |
 | [../testing/AI_WorkBench_统一测试基准.md](../testing/AI_WorkBench_统一测试基准.md) | 测试准出门禁 | 有效 |
 
