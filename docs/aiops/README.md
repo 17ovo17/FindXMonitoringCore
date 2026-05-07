@@ -1,21 +1,34 @@
 # FindX AIOps 文档索引
 
-生成时间：2026-05-07 09:09（UTC+8）  
+生成时间：2026-05-07 09:09（UTC+8）
+最后更新：2026-05-08 00:42（UTC+8）
 状态：当前有效索引
 
 ## 当前唯一实施入口
 
 - [FindX 全栈可观测长期开发计划](findx_full_stack_observability_long_term_plan.md)
+- [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md)
 
 开发、评审、测试、归档和 Git 闭环均以该主计划为准。旧方向文档只作为历史证据，不再作为实施依据。
 
 ## 开发前必须同步核对
 
 - [FindX 全栈可观测长期开发计划](findx_full_stack_observability_long_term_plan.md)
+- [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md)
 - [统一测试基准](../testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](../compliance/third-party-sources.md)
 - [AGENTS.md](../../AGENTS.md)
 - [源码矩阵总索引](source-matrix/README.md)
+
+## 执行状态与文档维护入口
+
+- 当前多 agent 任务状态维护在 `../../.claude/codex-task-board.md`，必须记录任务 ID、状态、agent id、写集、证据源和验证门禁。
+- 当前执行证据维护在 `../../.claude/operations-log.md`，必须记录派发、关闭、超时、回派、接管、构建、浏览器回归、敏感扫描和 P0/P1 风险处理。
+- 每次代码、配置、依赖、路由、测试或验证改动后，都必须同步更新任务板和执行日志；长期方向或硬约束变化还必须同步 `../../AGENTS.md`、`../../README.md`、本索引和长期主计划。
+- 前端长期方向按 [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md) 执行。Vue 页面只作为兼容桥或待迁移对象，不再作为最终页面结构和功能验收基线。
+- 每个切片的文档记录必须包含：变更内容、成熟源码或项目证据、影响的路由/API/数据/配置/依赖、验证结果、未覆盖项、下一步归属。
+- 新会话、上下文压缩、恢复执行或接手脏工作树时，必须先读本索引、长期主计划、`../../AGENTS.md`、`../../README.md`、任务板和执行日志；不得只依赖对话摘要。
+- 文档缺失即门禁失败：不得标记 PASS，不得进入 Git 提交，不得继续推进新的实现切片，直到补齐记录或明确标记 `BLOCKED` / `RISK`。
 
 ## 源码矩阵入口
 
@@ -32,6 +45,7 @@
 
 | 文档 | 用途 | 状态 |
 | --- | --- | --- |
+| [findx_react_first_frontend_long_term_plan.md](findx_react_first_frontend_long_term_plan.md) | React-first 技术栈、Vue 退场、成熟源码同源状态流迁移和前端测试门禁 | 有效，前端切片强制读取 |
 | [findx_monitoring_core_api_contract.md](findx_monitoring_core_api_contract.md) | 历史 API 契约和已有接口证据 | 参考，实施时需与新主计划重新校准 |
 | [源码矩阵总索引](source-matrix/README.md) | 当前页面、API、Agent、AI SRE、知识库编码前门禁 | 有效 |
 | [../compliance/third-party-sources.md](../compliance/third-party-sources.md) | 第三方来源、许可、品牌脱敏边界 | 有效 |

@@ -7,12 +7,14 @@ FindX 是一个面向可观测、Agent 管理、AI SRE 和 Evidence Chain 的长
 当前唯一实施入口：
 
 - [FindX 全栈可观测长期开发计划](docs/aiops/findx_full_stack_observability_long_term_plan.md)
+- [FindX React-first 前端技术栈长期闭环计划](docs/aiops/findx_react_first_frontend_long_term_plan.md)
 
 旧方向计划、讨论稿和阶段性审计材料只保留为历史证据或归档参考，不再作为开发实施依据。
 
 ## 开发前必须读
 
 - [FindX 全栈可观测长期开发计划](docs/aiops/findx_full_stack_observability_long_term_plan.md)
+- [FindX React-first 前端技术栈长期闭环计划](docs/aiops/findx_react_first_frontend_long_term_plan.md)
 - [AIOps 文档索引](docs/aiops/README.md)
 - [统一测试基准](docs/testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](docs/compliance/third-party-sources.md)
@@ -22,11 +24,20 @@ FindX 是一个面向可观测、Agent 管理、AI SRE 和 Evidence Chain 的长
 
 - 禁止 iframe 嵌入参考站，禁止嵌入参考站 SSO，FindX 必须使用自有登录、导航、权限和主题壳层。
 - 禁止 MVP、最小实现、最小验证、占位页面、静态假按钮和未验证 PASS。
+- 前端长期方向按 [React-first 前端技术栈长期闭环计划](docs/aiops/findx_react_first_frontend_long_term_plan.md) 执行；现有 Vue 页面只作为兼容桥或待迁移对象，不再作为最终页面结构和功能验收基线。
 - 每个页面或功能切片编码前必须读取成熟源码和运行态 DOM，输出源码路径、路由、核心组件、API 调用、状态流、按钮真实动作、空态、错误态、权限态和 FindX 替换点。
 - 用户侧只能出现 FindX / FindX Agent 等 FindX 品牌；外部来源名称只允许出现在内部开发证据、合规登记和归档文档中。
 - API 测试不能替代 MCP 浏览器真实登录和点击回归。
 - 组件不可用必须显示明确 `BLOCKED`，不能伪装成功。
 - 不删除历史证据；旧文档先标记 superseded 或归档索引，截图、JSON、DOM snapshot 和测试产物先列候选清单。
+- 每次代码、配置、依赖、路由、测试或验证变更都必须同步维护项目文档和任务板：`.claude/codex-task-board.md` 记录任务状态，`.claude/operations-log.md` 记录执行证据，长期边界变更同步本 README、`AGENTS.md`、`docs/aiops/README.md` 和长期主计划。
+
+## 文档维护准出门禁
+
+- 每个变更切片收尾前必须确认：任务板已更新、执行日志已追加、源码矩阵或上下文证据已补齐、长期计划或硬规则文档已按需同步。
+- 记录内容必须覆盖变更内容、证据来源、影响面、验证结果、未覆盖项和下一步归属；不能只写“已完成”。
+- 上下文压缩或新会话恢复时，必须先读取 `AGENTS.md`、本 README、`docs/aiops/README.md`、长期主计划、React-first 前端闭环计划、`.claude/codex-task-board.md` 和 `.claude/operations-log.md` 后再继续闭环。
+- 文档没有覆盖本轮改动时，不允许标记 PASS、提交或继续堆新功能，只能补齐文档或标记 `BLOCKED` / `RISK`。
 
 ## 后续闭环入口
 

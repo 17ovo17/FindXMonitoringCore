@@ -225,7 +225,7 @@
 - 新增写操作必须考虑审计记录、输入校验、幂等性、降级和错误处理。
 ## 2026-05 FindX 长期计划硬规则
 
-本节为当前项目级硬规则，优先约束 FindX 长期计划相关任务。当前唯一实施入口是 `docs/aiops/findx_full_stack_observability_long_term_plan.md`。
+本节为当前项目级硬规则，优先约束 FindX 长期计划相关任务。当前唯一实施入口是 `docs/aiops/findx_full_stack_observability_long_term_plan.md`；前端技术栈和 React-first 迁移边界的强制子计划是 `docs/aiops/findx_react_first_frontend_long_term_plan.md`。
 
 ### 禁止最小实现和最小验证
 
@@ -240,6 +240,14 @@
 - 每个切片必须记录源码路径、路由、核心组件、API 调用、状态流、按钮真实动作、空态、错误态、权限态和 FindX 替换点。
 - 不允许只看截图、不允许只按视觉相似重写、不允许把成熟功能弱化成自研面板。
 - 用户侧统一 FindX / FindX Agent 品牌；外部来源名称只保留在内部证据、合规、归档和授权材料中。
+
+### React-first 前端架构边界
+
+- FindX 前端长期方向是 Nightingale 同系 React 技术栈；现有 Vue 页面只作为兼容桥、过渡承载或待迁移对象，不再作为最终页面结构和功能点验收基线。
+- 基础监控页面必须按 `D:\平台源码\fe-main` 的 React 路由、菜单、组件拆分、状态流、请求层和交互语义迁移；不得继续在 Vue workbench 上补成“完成态”。
+- React Shell 只负责 FindX 自有登录、导航、主题、权限、审计、错误脱敏和品牌替换；成熟页面内部结构、查询、抽屉、弹窗、表格、图表、变量、模板导入、历史记录、联想和按钮动作必须同源迁移。
+- 引入 React 依赖、Vite React 插件、React 入口或大规模迁移时必须单独作为任务板任务登记，标记依赖变更、构建影响、回滚方式和 WSL/MCP 验证结果。
+- 每个前端切片必须按 `docs/aiops/findx_react_first_frontend_long_term_plan.md` 校验技术栈、导航归属、Source-Compatible UI、Adapter 契约、`BLOCKED_BY_CONTRACT` 和浏览器回归，不得只引用长期主计划的一句话。
 
 ### MCP 浏览器门禁
 
@@ -258,3 +266,14 @@ Linux、Windows、Kubernetes 场景必须分别说明支持范围和缺口。Sky
 - 旧方向文档先追加 superseded 头部或写入归档索引，不直接删除。
 - 截图、JSON、DOM snapshot、测试产物、历史报告先列候选清单并检查引用关系；无法确认用途则保留。
 - 文档提交不得夹带业务代码、运行态配置、真实 token、cookie、DSN、私钥、完整连接串或会话 ID。
+
+### 文档与任务板持续维护规则
+
+- 每次代码、配置、依赖、路由、测试、验证、反卡死处理或需求边界变更，都必须同步维护对应文档，防止上下文压缩或新会话后丢失约束。
+- 当前会话级执行状态必须维护在 `.claude/codex-task-board.md`：记录任务 ID、状态、agent id、写集、证据源、验证门禁和阻断项。
+- 每次派发、关闭、超时、回派、接管、验证通过、验证失败和 P0/P1 风险处理，都必须追加到 `.claude/operations-log.md`。
+- 长期方向或硬约束变化必须同步 `AGENTS.md`、`README.md`、`docs/aiops/README.md`、`docs/aiops/findx_full_stack_observability_long_term_plan.md`；前端技术栈、React/Vue 边界或页面迁移规则变化还必须同步 `docs/aiops/findx_react_first_frontend_long_term_plan.md`；源码事实变化必须同步对应 `docs/aiops/source-matrix/*` 或 `.claude/context-question-*.json`。
+- 任何最终交付或 Git 门禁前必须检查文档是否覆盖本轮改动；若文档未更新，只能标记 `BLOCKED` 或 `RISK`，不得写 PASS。
+- 每个变更记录必须写清：变更内容、成熟源码或项目证据、影响的路由/API/数据/配置/依赖、已同步的文档、验证状态、未覆盖项和下一步归属。
+- 只改代码不更新任务板、执行日志和必要文档，视为门禁失败；主代理必须先补齐文档记录，再继续派发或进入下一切片。
+- 上下文压缩、新会话、恢复执行或接手他人改动时，必须先读取本文件、长期主计划、React-first 前端闭环计划、AIOps 文档索引、`.claude/codex-task-board.md` 和 `.claude/operations-log.md`，不得依赖对话记忆。
