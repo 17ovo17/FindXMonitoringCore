@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,10 +21,12 @@ func InitAuth() {
 	rand.Read(jwtSecret)
 	if store.UserCount() == 0 {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
-		store.CreateUser(&model.User{
+		if err := store.CreateUser(&model.User{
 			ID: store.NewID(), Username: "admin",
 			PasswordHash: string(hash), Role: "admin", MustChangePwd: true,
-		})
+		}); err != nil {
+			logrus.Warnf("default admin initialization failed: %v", err)
+		}
 	}
 }
 
@@ -95,7 +98,10 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
-	store.UpdateUserPassword(user.ID, string(hash))
+	if err := store.UpdateUserPassword(user.ID, string(hash)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码更新失败"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "密码已更新"})
 }
 

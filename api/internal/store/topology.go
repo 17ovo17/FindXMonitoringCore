@@ -90,8 +90,8 @@ func seedPlatformTopology() {
 	now := time.Now()
 	SaveTopology(model.TopologyGraph{
 		Nodes: []model.TopologyNode{
-			{ID: "platform-web", Name: "AI WorkBench 前端", Type: "frontend", ServiceName: "web", Port: 3000, Status: "unknown", X: 120, Y: 170, CreatedAt: now, UpdatedAt: now},
-			{ID: "platform-api", Name: "AI WorkBench 后端", Type: "backend", ServiceName: "api", Port: 8080, Status: "unknown", X: 370, Y: 170, CreatedAt: now, UpdatedAt: now},
+			{ID: "platform-web", Name: "FindX 前端", Type: "frontend", ServiceName: "web", Port: 3000, Status: "unknown", X: 120, Y: 170, CreatedAt: now, UpdatedAt: now},
+			{ID: "platform-api", Name: "FindX 后端", Type: "backend", ServiceName: "api", Port: 8080, Status: "unknown", X: 370, Y: 170, CreatedAt: now, UpdatedAt: now},
 			{ID: "platform-mysql", Name: "MySQL", Type: "database", ServiceName: "mysql", Port: 3306, Status: "unknown", X: 650, Y: 100, CreatedAt: now, UpdatedAt: now},
 			{ID: "platform-redis", Name: "Redis", Type: "cache", ServiceName: "redis", Port: 6379, Status: "unknown", X: 650, Y: 240, CreatedAt: now, UpdatedAt: now},
 			{ID: "platform-prom", Name: "Prometheus", Type: "monitor", ServiceName: "prometheus", Port: 9090, Status: "unknown", X: 370, Y: 320, CreatedAt: now, UpdatedAt: now},
@@ -184,7 +184,7 @@ func SaveTopologyBusiness(b model.TopologyBusiness) model.TopologyBusiness {
 		graphRaw, _ := json.Marshal(b.Graph)
 		_, _ = db.Exec(`REPLACE INTO topology_businesses (id,name,hosts,endpoints,attributes,graph,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)`, b.ID, b.Name, string(hostsRaw), string(endpointsRaw), string(attributesRaw), string(graphRaw), b.CreatedAt, b.UpdatedAt)
 	} else {
-		persistFallbackSnapshot()
+		_ = persistFallbackSnapshot()
 	}
 	return b
 }
@@ -197,6 +197,6 @@ func DeleteTopologyBusiness(id string) {
 	if mysqlOK {
 		_, _ = db.Exec(`DELETE FROM topology_businesses WHERE id=?`, id)
 	} else {
-		persistFallbackSnapshot()
+		_ = persistFallbackSnapshot()
 	}
 }

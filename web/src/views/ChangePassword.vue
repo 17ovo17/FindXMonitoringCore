@@ -1,7 +1,7 @@
 <template>
   <div class="change-pwd-page">
     <div class="change-pwd-card glass-card">
-      <div class="card-logo">AI WorkBench</div>
+      <div class="card-logo">FindX</div>
       <h2>首次登录，请修改密码</h2>
       <el-form @submit.prevent="handleChange">
         <el-form-item>

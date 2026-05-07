@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card glass-card">
-      <div class="login-logo">AI WorkBench</div>
+      <div class="login-logo">FindX</div>
       <h2>登录</h2>
       <el-form @submit.prevent="handleLogin">
         <el-form-item>

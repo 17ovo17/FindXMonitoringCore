@@ -19,7 +19,7 @@ func SaveChatSession(s *model.ChatSession) {
 	if mysqlOK {
 		_, _ = db.Exec(`REPLACE INTO chat_sessions (id,title,model,target_ip,created_at,updated_at) VALUES (?,?,?,?,?,?)`, s.ID, s.Title, s.Model, s.TargetIP, s.CreatedAt, s.UpdatedAt)
 	} else {
-		persistFallbackSnapshot()
+		_ = persistFallbackSnapshot()
 	}
 }
 
@@ -71,7 +71,7 @@ func DeleteChatSession(id string) {
 		_, _ = db.Exec(`DELETE FROM chat_messages WHERE session_id=?`, id)
 		_, _ = db.Exec(`DELETE FROM chat_sessions WHERE id=?`, id)
 	} else {
-		persistFallbackSnapshot()
+		_ = persistFallbackSnapshot()
 	}
 }
 
@@ -90,7 +90,7 @@ func AddChatMessage(m model.ChatMessage) {
 		_, _ = db.Exec(`REPLACE INTO chat_messages (id,session_id,role,content,model,target_ip,created_at) VALUES (?,?,?,?,?,?,?)`, m.ID, m.SessionID, m.Role, m.Content, m.Model, m.TargetIP, m.CreatedAt)
 		_, _ = db.Exec(`UPDATE chat_sessions SET updated_at=? WHERE id=?`, m.CreatedAt, m.SessionID)
 	} else {
-		persistFallbackSnapshot()
+		_ = persistFallbackSnapshot()
 	}
 }
 

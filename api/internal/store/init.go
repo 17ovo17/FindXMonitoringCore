@@ -49,6 +49,7 @@ var (
 	searchEvents         []*model.KnowledgeSearchEvent
 	searchBadcases       []*model.KnowledgeSearchBadcase
 	auditEvents          []AuditEvent
+	users                = map[string]*model.User{}
 	maxRecs              = 100
 
 	db          *sql.DB
@@ -86,6 +87,17 @@ type fallbackSnapshot struct {
 	ChatSessions       map[string]*model.ChatSession      `json:"chat_sessions"`
 	ChatMessages       map[string][]model.ChatMessage     `json:"chat_messages"`
 	TopologyBusinesses map[string]*model.TopologyBusiness `json:"topology_businesses"`
+	Users              map[string]*fallbackSnapshotUser   `json:"users,omitempty"`
+}
+
+type fallbackSnapshotUser struct {
+	ID            string    `json:"id"`
+	Username      string    `json:"username"`
+	PasswordHash  string    `json:"password_hash"`
+	Role          string    `json:"role"`
+	MustChangePwd bool      `json:"must_change_pwd"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func fallbackSnapshotPath() string {
@@ -119,19 +131,34 @@ func loadFallbackSnapshot() {
 	if snap.TopologyBusinesses != nil {
 		topologyBusinesses = snap.TopologyBusinesses
 	}
+	if snap.Users != nil {
+		users = map[string]*model.User{}
+		for username, user := range snap.Users {
+			users[username] = &model.User{
+				ID:            user.ID,
+				Username:      user.Username,
+				PasswordHash:  user.PasswordHash,
+				Role:          user.Role,
+				MustChangePwd: user.MustChangePwd,
+				CreatedAt:     user.CreatedAt,
+				UpdatedAt:     user.UpdatedAt,
+			}
+		}
+	}
 	mu.Unlock()
 	logrus.Infof("loaded memory fallback snapshot from %s", path)
 }
 
-func persistFallbackSnapshot() {
+func persistFallbackSnapshot() error {
 	if mysqlOK {
-		return
+		return nil
 	}
 	mu.RLock()
 	snap := fallbackSnapshot{
 		ChatSessions:       map[string]*model.ChatSession{},
 		ChatMessages:       map[string][]model.ChatMessage{},
 		TopologyBusinesses: map[string]*model.TopologyBusiness{},
+		Users:              map[string]*fallbackSnapshotUser{},
 	}
 	for id, session := range chatSessions {
 		cp := *session
@@ -144,25 +171,39 @@ func persistFallbackSnapshot() {
 		cp := *business
 		snap.TopologyBusinesses[id] = &cp
 	}
+	for username, user := range users {
+		snap.Users[username] = &fallbackSnapshotUser{
+			ID:            user.ID,
+			Username:      user.Username,
+			PasswordHash:  user.PasswordHash,
+			Role:          user.Role,
+			MustChangePwd: user.MustChangePwd,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+		}
+	}
 	mu.RUnlock()
 	path := fallbackSnapshotPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		logrus.Warnf("memory fallback snapshot mkdir failed: %v", err)
-		return
+		return err
 	}
 	data, err := json.MarshalIndent(snap, "", "  ")
 	if err != nil {
 		logrus.Warnf("memory fallback snapshot marshal failed: %v", err)
-		return
+		return err
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
 		logrus.Warnf("memory fallback snapshot write failed: %v", err)
-		return
+		return err
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		logrus.Warnf("memory fallback snapshot replace failed: %v", err)
+		_ = os.Remove(tmp)
+		return err
 	}
+	return nil
 }
 
 // Init initializes MySQL, Redis, topology seed, and fallback snapshot.
