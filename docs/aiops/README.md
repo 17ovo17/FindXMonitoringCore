@@ -26,6 +26,18 @@
 | [../compliance/third-party-sources.md](../compliance/third-party-sources.md) | 第三方来源、许可、品牌脱敏边界 | 有效 |
 | [../testing/AI_WorkBench_统一测试基准.md](../testing/AI_WorkBench_统一测试基准.md) | 测试准出门禁 | 有效 |
 
+## SkyWalking 前端链路补充
+
+主计划已经明确 SkyWalking 不只是 OAP 后端 Adapter。链路监控前端必须按 `D:\平台源码\skywalking-booster-ui-main` 的 `src\router`、`src\views`、`src\store\modules`、`src\graphql\query` 和 `src\graphql\fragments` 做同源状态流迁移或等价实现。FindX 用户侧使用“链路监控”命名，内部保留服务目录、拓扑、Trace、Profiling、告警、接入、GraphQL 错误态、超时、取消请求和组件不可用 `BLOCKED`。
+
+## SigNoZ 前端链路补充
+
+日志中心必须按 `D:\平台源码\signoz-develop\frontend` 的 `src\AppRoutes\routes.ts`、`src\constants\routes.ts`、`src\AppRoutes\pageComponents.ts`、`src\components\Logs`、`src\components\LogDetail`、`src\components\QuickFilters`、`src\components\ExplorerCard`、`src\api\logs`、`src\api\pipeline`、`src\api\saveView`、`src\api\trace` 做同源状态流迁移或等价实现。FindX 用户侧使用“日志中心”命名，内部保留日志检索、字段筛选、上下文、聚合、live tail、Pipeline、Saved Views、Trace 关联和组件不可用 `BLOCKED`。
+
+## SkyWalking Agent 补充
+
+SkyWalking Agent 生态必须进入 FindX Agent 管理中心，而不是停留在清单或后端包管理。Java、Python、Node.js、PHP、Go、Rust、Ruby、Nginx Lua、Kong、Browser Client JS 等能力包必须覆盖包仓库、安装向导、配置模板、远程下发、心跳、数据到达、版本治理、漂移检测、升级回滚、卸载和 Evidence Chain。
+
 ## Superseded 文档
 
 以下文档不再作为实施入口，仅保留为历史上下文：
