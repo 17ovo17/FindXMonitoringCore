@@ -1,6 +1,7 @@
 # 2026-05 FindX Plan Reset 归档索引
 
 生成时间：2026-05-07 09:09（UTC+8）
+更新时间：2026-05-08 01:25（UTC+8）
 
 本目录记录 2026-05 FindX 长期计划重置时被标记为 superseded 的旧方向文档和待清理候选。归档策略是先标记、先索引、先保留证据，不直接删除历史材料。
 
@@ -9,6 +10,7 @@
 以下文档已不再作为实施入口：
 
 - `docs/aiops/findx_flashcat_full_stack_observability_long_term_plan.md`
+- `docs/aiops/findx_react_first_frontend_long_term_plan.md`
 - `docs/aiops/nightingale_findx_agents_project_plan.md`
 - `discuss/findx_full_implementation_plan.md`
 - `discuss/findx_execution_task_breakdown.md`
@@ -21,6 +23,9 @@
 当前唯一实施入口：
 
 - `docs/aiops/findx_full_stack_observability_long_term_plan.md`
+- `docs/aiops/findx_react_only_frontend_long_term_plan.md`
+
+说明：`findx_react_first_frontend_long_term_plan.md` 已被 V2 React-only final 计划取代。React-first 历史文档只用于追溯，不再作为执行口径。
 
 ## 根目录临时产物候选清单
 

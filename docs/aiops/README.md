@@ -1,76 +1,79 @@
 # FindX AIOps 文档索引
 
-生成时间：2026-05-07 09:09（UTC+8）
-最后更新：2026-05-08 00:42（UTC+8）
-状态：当前有效索引
+更新时间：2026-05-08 01:17（UTC+8）
+
+本目录是 FindX 全量闭环的当前文档入口。开发、审查、测试、归档和 Git 门禁均以这里列出的文档为准。
 
 ## 当前唯一实施入口
 
 - [FindX 全栈可观测长期开发计划](findx_full_stack_observability_long_term_plan.md)
-- [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md)
+- [FindX React-only 前端闭环计划](findx_react_only_frontend_long_term_plan.md)
+- [源码矩阵索引](source-matrix/README.md)
 
-开发、评审、测试、归档和 Git 闭环均以该主计划为准。旧方向文档只作为历史证据，不再作为实施依据。
+`findx_react_first_frontend_long_term_plan.md` 已被 React-only 计划取代，仅保留为 superseded 历史文件。
 
-## 开发前必须同步核对
+## 开发前必须核对
 
-- [FindX 全栈可观测长期开发计划](findx_full_stack_observability_long_term_plan.md)
-- [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md)
+- [AGENTS.md](../../AGENTS.md)
+- [项目 README](../../README.md)
 - [统一测试基准](../testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](../compliance/third-party-sources.md)
-- [AGENTS.md](../../AGENTS.md)
-- [源码矩阵总索引](source-matrix/README.md)
+- [.claude/codex-task-board.md](../../.claude/codex-task-board.md)
+- [.claude/operations-log.md](../../.claude/operations-log.md)
 
-## 执行状态与文档维护入口
+## 有效源码矩阵
 
-- 当前多 agent 任务状态维护在 `../../.claude/codex-task-board.md`，必须记录任务 ID、状态、agent id、写集、证据源和验证门禁。
-- 当前执行证据维护在 `../../.claude/operations-log.md`，必须记录派发、关闭、超时、回派、接管、构建、浏览器回归、敏感扫描和 P0/P1 风险处理。
-- 每次代码、配置、依赖、路由、测试或验证改动后，都必须同步更新任务板和执行日志；长期方向或硬约束变化还必须同步 `../../AGENTS.md`、`../../README.md`、本索引和长期主计划。
-- 前端长期方向按 [FindX React-first 前端技术栈长期闭环计划](findx_react_first_frontend_long_term_plan.md) 执行。Vue 页面只作为兼容桥或待迁移对象，不再作为最终页面结构和功能验收基线。
-- 当前主线先闭环 React-first 前端功能，再进入 Agent 侧深度调优；Agent 安装器、包仓库、远程安装、配置下发、心跳、数据到达、升级回滚和卸载不得抢占 P0-P4 前端闭环。
-- 每个切片的文档记录必须包含：变更内容、成熟源码或项目证据、影响的路由/API/数据/配置/依赖、验证结果、未覆盖项、下一步归属。
-- 新会话、上下文压缩、恢复执行或接手脏工作树时，必须先读本索引、长期主计划、`../../AGENTS.md`、`../../README.md`、任务板和执行日志；不得只依赖对话摘要。
-- 文档缺失即门禁失败：不得标记 PASS，不得进入 Git 提交，不得继续推进新的实现切片，直到补齐记录或明确标记 `BLOCKED` / `RISK`。
-
-## 源码矩阵入口
-
-源码矩阵按实际闭环顺序维护，作为所有实现切片的编码前门禁。当前已覆盖基础监控、链路监控、日志中心、Agent Suite、AI SRE / Evidence Chain、知识库 / 向量索引等矩阵。
-
-- [源码矩阵总索引](source-matrix/README.md)
 - [P0 源码矩阵锁定表](source-matrix/p0_source_matrix_lock.md)
+- [P0 导航同源矩阵](source-matrix/p0_basic_monitoring_nav_matrix.md)
+- [P0 React-only Shell 与导航矩阵](source-matrix/p0_web_react_shell_nav_matrix.md)
+- [P0 数据源同源矩阵](source-matrix/p0_datasource_real_matrix.md)
+- [P0 指标查询同源矩阵](source-matrix/p0_metric_explorer_real_matrix.md)
+- [P0 仪表盘同源矩阵](source-matrix/p0_dashboard_real_matrix.md)
+- [P0 模板中心同源矩阵](source-matrix/p0_template_center_real_matrix.md)
+- [P0 SkyWalking Agent 到 FindX Agent 控制面矩阵](source-matrix/p0_skywalking_agent_real_matrix.md)
+- [P1 告警与通知同源矩阵](source-matrix/p1_alert_notification_real_matrix.md)
+- [P1 组织与系统配置同源矩阵](source-matrix/p1_org_system_real_matrix.md)
+- [P2 AutoOps CMDB 与 Agent 在线同源矩阵](source-matrix/p2_autoops_cmdb_agent_real_matrix.md)
+- [P3 链路监控同源矩阵](source-matrix/p3_skywalking_apm_real_matrix.md)
+- [P3 日志中心同源矩阵](source-matrix/p3_signoz_logs_real_matrix.md)
+- [P4 Agent Suite 同源矩阵](source-matrix/p4_categraf_catpaw_agent_suite_matrix.md)
 - [P5 AI SRE / Evidence Chain 同源矩阵](source-matrix/p5_aisre_evidence_chain_matrix.md)
 - [P6 知识库 / Qdrant 向量索引同源矩阵](source-matrix/p6_knowledge_qdrant_vector_matrix.md)
 
-说明：长期主计划的实施阶段仍按平台建设顺序推进；源码矩阵文件名按当前文档闭环顺序落地，执行时以矩阵总索引和具体矩阵内容为准，不能只按编号猜测范围。
+## V2 硬规则摘要
 
-## 仍有效的专题文档
+- 前端最终架构为 React-only。
+- Vue 只允许作为 `TEMP_BRIDGE`、`REPLACED` 或 `REMOVE_AFTER_REACT`，不能作为最终验收基线。
+- 基础监控按 Nightingale React 源码迁移。
+- 链路监控按 SkyWalking UI/OAP 源码迁移。
+- SkyWalking Agent 是 FindX Agent 管理中心的一等能力，贯穿 P0 矩阵、P2 入口、P3 链路联动、P5 生命周期闭环。
+- 日志中心按 SigNoZ 源码迁移。
+- CMDB / Agent 在线按 AutoOps/AIOps 源码迁移。
+- Categraf / Catpaw 作为 FindX Agent 能力来源，用户侧统一 FindX Agent 命名。
+- 禁止 iframe、参考站 SSO、弱化自研页面、静态假按钮、静态假数据、最小实现、最小验证。
+- API 测试不能替代 MCP/Playwright 真实浏览器回归。
+- 未执行 WSL build、lint/测试、浏览器回归、敏感扫描、品牌扫描和静态假按钮扫描，不得写 PASS。
 
-| 文档 | 用途 | 状态 |
-| --- | --- | --- |
-| [findx_react_first_frontend_long_term_plan.md](findx_react_first_frontend_long_term_plan.md) | React-first 技术栈、Vue 退场、成熟源码同源状态流迁移和前端测试门禁 | 有效，前端切片强制读取 |
-| [findx_monitoring_core_api_contract.md](findx_monitoring_core_api_contract.md) | 历史 API 契约和已有接口证据 | 参考，实施时需与新主计划重新校准 |
-| [源码矩阵总索引](source-matrix/README.md) | 当前页面、API、Agent、AI SRE、知识库编码前门禁 | 有效 |
-| [../compliance/third-party-sources.md](../compliance/third-party-sources.md) | 第三方来源、许可、品牌脱敏边界 | 有效 |
-| [../testing/AI_WorkBench_统一测试基准.md](../testing/AI_WorkBench_统一测试基准.md) | 测试准出门禁 | 有效 |
+## 多 Agent 执行记录要求
 
-## SkyWalking 前端链路补充
+每个任务必须在 `.claude/codex-task-board.md` 记录：
 
-主计划已经明确 SkyWalking 不只是 OAP 后端 Adapter。链路监控前端必须按 `D:\平台源码\skywalking-booster-ui-main` 的 `src\router`、`src\views`、`src\store\modules`、`src\graphql\query` 和 `src\graphql\fragments` 做同源状态流迁移或等价实现。FindX 用户侧使用“链路监控”命名，内部保留服务目录、拓扑、Trace、Profiling、告警、接入、GraphQL 错误态、超时、取消请求和组件不可用 `BLOCKED`。
+- `FX-NIGHT-*` 或 `FX-TASK-*` ID
+- 状态：`READY`、`CLAIMED`、`IN_PROGRESS`、`DONE`、`FAIL`、`BLOCKED`、`NOT_RUN`、`RISK`
+- agent nickname/id
+- 写集和禁止写集
+- 成熟源码证据
+- 验证门禁
+- 关闭状态和残留风险
 
-## SigNoZ 前端链路补充
-
-日志中心必须按 `D:\平台源码\signoz-develop\frontend` 的 `src\AppRoutes\routes.ts`、`src\constants\routes.ts`、`src\AppRoutes\pageComponents.ts`、`src\components\Logs`、`src\components\LogDetail`、`src\components\QuickFilters`、`src\components\ExplorerCard`、`src\api\logs`、`src\api\pipeline`、`src\api\saveView`、`src\api\trace` 做同源状态流迁移或等价实现。FindX 用户侧使用“日志中心”命名，内部保留日志检索、字段筛选、上下文、聚合、live tail、Pipeline、Saved Views、Trace 关联和组件不可用 `BLOCKED`。
-
-## SkyWalking Agent 补充
-
-SkyWalking Agent 生态必须进入 FindX Agent 管理中心，而不是停留在清单或后端包管理。Java、Python、Node.js、PHP、Go、Rust、Ruby、Nginx Lua、Kong、Browser Client JS 等能力包必须覆盖包仓库、安装向导、配置模板、远程下发、心跳、数据到达、版本治理、漂移检测、升级回滚、卸载和 Evidence Chain。
-
-P0 源码矩阵必须逐项登记 `skywalking-java`、`skywalking-python`、`skywalking-nodejs`、`skywalking-php`、`skywalking-go`、`skywalking-rust`、`skywalking-ruby`、`skywalking-nginx-lua`、`skywalking-kong`、`skywalking-client-js` 的上游仓库、本地源码路径、版本/commit、许可证、配置项、安装方式、数据到达验证和 FindX Agent 用户侧命名。独立 Agent 源码未落地时只能标记 `BLOCKED`，不能用静态清单代替实现。
+每次派发、关闭、超时、回派、接管、验证、扫描和 P0/P1 风险处理，必须追加到 `.claude/operations-log.md`。
 
 ## Superseded 文档
 
-以下文档不再作为实施入口，仅保留为历史上下文：
+以下文档不再作为实施入口，只保留历史上下文：
 
 - `docs/aiops/findx_flashcat_full_stack_observability_long_term_plan.md`
+- `docs/aiops/findx_react_first_frontend_long_term_plan.md`
 - `docs/aiops/nightingale_findx_agents_project_plan.md`
 - `discuss/findx_full_implementation_plan.md`
 - `discuss/findx_execution_task_breakdown.md`
@@ -80,16 +83,4 @@ P0 源码矩阵必须逐项登记 `skywalking-java`、`skywalking-python`、`sky
 - `discuss/findx_nightingale_one_to_one_next_slices.md`
 - `discuss/findx_ui_navigation_one_to_one_audit.md`
 
-归档索引见：
-
-- [2026-05 FindX plan reset](../archive/2026-05-findx-plan-reset/README.md)
-
-## 禁止事项摘要
-
-- 禁止 iframe 嵌入参考站。
-- 禁止嵌入参考站 SSO。
-- 禁止 MVP、最小实现、最小验证。
-- 禁止静态假按钮和错误语义映射。
-- 禁止只看截图不看源码。
-- 禁止用户侧出现外部品牌。
-- 禁止未跑浏览器真实交互却写 PASS。
+归档索引：[`docs/archive/2026-05-findx-plan-reset/README.md`](../archive/2026-05-findx-plan-reset/README.md)
