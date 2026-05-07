@@ -1,0 +1,29 @@
+- generic [ref=e7]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e13]
+      - generic [ref=e17]:
+        - generic [ref=e18] [cursor=pointer]
+        - generic [ref=e25]
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - link "百度" [ref=e148] [cursor=pointer]:
+          - /url: https://www.baidu.com
+        - link "谷歌" [ref=e149] [cursor=pointer]:
+          - /url: https://www.google.com
+      - img "menu-fold" [ref=e151] [cursor=pointer]:
+        - img [ref=e152]
+  - generic [ref=e155]:
+    - generic [ref=e157]:
+      - generic [ref=e159]: 数据源管理
+      - generic [ref=e160]:
+        - button [ref=e161] [cursor=pointer]
+        - button [ref=e168] [cursor=pointer]
+        - generic [ref=e180] [cursor=pointer]
+    - generic [ref=e186]:
+      - generic [ref=e187]:
+        - generic [ref=e188]
+        - button "新 增" [ref=e194] [cursor=pointer]
+      - generic [ref=e198]:
+        - table [ref=e202]
+        - list [ref=e352]

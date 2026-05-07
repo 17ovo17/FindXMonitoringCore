@@ -15,6 +15,7 @@
 - [统一测试基准](../testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](../compliance/third-party-sources.md)
 - [AGENTS.md](../../AGENTS.md)
+- [P0 源码矩阵](source-matrix/p0_source_matrix_lock.md)
 
 ## 仍有效的专题文档
 

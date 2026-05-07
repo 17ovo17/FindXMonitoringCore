@@ -1,0 +1,29 @@
+- generic [ref=e7]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e13]
+      - generic [ref=e17]:
+        - generic [ref=e18] [cursor=pointer]
+        - generic [ref=e25]
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - link "百度" [ref=e148] [cursor=pointer]:
+          - /url: https://www.baidu.com
+        - link "谷歌" [ref=e149] [cursor=pointer]:
+          - /url: https://www.google.com
+      - img "menu-fold" [ref=e151] [cursor=pointer]:
+        - img [ref=e152]
+  - generic [ref=e155]:
+    - generic [ref=e157]:
+      - generic [ref=e161]: 通知媒介
+      - generic [ref=e162]:
+        - button [ref=e163] [cursor=pointer]
+        - button [ref=e170] [cursor=pointer]
+        - generic [ref=e182] [cursor=pointer]
+    - generic [ref=e187]:
+      - generic [ref=e188]:
+        - generic [ref=e191]
+        - generic [ref=e197]
+      - generic [ref=e210]:
+        - table [ref=e214]
+        - list [ref=e468]
