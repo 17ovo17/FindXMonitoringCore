@@ -12,6 +12,7 @@
 - [P0 指标查询页面同源矩阵](p0_metric_explorer_real_matrix.md)
 - [P0 仪表盘页面同源矩阵](p0_dashboard_real_matrix.md)
 - [P0 模板中心页面同源矩阵](p0_template_center_real_matrix.md)
+- [P1 告警与通知页面同源矩阵](p1_alert_notification_real_matrix.md)
 - [P0 SkyWalking Agent 到 FindX Agent 控制面矩阵](p0_skywalking_agent_real_matrix.md)
 - [运行态 DOM 证据](evidence/)
 
