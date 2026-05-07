@@ -57,6 +57,11 @@ export const navGroups = [
       { section: 'rules', label: '告警规则' },
       { section: 'events', label: '事件中心' },
     ],
+    hiddenChildren: [
+      { section: 'mutes', label: '告警屏蔽' },
+      { section: 'subscriptions', label: '告警订阅' },
+      { section: 'workflows', label: '工作流' },
+    ],
   },
   {
     key: 'notifications',
@@ -67,6 +72,7 @@ export const navGroups = [
     children: [
       { section: 'rules', label: '通知规则' },
       { section: 'channels', label: '通知媒介' },
+      { section: 'templates', label: '消息模板' },
     ],
   },
   {
@@ -162,6 +168,7 @@ export const quickOptions = navGroups.flatMap(group =>
 export const findNavByRoute = route => {
   const group = navGroups.find(item => route.path === item.path || route.path.startsWith(`${item.path}/`)) || navGroups[0]
   const section = String(route.query?.section || group.defaultSection)
-  const child = group.children.find(item => item.section === section) || group.children[0]
+  const childOptions = [...group.children, ...(group.hiddenChildren || [])]
+  const child = childOptions.find(item => item.section === section) || group.children[0]
   return { group, child }
 }

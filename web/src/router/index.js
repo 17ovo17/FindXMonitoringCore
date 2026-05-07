@@ -33,17 +33,15 @@ const alertSectionRedirects = {
   oncall: { path: '/org', section: 'teams' },
   'recording-rules': { path: '/alerts', section: 'rules' },
   'aggr-views': { path: '/alerts', section: 'events' },
-  subscribes: { path: '/notifications', section: 'rules' },
-  pipeline: { path: '/alerts', section: 'rules' },
-  mutes: { path: '/alerts', section: 'events' },
+  subscribes: { path: '/alerts', section: 'subscriptions' },
+  pipeline: { path: '/alerts', section: 'workflows' },
   audit: { path: '/platform', section: 'audit' },
 }
 
 const notificationSectionRedirects = {
   oncall: { path: '/org', section: 'teams' },
-  pipeline: { path: '/alerts', section: 'rules' },
+  pipeline: { path: '/alerts', section: 'workflows' },
   configs: { path: '/notifications', section: 'rules' },
-  templates: { path: '/notifications', section: 'rules' },
   records: { path: '/notifications', section: 'rules' },
 }
 

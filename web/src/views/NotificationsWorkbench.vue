@@ -1,51 +1,71 @@
 <template>
   <div class="notify-page">
-    <section class="notify-panel">
-      <div class="section-head">
+    <section class="notify-shell">
+      <header class="page-head">
         <div>
           <div class="kicker">通知</div>
           <h2>{{ current.title }}</h2>
           <p>{{ current.desc }}</p>
         </div>
-      </div>
-      <div class="empty-state">
-        <el-empty :description="current.empty">
-          <el-alert :title="current.hint" type="info" show-icon :closable="false" />
-        </el-empty>
-      </div>
+        <el-segmented v-model="section" :options="tabs" @change="syncRoute" />
+      </header>
+
+      <NotificationRulesPanel v-if="section === 'rules'" @blocked="openBlocked" />
+      <NotificationChannelsPanel v-else-if="section === 'channels'" @blocked="openBlocked" />
+      <NotificationTemplatesPanel v-else @blocked="openBlocked" />
     </section>
+
+    <NotificationBlockedDrawer v-model:visible="blockedVisible" :message="blockedMessage" :payload="blockedJson" />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import NotificationBlockedDrawer from '../components/notifications/NotificationBlockedDrawer.vue'
+import NotificationChannelsPanel from '../components/notifications/NotificationChannelsPanel.vue'
+import NotificationRulesPanel from '../components/notifications/NotificationRulesPanel.vue'
+import NotificationTemplatesPanel from '../components/notifications/NotificationTemplatesPanel.vue'
+import { blockedContracts, blockedPayload } from '../components/notifications/notificationModel'
 
 const route = useRoute()
-const validSections = new Set(['rules', 'channels'])
-const section = computed(() => validSections.has(route.query.section) ? route.query.section : 'rules')
+const router = useRouter()
+const validSections = new Set(['rules', 'channels', 'templates'])
+const section = ref(validSections.has(route.query.section) ? route.query.section : 'rules')
+const blockedVisible = ref(false)
+const blockedMessage = ref('')
+const blockedJson = ref('{}')
+const tabs = [
+  { label: '通知规则', value: 'rules' },
+  { label: '通知媒介', value: 'channels' },
+  { label: '消息模板', value: 'templates' },
+]
 const copy = {
-  rules: {
-    title: '通知规则',
-    desc: '按事件条件、接收对象和媒介策略决定通知如何投递，订阅偏好、消息正文和投递追踪在规则详情内承载。',
-    empty: '通知规则尚未接入真实接口。',
-    hint: '接收对象复用用户、团队组织和业务空间，不再维护独立接收组。',
-  },
-  channels: {
-    title: '通知媒介',
-    desc: '邮件、Webhook、飞书、钉钉、企微、PagerDuty 等媒介统一在这里配置。',
-    empty: '通知媒介尚未接入真实接口。',
-    hint: '后续响应只返回 secret_set 和目标摘要，不回显 Webhook Token。',
-  },
+  rules: { title: '通知规则', desc: '按成熟基础监控结构承载搜索、新增、启停、编辑、克隆、删除和详情统计；未暴露 contract 时明确阻断。' },
+  channels: { title: '通知媒介', desc: '左侧媒介类型、右侧筛选表格、导入导出、启停、克隆和删除按成熟结构组织。' },
+  templates: { title: '消息模板', desc: '左侧模板列表、右侧模板详情、内容编辑、预览、克隆和删除按成熟结构组织。' },
 }
 const current = computed(() => copy[section.value] || copy.rules)
+
+const syncRoute = value => router.replace({ path: '/notifications', query: { section: value } })
+const openBlocked = (action, context = {}) => {
+  blockedMessage.value = blockedContracts[action] || 'BLOCKED_BY_CONTRACT：后端 contract 未暴露。'
+  blockedJson.value = blockedPayload(action, context)
+  blockedVisible.value = true
+}
+
+watch(() => route.query.section, value => {
+  section.value = validSections.has(value) ? value : 'rules'
+})
 </script>
 
 <style scoped>
-.notify-page { min-height: 100%; padding: 24px; color: #243553; }
-.notify-panel { min-height: calc(100vh - 114px); padding: 22px; border: 1px solid #e4e9f2; border-radius: 8px; background: rgba(255,255,255,.86); box-shadow: 0 12px 34px rgba(31,45,61,.06); overflow: auto; }
+.notify-page { min-height: 100%; padding: 18px; color: #25324a; background: #f5f7fb; }
+.notify-shell { min-height: calc(100vh - 104px); }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding: 16px; border: 1px solid #e3e8f1; border-radius: 8px; background: #fff; }
 .kicker { color: #1769ff; font-size: 12px; font-weight: 800; }
-h2 { margin: 6px 0 0; color: #1e3a5f; font-size: 24px; }
-p { margin: 8px 0 0; color: #60728e; font-size: 13px; line-height: 1.6; }
-.empty-state { min-height: 420px; display: grid; place-items: center; border: 1px dashed #d8e1ee; border-radius: 8px; margin-top: 18px; background: #f8fbff; }
+h2, p { margin: 0; }
+h2 { margin-top: 4px; color: #17233c; font-size: 22px; }
+p { margin-top: 8px; color: #66758d; font-size: 13px; line-height: 1.6; }
+@media (max-width: 760px) { .page-head { align-items: stretch; flex-direction: column; } }
 </style>
