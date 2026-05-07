@@ -10,6 +10,7 @@
 - [P0 React-first 壳层与导航迁移矩阵](p0_web_react_shell_nav_matrix.md)
 - [P0 数据源页面同源矩阵](p0_datasource_real_matrix.md)
 - [P0 指标查询页面同源矩阵](p0_metric_explorer_real_matrix.md)
+- [P0 仪表盘页面同源矩阵](p0_dashboard_real_matrix.md)
 - [P0 SkyWalking Agent 到 FindX Agent 控制面矩阵](p0_skywalking_agent_real_matrix.md)
 - [运行态 DOM 证据](evidence/)
 
