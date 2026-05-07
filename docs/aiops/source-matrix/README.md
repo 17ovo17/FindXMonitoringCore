@@ -6,6 +6,7 @@
 
 - [P0 源码矩阵锁定表](p0_source_matrix_lock.md)
 - [P0 导航同源矩阵](p0_basic_monitoring_nav_matrix.md)
+- [P0 统一配置与数据源契约矩阵](p0_config_datasource_contract_matrix.md)
 - [运行态 DOM 证据](evidence/)
 
 硬规则：
