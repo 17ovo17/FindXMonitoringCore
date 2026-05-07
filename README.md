@@ -25,6 +25,7 @@ FindX 是一个面向可观测、Agent 管理、AI SRE 和 Evidence Chain 的长
 - 禁止 iframe 嵌入参考站，禁止嵌入参考站 SSO，FindX 必须使用自有登录、导航、权限和主题壳层。
 - 禁止 MVP、最小实现、最小验证、占位页面、静态假按钮和未验证 PASS。
 - 前端长期方向按 [React-first 前端技术栈长期闭环计划](docs/aiops/findx_react_first_frontend_long_term_plan.md) 执行；现有 Vue 页面只作为兼容桥或待迁移对象，不再作为最终页面结构和功能验收基线。
+- 当前开发主线优先完成 React-first 前端提级和前端功能闭环；Agent 侧安装器、包仓库、远程下发、心跳、探针生命周期和升级回滚调优在前端闭环后推进。
 - 每个页面或功能切片编码前必须读取成熟源码和运行态 DOM，输出源码路径、路由、核心组件、API 调用、状态流、按钮真实动作、空态、错误态、权限态和 FindX 替换点。
 - 用户侧只能出现 FindX / FindX Agent 等 FindX 品牌；外部来源名称只允许出现在内部开发证据、合规登记和归档文档中。
 - API 测试不能替代 MCP 浏览器真实登录和点击回归。

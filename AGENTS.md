@@ -246,6 +246,7 @@
 - FindX 前端长期方向是 Nightingale 同系 React 技术栈；现有 Vue 页面只作为兼容桥、过渡承载或待迁移对象，不再作为最终页面结构和功能点验收基线。
 - 基础监控页面必须按 `D:\平台源码\fe-main` 的 React 路由、菜单、组件拆分、状态流、请求层和交互语义迁移；不得继续在 Vue workbench 上补成“完成态”。
 - React Shell 只负责 FindX 自有登录、导航、主题、权限、审计、错误脱敏和品牌替换；成熟页面内部结构、查询、抽屉、弹窗、表格、图表、变量、模板导入、历史记录、联想和按钮动作必须同源迁移。
+- 当前主线优先完成 React-first 前端提级和前端功能闭环；Agent 侧安装器、包仓库、远程安装、配置下发、心跳、探针数据到达、升级回滚和卸载调优必须排在前端闭环之后。
 - 引入 React 依赖、Vite React 插件、React 入口或大规模迁移时必须单独作为任务板任务登记，标记依赖变更、构建影响、回滚方式和 WSL/MCP 验证结果。
 - 每个前端切片必须按 `docs/aiops/findx_react_first_frontend_long_term_plan.md` 校验技术栈、导航归属、Source-Compatible UI、Adapter 契约、`BLOCKED_BY_CONTRACT` 和浏览器回归，不得只引用长期主计划的一句话。
 
