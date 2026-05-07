@@ -38,6 +38,8 @@
 
 SkyWalking Agent 生态必须进入 FindX Agent 管理中心，而不是停留在清单或后端包管理。Java、Python、Node.js、PHP、Go、Rust、Ruby、Nginx Lua、Kong、Browser Client JS 等能力包必须覆盖包仓库、安装向导、配置模板、远程下发、心跳、数据到达、版本治理、漂移检测、升级回滚、卸载和 Evidence Chain。
 
+P0 源码矩阵必须逐项登记 `skywalking-java`、`skywalking-python`、`skywalking-nodejs`、`skywalking-php`、`skywalking-go`、`skywalking-rust`、`skywalking-ruby`、`skywalking-nginx-lua`、`skywalking-kong`、`skywalking-client-js` 的上游仓库、本地源码路径、版本/commit、许可证、配置项、安装方式、数据到达验证和 FindX Agent 用户侧命名。独立 Agent 源码未落地时只能标记 `BLOCKED`，不能用静态清单代替实现。
+
 ## Superseded 文档
 
 以下文档不再作为实施入口，仅保留为历史上下文：

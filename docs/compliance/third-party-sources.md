@@ -35,6 +35,25 @@
 | MariaDB/MySQL | GPL/商业许可等，按发行版本确认 | 权威业务数据库 | 用户侧不展示 | 版本、驱动、迁移和备份 |
 | MinIO | AGPLv3/商业许可，按使用方式确认 | 对象存储、证据产物、离线包 | 用户侧不展示 | 分发模式和许可证复核 |
 
+## SkyWalking Agent 上游仓库登记
+
+以下仓库只允许作为内部来源、开发证据、授权边界和源码矩阵引用。用户侧包名、菜单、页面标题、权限对象和审计对象必须使用 FindX Agent 命名。
+
+| 能力包 | source_url | FindX 用户侧名称 | P0 源码矩阵要求 |
+| --- | --- | --- | --- |
+| Java Agent | `https://github.com/apache/skywalking-java` | FindX Agent Java 探针 | 记录源码路径、版本/commit、插件清单、JVM 参数、配置模板、安装/升级/回滚 |
+| Python Agent | `https://github.com/apache/skywalking-python` | FindX Agent Python 探针 | 记录源码路径、版本/commit、运行时依赖、启动注入、配置模板、安装/升级/回滚 |
+| Node.js Agent | `https://github.com/apache/skywalking-nodejs` | FindX Agent Node.js 探针 | 记录源码路径、版本/commit、npm 包、框架插件、启动参数、配置模板 |
+| PHP Agent | `https://github.com/apache/skywalking-php` | FindX Agent PHP 探针 | 记录源码路径、版本/commit、扩展安装、FPM/Apache 兼容、配置模板 |
+| Go Agent | `https://github.com/apache/skywalking-go` | FindX Agent Go 探针 | 记录源码路径、版本/commit、构建/注入方式、模块依赖、回滚策略 |
+| Rust Agent | `https://github.com/apache/skywalking-rust` | FindX Agent Rust 探针 | 记录源码路径、版本/commit、crate、运行时、配置模板、数据到达验证 |
+| Ruby Agent | `https://github.com/apache/skywalking-ruby` | FindX Agent Ruby 探针 | 记录源码路径、版本/commit、gem、框架兼容、启动注入、配置模板 |
+| Nginx Lua Agent | `https://github.com/apache/skywalking-nginx-lua` | FindX Agent 网关探针 | 记录源码路径、版本/commit、OpenResty/Nginx 兼容、Lua 模块、重载/回滚 |
+| Kong Agent | `https://github.com/apache/skywalking-kong` | FindX Agent Kong 探针 | 记录源码路径、版本/commit、Kong 版本矩阵、插件安装、接入验证 |
+| Browser Client JS | `https://github.com/apache/skywalking-client-js` | FindX Browser Agent | 记录源码路径、版本/commit、SDK 引入方式、隐私脱敏、RUM 事件、SourceMap 策略 |
+
+当前本地 `D:\平台源码` 已确认存在 SkyWalking UI/OAP 相关源码目录；独立 Agent 仓库如未落地，P0 阶段必须补齐源码目录、版本登记或明确 `BLOCKED`，不能直接进入实现。
+
 ## 品牌脱敏规则
 
 - 用户侧统一使用 FindX、FindX Agent、链路监控、日志中心、Agent 管理中心、AI SRE、模板中心等命名。
