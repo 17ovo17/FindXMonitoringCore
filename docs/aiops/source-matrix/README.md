@@ -5,6 +5,7 @@
 当前矩阵：
 
 - [P0 源码矩阵锁定表](p0_source_matrix_lock.md)
+- [P0 导航同源矩阵](p0_basic_monitoring_nav_matrix.md)
 - [运行态 DOM 证据](evidence/)
 
 硬规则：
