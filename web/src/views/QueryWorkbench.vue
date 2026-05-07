@@ -9,7 +9,8 @@
         </div>
       </div>
 
-      <MonitorDatasourceQueryPanel v-if="section === 'datasources' || section === 'metrics'" />
+      <MonitorDatasourcesPanel v-if="section === 'datasources'" />
+      <MonitorDatasourceQueryPanel v-else-if="section === 'metrics'" />
       <div v-else class="blocked-state">
         <div class="blocked-head">
           <el-tag type="danger" effect="dark" round>BLOCKED</el-tag>
@@ -27,6 +28,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import MonitorDatasourcesPanel from '../components/monitoring/MonitorDatasourcesPanel.vue'
 import MonitorDatasourceQueryPanel from '../components/monitoring/MonitorDatasourceQueryPanel.vue'
 
 const route = useRoute()
