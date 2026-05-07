@@ -1,3 +1,5 @@
+# Superseded: Replaced on 2026-05-07 by `docs/aiops/findx_full_stack_observability_long_term_plan.md`. Historical evidence only; not an implementation entrypoint.
+
 # FindX 全栈可观测与 AI SRE — P0~P6 全量实施计划
 
 > 文档性质：全阶段实施规划

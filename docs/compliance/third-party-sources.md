@@ -1,71 +1,83 @@
 # 第三方来源与融合登记
 
-生成时间：2026-05-04 07:40（UTC+8）
+生成时间：2026-05-07 09:09（UTC+8）  
+状态：内部合规与开发证据文档，不作为用户侧展示文案
 
-本文用于记录 FindX Monitoring Core 可能参考、复用或授权衍生的第三方来源。当前为文档闭环登记，不代表所有来源均已融合到业务代码；正式分发前必须以实际代码、文件清单、许可证文本和修改说明复核。
+本文记录 FindX 可能参考、迁移、适配、编排或授权衍生的第三方来源。正式分发前必须以实际导入文件清单、版本、许可证、NOTICE、修改说明和授权材料复核。用户侧菜单、页面标题、权限对象、审计对象、通知内容和 Agent 包展示名称必须使用 FindX / FindX Agent 品牌。
 
 ## 来源总表
 
-| 来源 | 许可证/授权 | FindX 用途 | 当前状态 | 正式分发前待补 |
-|------|-------------|-----------|---------|---------------|
-| Nightingale | Apache-2.0 | 告警、Dashboard、通知、模板、权限、事件流水线、任务等设计参考和可融合来源 | 参考/可融合 | 具体版本、文件清单、修改说明、NOTICE、许可证文本 |
-| Categraf | MIT | `findx-agents` 插件生态、采集插件和指标上报模型复用 | 可复用 | 插件来源版本、保留声明、修改说明、二进制分发说明 |
-| Catpaw | 授权衍生 | 巡检、诊断、远程会话、结构化工具、自动修复执行能力的授权衍生 | 授权边界待随实现登记 | 授权记录、衍生文件清单、限制说明、内部保管位置 |
+| 来源 | 典型许可证/授权 | FindX 用途 | 用户侧品牌策略 | 分发前必查 |
+| --- | --- | --- | --- | --- |
+| Nightingale | Apache-2.0 | 基础监控页面结构、路由、告警、通知、仪表盘、模板、数据查询、系统配置 | 用户侧显示 FindX | 版本、文件清单、NOTICE、修改说明 |
+| SkyWalking UI/OAP | Apache-2.0 | 链路监控 UI、OAP query protocol、拓扑、Trace、Profiling、告警 | 用户侧显示链路监控 | 版本、OAP API 边界、NOTICE、存储依赖说明 |
+| SkyWalking Java Agent | Apache-2.0 | FindX Agent Java 探针能力包 | 用户侧显示 FindX Agent Java 探针 | 版本、插件清单、分发方式 |
+| SkyWalking Python Agent | Apache-2.0 | FindX Agent Python 探针能力包 | 用户侧显示 FindX Agent Python 探针 | 版本、运行时依赖 |
+| SkyWalking Node.js Agent | Apache-2.0 | FindX Agent Node.js 探针能力包 | 用户侧显示 FindX Agent Node.js 探针 | 版本、运行时依赖 |
+| SkyWalking PHP Agent | Apache-2.0 | FindX Agent PHP 探针能力包 | 用户侧显示 FindX Agent PHP 探针 | 版本、扩展安装说明 |
+| SkyWalking Go Agent | Apache-2.0 | FindX Agent Go 探针能力包 | 用户侧显示 FindX Agent Go 探针 | 版本、构建/注入方式 |
+| SkyWalking Rust Agent | Apache-2.0 | FindX Agent Rust 探针能力包 | 用户侧显示 FindX Agent Rust 探针 | 版本、运行时依赖 |
+| SkyWalking Ruby Agent | Apache-2.0 | FindX Agent Ruby 探针能力包 | 用户侧显示 FindX Agent Ruby 探针 | 版本、运行时依赖 |
+| SkyWalking Nginx Lua Agent | Apache-2.0 | FindX Agent 网关/反向代理探针能力包 | 用户侧显示 FindX Agent 网关探针 | OpenResty/Nginx 兼容矩阵 |
+| SkyWalking Kong Agent | Apache-2.0 | FindX Agent Kong 插件能力包 | 用户侧显示 FindX Agent Kong 探针 | Kong 版本矩阵 |
+| SkyWalking Client JS | Apache-2.0 | FindX 前端监控探针能力包 | 用户侧显示 FindX Browser Agent | 浏览器兼容、隐私脱敏 |
+| BanyanDB | Apache-2.0 | SkyWalking 链路监控推荐存储候选 | 用户侧不展示 | 部署、备份、容量、许可证 |
+| SigNoZ | Apache-2.0 | 日志中心、日志检索、Pipeline、Saved Views、Trace 关联 | 用户侧显示日志中心 | 版本、文件清单、NOTICE |
+| ClickHouse | Apache-2.0 | 日志和分析存储 | 用户侧不展示 | 数据保留、容量、备份 |
+| OpenTelemetry Collector | Apache-2.0 | 遥测接入、协议转换、pipeline 管理 | 用户侧显示接入网关或采集网关 | processor/exporter 清单 |
+| AutoOps/AIOps | 以源码授权为准 | CMDB、主机、Agent 在线、部署和心跳结构 | 用户侧显示 CMDB / Agent 管理 | 授权边界、导入文件清单 |
+| Categraf | MIT | FindX Agent 采集插件生态、配置模板、指标采集能力包 | 用户侧显示 FindX Agent 插件 | MIT 文本、插件清单、修改说明 |
+| Catpaw | 授权衍生 | FindX Agent 巡检、诊断、结构化执行、远程会话能力 | 用户侧显示 FindX Agent 诊断能力 | `<AUTH_RECORD>`、衍生范围 |
+| Qdrant | Apache-2.0 | 知识库向量索引加速层 | 用户侧显示向量索引或知识库索引 | 数据可重建、备份策略 |
+| Prometheus | Apache-2.0 | 指标采集/查询兼容 | 用户侧显示指标数据源 | 数据源配置和许可证 |
+| VictoriaMetrics | Apache-2.0 | 指标存储和查询候选 | 用户侧显示指标数据源 | 版本、容量、许可证 |
+| Redis | BSD-3-Clause 或发行版本对应许可 | 缓存、会话、队列 | 用户侧不展示 | 版本、部署和安全配置 |
+| MariaDB/MySQL | GPL/商业许可等，按发行版本确认 | 权威业务数据库 | 用户侧不展示 | 版本、驱动、迁移和备份 |
+| MinIO | AGPLv3/商业许可，按使用方式确认 | 对象存储、证据产物、离线包 | 用户侧不展示 | 分发模式和许可证复核 |
 
-## Nightingale Apache-2.0 参考/可融合边界
+## 品牌脱敏规则
 
-可参考或可融合方向：
+- 用户侧统一使用 FindX、FindX Agent、链路监控、日志中心、Agent 管理中心、AI SRE、模板中心等命名。
+- 外部来源名称只允许出现在本文件、源码矩阵、内部审计、授权边界、NOTICE、归档文档和开发证据中。
+- 从 Categraf/Catpaw 迁移或适配的能力，用户侧统一称 FindX Agent 插件、FindX Agent 诊断能力或 FindX Agent 巡检能力。
+- 基础监控源码中的外部品牌标识在用户侧替换为 FindX，不改变原功能语义。
 
-- 告警规则、事件、通知、静默、订阅、值班、团队权限等领域模型。
-- Dashboard 和模板中心的交互与导入导出思路。
-- 任务、流水线和审计相关成熟设计。
+## SkyWalking 与 SigNoZ 存储边界
 
-必须遵守：
+- SkyWalking OAP 默认优先使用 BanyanDB 作为链路监控存储候选，也保留 ES/OpenSearch 兼容选项。
+- SigNoZ 默认围绕 ClickHouse 承载日志、事件和查询分析能力。
+- ClickHouse 不是 SkyWalking OAP 的直接替代存储；如果要共用数据，必须通过 OTel Collector、Adapter 或数据同步设计完成，不得把两个产品的存储契约混用。
+- ES/OpenSearch 只在链路兼容或日志搜索明确需要时作为可选组件引入。
 
-- 保留 Apache-2.0 要求的许可证和 NOTICE。
-- 记录实际融合文件、修改说明和来源版本。
-- FindX 最终运行时主入口仍为 `/api/v1/monitor/*`、`/api/v1/findx-agents/*`，不得把 Nightingale 描述为运行时主依赖。
+## FindX Agent 来源边界
 
-## Categraf MIT 插件复用边界
+FindX Agent 是控制面、安装器和能力包编排层，不把所有探针强行揉成一个运行时二进制。多语言 Agent、浏览器 Agent、网关 Agent、采集插件、巡检工具作为被 FindX Agent 管理的能力包存在。
 
-可复用方向：
+分发前必须记录：
 
-- 插件采集生态和指标采集模式。
-- Linux/Windows 主机指标、进程、端口、中间件等插件能力。
-- 进入 `findx-agents` 发行版的插件适配层。
-
-必须遵守：
-
-- 保留 MIT 许可证文本和上游版权声明。
-- 记录插件来源、版本、修改说明。
-- 分发二进制或镜像时同步携带许可证材料。
-
-## Catpaw 授权衍生边界
-
-可衍生方向以授权记录为准，文档层只写公开边界：
-
-- 主机巡检与诊断报告。
-- 远程会话能力的受控衍生。
-- 结构化工具调用能力。
-- 自动修复执行能力的受控执行器。
-
-必须遵守：
-
-- 不公开真实授权材料，只使用 `<AUTH_RECORD>` 占位。
-- 不把旧 Catpaw API 当作 FindX 新主入口。
-- 不扩大到授权未覆盖的分发、商用、闭源、再授权或第三方交付场景。
+- 能力包名称和用户侧展示名称。
+- 上游来源、版本、commit、许可证。
+- 导入文件或二进制清单。
+- 修改说明和 NOTICE。
+- Windows/Linux/Kubernetes 支持范围。
+- 安装、升级、回滚、卸载和审计行为。
 
 ## 版本登记模板
 
 | 字段 | 示例占位 |
-|------|---------|
-| source_name | `Nightingale` / `Categraf` / `Catpaw` |
-| source_url | `<BASE_URL>` |
+| --- | --- |
+| source_name | `<SOURCE_NAME>` |
+| source_url | `<SOURCE_URL>` |
 | version_or_commit | `<VERSION_OR_COMMIT>` |
-| license | `Apache-2.0` / `MIT` / `<AUTH_RECORD>` |
+| license | `<LICENSE>` |
 | imported_files | `<FILE_LIST>` |
-| modified_files | `<FILE_LIST>` |
-| modification_summary | `<SUMMARY>` |
-| notice_required | `yes/no` |
-| reviewer | `<LOGIN_USER>` |
-| review_time | `YYYY-MM-DD HH:mm（UTC+8）` |
+| modified_files | `<MODIFIED_FILE_LIST>` |
+| findx_module | `<FINDX_MODULE>` |
+| user_facing_brand | `<FINDX_BRAND_NAME>` |
+| distribution_mode | `<SOURCE_OR_BINARY_OR_DOC_ONLY>` |
+| notice_required | `<YES_OR_NO>` |
+| security_review | `<PENDING_OR_DONE>` |
+
+## 当前状态
+
+本文件是来源登记和边界说明，不代表所有来源已经进入业务代码。每个开发切片仍必须在源码矩阵中记录实际引用路径、实现范围、修改清单和验收证据。

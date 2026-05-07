@@ -1,3 +1,5 @@
+# Superseded: Replaced on 2026-05-07 by `docs/aiops/findx_full_stack_observability_long_term_plan.md`. Historical evidence only; not an implementation entrypoint.
+
 # FindX 执行准备与门禁任务包
 
 > 生成时间：2026-05-05 00:24（UTC+8）

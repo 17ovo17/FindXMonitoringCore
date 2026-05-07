@@ -1,3 +1,5 @@
+# Superseded: Replaced on 2026-05-07 by `docs/aiops/findx_full_stack_observability_long_term_plan.md`. Historical evidence only; not an implementation entrypoint.
+
 # FindX Agent/CMDB 运维工作台计划
 
 生成时间：2026-05-04 12:45（UTC+8）

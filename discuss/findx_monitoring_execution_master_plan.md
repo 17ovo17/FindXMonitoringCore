@@ -1,3 +1,5 @@
+# Superseded: Replaced on 2026-05-07 by `docs/aiops/findx_full_stack_observability_long_term_plan.md`. Historical evidence only; not an implementation entrypoint.
+
 # FindX Monitoring Core P0-P3 实施总计划
 
 生成时间：2026-05-04 04:30（UTC+8）

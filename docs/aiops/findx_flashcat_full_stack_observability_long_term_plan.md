@@ -1,3 +1,5 @@
+# Superseded: Replaced on 2026-05-07 by `docs/aiops/findx_full_stack_observability_long_term_plan.md`. Historical evidence only; not an implementation entrypoint.
+
 # FindX 全栈可观测与 AI SRE 长期开发规划：FindX Core、findx-agents 与 Agent-First 闭环
 
 > 文档性质：长期规划与设计说明
