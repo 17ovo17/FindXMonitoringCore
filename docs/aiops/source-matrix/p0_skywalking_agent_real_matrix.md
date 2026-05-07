@@ -7,7 +7,9 @@
 
 SkyWalking Agent 生态必须作为 FindX Agent 管理中心的一等能力接入，不是链路监控页面的附属说明，也不是单纯包名清单。FindX 用户侧统一显示 FindX Agent / FindX Browser Agent / FindX 网关探针等命名；外部来源名称只允许留在本源码矩阵、合规来源登记、归档和开发证据中。
 
-当前本地只确认存在链路监控 UI/OAP 源码：
+当前本地只确认存在链路监控 UI/OAP 源码。本次本地目录检查证据见：
+
+- [SkyWalking Agent 本地源码检查证据](evidence/skywalking_agent_local_source_snapshot.md)
 
 | 本地路径 | 状态 | 作用 |
 | --- | --- | --- |
