@@ -18,10 +18,12 @@
 - [P3 链路监控同源矩阵](p3_skywalking_apm_real_matrix.md)
 - [P3 日志中心同源矩阵](p3_signoz_logs_real_matrix.md)
 - [P4 Agent Suite 同源矩阵](p4_categraf_catpaw_agent_suite_matrix.md)
+- [P5 AI SRE / Evidence Chain 同源矩阵](p5_aisre_evidence_chain_matrix.md)
 - [P0 SkyWalking Agent 到 FindX Agent 控制面矩阵](p0_skywalking_agent_real_matrix.md)
 - [SkyWalking Agent 本地源码检查证据](evidence/skywalking_agent_local_source_snapshot.md)
 - [SigNoZ 日志中心源码检查证据](evidence/signoz_logs_source_snapshot.md)
 - [Categraf / Catpaw 到 FindX Agent Suite 源码检查证据](evidence/categraf_catpaw_agent_suite_source_snapshot.md)
+- [FindX AI SRE / Evidence Chain 源码检查证据](evidence/findx_aisre_evidence_chain_source_snapshot.md)
 - [运行态 DOM 证据](evidence/)
 
 硬规则：
