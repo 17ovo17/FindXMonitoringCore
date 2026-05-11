@@ -1,341 +1,309 @@
-# FindX 平台实施策略 v3
+# FindX 全栈可观测平台 — 完整实施计划 v4
 
-更新时间：2026-05-11 20:00（UTC+8）
+更新时间：2026-05-11 21:30（UTC+8）
 
-状态：当前唯一实施主计划。替代原有逐文件闭包策略。
+状态：当前唯一实施主计划。替代 v3 和原有长期计划。
 
-## 1. 策略变更摘要
+---
 
-| 维度 | 旧策略 | 新策略 |
-|------|--------|--------|
-| 验证环境 | Windows + WSL + 远端 Ubuntu 三环境 | 平台后端只需远端 Ubuntu；探针代码才需 Windows+Linux 双通过 |
-| P0 收敛粒度 | 逐文件闭包，每个 2-3 文件拆函数到 ≤50 行 | 批量提交（编译通过+无敏感泄露），后续功能开发中顺带重构 |
-| 验证深度 | 每个闭包都跑 focused+full test + build + deploy + health | 日常只需 go test + go build；里程碑节点才做完整 deploy+health+browser |
-| 推进节奏 | 单文件闭包 → 提交 → 下一个文件 | 按功能模块批量推进，前后端联动闭环 |
-| CMDB | 基础设施 + Agent 管理中心分离 | 合并为"资产中心"，完整对象建模 |
-| AI 架构 | catpaw 巡检对话 | MCP 插线板 + 全平台 AI 助手 |
+## 1. 总则
 
-## 2. 不变的原则
+FindX 基于成熟平台源码复用，统一替换为 FindX 自有品牌、风格、权限、审计、配置、数据源和 AI SRE 能力。
 
+**不可违背：**
 - 成熟源码是事实源，不自研弱化页面
-- 前端最终架构为 React-only
+- 前端 React-only，保持现有 --fx-* CSS 变量 UI 风格
 - 禁止 iframe/WebView/参考站嵌入
 - 禁止 MVP/假按钮/假数据/假成功
-- 契约缺失时显示 BLOCKED_BY_CONTRACT，不伪装完成
-- 真实凭据不输出，使用占位符
-- FindX Agent 生命周期必须最终做到真实闭环
-- AI SRE 基于已有证据，不编造结论
+- 契约缺失显示 BLOCKED_BY_CONTRACT
+- 真实凭据不输出
+- Agent 生命周期必须真实闭环
+- AI 基于证据，不编造结论
 
-## 3. 验证标准
+## 2. 技术架构决策
 
-### 平台后端（Go API）
+### 2.1 持久化层：GORM
 
-| 场景 | 验证要求 |
-|------|---------|
-| 日常开发 | 远端 Ubuntu: `go test ./...` + `go build` |
-| 里程碑提交 | 远端 Ubuntu: test + build + deploy + health + Playwright browser |
-| API 契约变更 | 远端 Ubuntu: test + build + deploy + health + 相关 API curl |
+- 新模块（CMDB 对象建模、MCP server、Agent 生命周期）使用 GORM GetDB() 模式
+- 现有模块（监控、告警、通知）保持原生 SQL，不强制迁移
+- GORM 支持 AutoMigrate、JSON 字段、Preload/Association，适合动态 schema
 
-### 探针代码（catpaw/agent 相关）
-
-| 场景 | 验证要求 |
-|------|---------|
-| 日常开发 | Windows: `go test` + 远端 Ubuntu: `go test` |
-| 里程碑提交 | Windows + Ubuntu 双 build + 双 deploy + 心跳/数据到达 |
-
-### 前端（React）
-
-| 场景 | 验证要求 |
-|------|---------|
-| 日常开发 | `npm run build` 通过 |
-| 里程碑提交 | build + Playwright 真实登录远端 http://10.10.160.202:3000 |
-
-### 里程碑节点定义
-
-- 完成一个功能模块
-- 准备 push 到远端仓库
-- 用户明确要求完整验证
-
-## 4. 架构设计
-
-### 4.1 资产中心（CMDB 统一化）
-
-原"基础设施"+"Agent 管理中心"合并为**资产中心**。
-
-基于 LWOPS API 抓包反向设计，采用完整对象建模：
-
-```
-资产中心
-├── 对象建模（模型分类树、模型 CRUD、属性定义、关联关系）
-├── 实例管理（列表、详情、创建/编辑、搜索、分组）
-├── Agent 集成（探针状态、部署、心跳、配置下发）
-├── 自动发现（catpaw/categraf 上报 → CMDB 字段自动填充）
-├── 监控绑定（实例 ↔ Prometheus 目标关联）
-└── 拓扑视图（实例间关联可视化）
-```
-
-对象建模体系（参考 LWOPS）：
-
-```
-计算资源
-├── 服务器
-├── 虚拟化（平台/宿主机/虚拟机/存储）
-├── 容器（Docker/K8s）
-└── 云平台（ECS/RDS/EIP/ALB/Redis + 多云）
-
-系统软件
-├── 操作系统
-├── 数据库
-└── 中间件
-
-应用软件（业务系统/子系统）
-网络资源（网络设备）
-存储资源
-机房资源（机房/机柜）
-组织人员（部门/用户）
-```
-
-实例字段体系（操作系统为例，30+ 字段）：
-- 基本信息：IP、名称、是否监控、分组、系统版本、uname、负责人、联系电话、运行天数、NTP/DNS 状态、厂商
-- 系统资源：内存、虚拟内存、网卡数、磁盘空间、文件系统(结构化)、最大进程数
-- 系统信息：所属业务、管理IP、系统属性(物理/虚拟)
-- Agent 状态：探针版本、心跳时间、配置版本、数据到达时间
-
-### 4.2 AI 架构（MCP 插线板）
-
-AI SRE 通过 MCP 协议标准化接入所有数据源和操作能力。MCP 既是查询通道，也是写操作通道。
-
-**核心原则：UI 完整可用 + AI 可操作一切 UI 能做的事**
-
-用户可以手动通过 UI 操作，也可以让 AI 助手通过 MCP 完成同样的操作。两条路径等价。
-
-```
-用户
-├── 手动操作 → React UI → FindX API → 夜莺/Prometheus/CMDB
-└── AI 对话  → FindX AI → MCP Protocol → 夜莺/Prometheus/CMDB
-```
-
-MCP Server 矩阵：
+### 2.2 AI 架构：MCP 插线板
 
 ```
 FindX AI 助手 (LLM + Tool Calling)
     ↓ MCP Protocol
 ┌──────────────────────────────────────────────────┐
 │  夜莺 MCP Server (官方开源)                       │
-│  ├── 读：PromQL 查询、指标历史、告警事件列表      │
-│  ├── 写：创建/编辑仪表盘、配置告警规则            │
-│  ├── 写：管理数据源、配置通知媒介                 │
-│  └── 写：屏蔽告警、确认告警                       │
+│  ├── 读写：指标查询、仪表盘、告警规则、数据源     │
 ├──────────────────────────────────────────────────┤
-│  prometheus-mcp-server (开源，备用/直连场景)       │
-│  ├── 读：原生 PromQL、range query、instant query  │
-│  └── 读：targets、rules、alerts 状态              │
-├──────────────────────────────────────────────────┤
-│  alertmanager-mcp-server (开源，备用)             │
-│  ├── 读：活跃告警、静默列表                       │
-│  └── 写：创建静默、删除静默                       │
+│  prometheus-mcp-server (开源备用)                 │
+│  alertmanager-mcp-server (开源备用)               │
 ├──────────────────────────────────────────────────┤
 │  findx-cmdb-mcp-server (自建)                     │
-│  ├── 读：资产查询、关联关系、负责人、业务归属     │
-│  ├── 写：创建/更新实例、修改属性                  │
-│  └── 读：拓扑数据、分组统计                       │
+│  ├── 读写：资产 CRUD、关联、负责人、拓扑          │
 ├──────────────────────────────────────────────────┤
 │  findx-agent-mcp-server (自建)                    │
-│  ├── 读：探针状态、心跳、版本、配置               │
-│  ├── 写：触发部署、配置下发、升级、回滚           │
-│  └── 读：数据到达验证、安装日志                   │
+│  ├── 读写：探针部署、配置下发、状态、心跳验证     │
 ├──────────────────────────────────────────────────┤
 │  findx-knowledge-mcp-server (自建)                │
-│  ├── 读：知识库检索、Runbook 查询                 │
-│  └── 写：创建知识条目、更新 Runbook               │
+│  ├── 读写：知识库、Runbook                        │
 └──────────────────────────────────────────────────┘
 ```
 
-AI 助手能力（参考 LWOPS Lerwee，用 MCP 实现）：
-- **监控助手**：查指标、查历史、查趋势、创建仪表盘、配置告警规则
-- **告警助手**：查未恢复告警、告警统计、TOP N、屏蔽告警、确认告警
-- **资产助手**：查资产详情、查负责人、查业务归属、创建/更新资产
-- **部署助手**：触发探针安装、配置下发、查看部署状态
-- **预测能力**：趋势预测、单指标异常检测
+### 2.3 前端：React-only + 成熟源码迁移
 
-预定义问题模板（参考 LWOPS 31 个分类模板）：
-- 监控类："查询最近 1 小时 CPU 使用率"、"给这台机器创建磁盘告警规则"
-- 告警类："最近 1 周告警统计"、"屏蔽这条告警 2 小时"
-- 资产类："查询 IP 192.168.x.x 的资产详情"、"这台机器的负责人是谁"
-- 部署类："给这台机器安装 catpaw"、"查看探针心跳状态"
+参考源码的组件结构、状态流、API 调用模式，用 FindX JSX + --fx-* CSS 变量实现。UI 风格不变。
 
-### 4.3 告警中心增强
+## 3. 成熟源码事实源
 
-- 统一告警接入 API（支持第三方 webhook 推送，参考 LWOPS appid+token+签名模式）
-- 告警等级：5 级（信息/警告/次要/严重/紧急）
-- 告警生命周期：触发 → 确认 → 恢复 → 关闭
-- 告警与 CMDB 关联：告警对象 → 资产实例 → 负责人 → 自动通知
-- AI 告警预测：基于 Prometheus 历史数据做趋势预测
+| 域 | 事实源 | 参考内容 |
+|------|------|------|
+| 基础监控前端 | `D:\项目迁移文件\平台源码\fe-main` | 数据源表单、仪表盘编辑器、告警规则、通知、指标查询 |
+| 链路监控前端 | `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` | 服务目录、拓扑、Trace、Profiling |
+| 链路监控后端 | `D:\项目迁移文件\平台源码\skywalking-master` | OAP query、GraphQL、存储模型 |
+| 日志中心前端 | `D:\项目迁移文件\平台源码\signoz-develop\frontend` | 日志检索、字段筛选、Pipeline、Saved Views |
+| CMDB/Agent | `D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main` | 主机表、分组、Agent 在线、部署、心跳 |
+| 采集插件 | `D:\项目迁移文件\平台源码\categraf-main (1)` | 插件目录、配置模板 |
+| 巡检诊断 | `D:\项目迁移文件\平台源码\catpaw-master` | 巡检执行、结构化报告 |
+| CMDB 对象建模 | `D:\测试\LWOPS_*\reverse-poc\public\captures\cmdb-*` | 模型分类树、30+属性、关联、自动发现、监控绑定、拓扑、审批、数据质量 |
+| AI 智能问答 | `D:\测试\LWOPS_*\reverse-poc\public\captures\lerwee-*` | 31类预定义问题、Tool Calling、SSE 流式 |
+| AI 告警预测 | `D:\测试\LWOPS_*\reverse-poc\public\captures\calculate-*` | 趋势预测、异常检测 |
+| 告警中心 | `D:\测试\LWOPS_*\modules\aialert\` | 统一告警接入、SNMP Trap、webhook |
+| 导航/菜单 | `D:\测试\LWOPS_*\reverse-poc\public\captures\menu-tree.json` | 194项菜单、21应用模块 |
 
-### 4.4 导航结构
+## 4. CMDB 对象建模（参考 LWOPS，GORM 实现）
+
+### 4.1 模型分类树
+
+```
+计算资源
+├── 服务器（X86ServerBasic）
+├── 虚拟化（平台/宿主机/虚拟机/存储）
+├── 容器（Docker/K8s）
+└── 云平台（ECS/RDS/EIP/ALB/Redis + 阿里云/腾讯云/火山引擎）
+
+系统软件
+├── 操作系统
+├── 数据库（MySQL/PostgreSQL/MongoDB/Redis/达梦/GaussDB/Kingbase）
+└── 中间件（Tomcat/Nginx/Apache/WebLogic/JBoss/Kafka/RabbitMQ）
+
+应用软件（业务系统/子系统/云应用）
+网络资源（网络设备/交换机/路由器/防火墙/负载均衡）
+存储资源
+机房资源（机房/机柜）
+组织人员（部门/用户）
+其他（打印机/物联网/域名/License/合同）
+```
+
+### 4.2 用户自定义能力
+
+- 用户可创建自定义模型（自定义分类、名称、图标）
+- 用户可为任何模型添加自定义属性（字段名、类型、是否必填、是否唯一、是否自动发现）
+- 属性类型：char/int/float/ip/boolean/enum/array/struct/file/image
+- 属性分组标签（基本信息/系统资源/系统信息/自定义）
+- 关联关系定义（belong/default/自定义，n:1/1:n/n:n）
+
+### 4.3 实例字段体系（操作系统为例，30+ 字段）
+
+| 分组 | 字段 | 类型 | 自动发现 |
+|------|------|------|---------|
+| 基本信息 | IP地址 | ip | ✅ |
+| 基本信息 | 名称 | char | ✅ |
+| 基本信息 | 是否监控 | boolean | ❌ |
+| 基本信息 | 分组 | array(enum) | ✅ |
+| 基本信息 | 系统版本 | char | ✅ |
+| 基本信息 | 系统信息(uname) | char | ✅ |
+| 基本信息 | 资产负责人 | char | ❌ |
+| 基本信息 | 联系电话 | char | ❌ |
+| 基本信息 | 系统运行天数 | int | ✅ |
+| 基本信息 | NTP/DNS 状态 | enum | ❌ |
+| 基本信息 | 厂商 | char | ❌ |
+| 基本信息 | 附件/图片 | file/image | ❌ |
+| 系统资源 | 内存大小 | float(B) | ✅ |
+| 系统资源 | 虚拟内存 | int(B) | ✅ |
+| 系统资源 | 网卡数量 | int | ✅ |
+| 系统资源 | 磁盘空间 | float(B) | ✅ |
+| 系统资源 | 文件系统 | struct[] | ✅ |
+| 系统资源 | 最大进程数 | int | ✅ |
+| 系统信息 | 所属业务 | array(ref) | ❌ |
+| 系统信息 | 管理IP | ip | ❌ |
+| 系统信息 | 系统属性 | enum(物理/虚拟) | ❌ |
+| Agent | 探针版本 | char | ✅ |
+| Agent | 心跳时间 | datetime | ✅ |
+| Agent | 配置版本 | char | ✅ |
+| Agent | 数据到达时间 | datetime | ✅ |
+
+### 4.4 关键能力
+
+- 自动发现：catpaw/categraf 上报 → CMDB 字段自动填充
+- 变更审计：所有字段变更记录
+- 监控绑定：实例 ↔ Prometheus 目标
+- 拓扑视图：实例间关联可视化
+- 数据质量：巡检规则检查字段完整性（后续）
+- 审批流：实例创建/变更走审批（后续）
+
+## 5. Agent 完整生命周期
+
+### 5.1 能力包
+
+SkyWalking Agent（Java/Python/Node.js/PHP/Go/Rust/Ruby/Nginx Lua/Kong/Browser JS）+ Categraf + Catpaw
+
+### 5.2 安装方式
+
+- 本机：Linux curl -kfsSL、Windows CMD certutil、PowerShell Invoke-WebRequest
+- 远程：SSH/shell/systemd、WinRM/PowerShell/Windows Service
+- K8s：Helm/Operator/DaemonSet/Sidecar/InitContainer
+
+### 5.3 生命周期闭环
+
+安装 → 配置下发 → 插件下发 → 心跳验证 → 数据到达验证 → 升级 → 回滚 → 卸载 → 审计 → Evidence Chain
+
+每一步必须有真实执行证据，不能用命令预览或 BLOCKED_BY_CONTRACT 冒充完成。
+
+### 5.4 心跳验证要求
+
+- 控制面心跳（Agent → 平台 API）
+- 进程状态（systemd/Windows Service 存活）
+- 服务状态（端口监听、健康检查）
+- 探针加载状态
+- OAP/Prometheus 连通性
+- 最后 Trace/Metric/Log/RUM 到达时间
+
+## 6. AI SRE + Evidence Chain
+
+### 6.1 AI 助手（参考 LWOPS Lerwee）
+
+- 预定义问题模板（31+ 分类：监控/告警/资产/网络/系统/通用）
+- Tool Calling 通过 MCP 查询真实数据
+- SSE 流式输出
+- 会话管理
+
+### 6.2 AI 告警预测（参考 LWOPS calculate）
+
+- 趋势预测任务（CPU/磁盘/内存使用率）
+- 单指标异常检测
+- 预测告警列表和统计
+
+### 6.3 Evidence Chain
+
+接入：指标、告警、日志、Trace、CMDB、Agent 心跳、安装任务、配置下发、巡检、工作流、知识库
+
+## 7. 导航结构
 
 ```
 工作台（概览、AI 助手）
-资产中心（对象建模、实例管理、Agent 状态、拓扑）
-监控中心（数据源、仪表盘、指标查询、模板中心）
-告警中心（实时告警、告警规则、告警预测、通知）
-链路监控（服务目录、拓扑、Trace、Profiling）
-日志中心（日志检索、Pipeline、Saved Views）
-AI SRE（诊断会话、Evidence Chain、知识库）
-系统管理（组织权限、系统配置、审计日志）
+资产中心（资产概览、对象建模、实例管理、Agent 状态、拓扑视图）
+集成中心（数据源、模板中心、系统集成）
+数据查询（指标查询、仪表盘）
+告警（规则管理、告警屏蔽、告警订阅、告警事件、历史事件、链路告警、事件流水线）
+通知（通知规则、通知媒介、消息模板）
+链路监控（链路总览、服务目录、服务拓扑、Trace 检索、Profiling、链路设置）
+日志中心（日志检索、实时日志、字段筛选、上下文、聚合分析、接入管道、保存视图、Trace 关联）
+人员组织（用户管理、团队组织、业务组、角色管理）
+系统配置（AI 模型配置、站点设置、变量设置、单点登录、告警引擎、运行自检、审计日志）
+AI SRE（诊断会话、工作流、健康检查、复盘报告、Evidence Chain、知识库、自动修复）
 ```
 
-## 5. 实施阶段
+## 8. 实施阶段
 
-### 阶段 A：P0 快速收尾（当前）
+### P0：工作树治理 ✅ 已完成
 
-- 批量提交剩余后端脏文件（编译通过+无敏感即可）
-- 提交本策略文档
-- P0 工作树治理完成
+### P1：基础监控完整（参考夜莺 fe-main）
 
-### 阶段 B：React Shell + 资产中心
+| 模块 | 参考源码 | 内容 |
+|------|---------|------|
+| 数据源表单 | fe-main/src/pages/datasource | Prometheus/ES/Loki 创建编辑表单、Auth、TLS、Headers |
+| 仪表盘编辑器 | fe-main/src/pages/dashboard | Panel 配置、变量、模板导入导出、图表渲染 |
+| 指标查询增强 | fe-main/src/pages/explorer | 自动补全、内置指标库、记录规则 |
+| 告警规则 | fe-main/src/pages/alertRules | 规则创建/编辑、PromQL 条件、持续时间、标签 |
+| 告警事件 | fe-main/src/pages/alertCurEvent | 实时事件列表、确认、屏蔽、历史 |
+| 通知配置 | fe-main/src/pages/notificationChannels | 通知媒介、模板、测试发送 |
+| 模板中心 | fe-main/src/pages/builtInComponents | 内置仪表盘模板、告警规则模板 |
 
-| 序号 | 模块 | 说明 | 依赖 |
-|------|------|------|------|
-| B1 | React Shell + 登录 | 壳层、路由、登录、主题、全局错误 | 无 |
-| B2 | 导航 + 权限 | 侧边栏、面包屑、角色权限、路由守卫 | B1 |
-| B3 | 资产中心 - 对象建模 | 模型分类树、模型 CRUD、属性定义、关联关系 | B2 |
-| B4 | 资产中心 - 实例管理 | 实例列表、详情、创建/编辑、搜索、分组 | B3 |
-| B5 | 资产中心 - Agent 集成 | 探针状态、部署、心跳、配置下发 | B4 |
-| B6 | 资产中心 - 自动发现 | catpaw/categraf 上报 → CMDB 字段自动填充 | B5 |
-| B7 | 资产中心 - 监控绑定 | 实例 ↔ Prometheus 目标关联 | B4 |
+### P2：CMDB + Agent（参考 AutoOps + LWOPS，GORM）
 
-### 阶段 C：监控 + 告警
+| 模块 | 参考源码 | 内容 |
+|------|---------|------|
+| GORM 基础设施 | — | 引入 GORM、GetDB()、AutoMigrate |
+| 对象建模后端 | LWOPS captures | 分类树、模型 CRUD、属性定义、关联关系（GORM） |
+| 对象建模前端 | LWOPS captures | 模型分类树 UI、属性编辑器、用户自定义模型/属性 |
+| 实例管理 | LWOPS captures + AutoOps | 实例列表、详情、创建/编辑、搜索、分组 |
+| 自动发现 | AutoOps + catpaw | Agent 上报 → CMDB 字段自动填充 |
+| 监控绑定 | LWOPS captures | 实例 ↔ Prometheus 目标关联 |
+| Agent 心跳验证 | AutoOps | 真实心跳验证（不信任当前数据，需测试） |
+| Agent 部署 | AutoOps + catpaw | 本机/远程/K8s 安装、配置下发 |
+| 拓扑视图 | LWOPS captures | 实例间关联可视化 |
+| 变更审计 | LWOPS captures | 字段变更记录 |
 
-| 序号 | 模块 | 说明 | 依赖 |
-|------|------|------|------|
-| C1 | 数据源中心 | 数据源 CRUD、测试连接、凭据引用 | B2 |
-| C2 | 仪表盘 | 列表、详情、Panel、变量、模板导入 | C1 |
-| C3 | 指标查询 | 指标浏览器、PromQL、内置指标 | C1 |
-| C4 | 告警中心 | 告警规则、事件、屏蔽、第三方接入 | C1 |
-| C5 | 通知 | 通知媒介、消息模板、测试发送 | C4 |
+### P3：链路监控（参考 SkyWalking）
 
-### 阶段 D：AI + MCP 插线板
+| 模块 | 参考源码 | 内容 |
+|------|---------|------|
+| 服务目录 | skywalking-booster-ui-main | 服务列表、健康状态、覆盖率 |
+| 服务拓扑 | skywalking-booster-ui-main | 拓扑图、节点详情、调用关系 |
+| Trace 检索 | skywalking-booster-ui-main | Trace 列表、Span 详情、时间线 |
+| Profiling | skywalking-booster-ui-main | CPU/内存 profiling |
+| 链路告警 | skywalking-booster-ui-main | 链路相关告警规则 |
+| Agent 联动 | — | 服务目录 ↔ Agent 状态、Trace ↔ 探针状态 |
 
-| 序号 | 模块 | 说明 | 依赖 |
-|------|------|------|------|
-| D1 | MCP 基础设施 | MCP server 注册、配置、健康检查、权限控制 | B2 |
-| D2 | 夜莺 MCP Server 接入 | 官方开源 server 部署，覆盖读写操作：查指标、建仪表盘、配告警、管数据源 | D1, C1 |
-| D3 | prometheus-mcp-server 接入 | 开源 server 部署，直连 Prometheus 场景备用 | D1, C1 |
-| D4 | findx-cmdb-mcp-server | 自建：资产 CRUD、关联查询、负责人、业务归属 | D1, B4 |
-| D5 | findx-agent-mcp-server | 自建：探针部署、配置下发、状态查询 | D1, B5 |
-| D6 | AI 助手 UI | 对话界面、预定义问题模板、SSE 流式、Tool Calling 展示 | D2-D5 |
-| D7 | AI 告警预测 | 趋势预测任务、单指标异常检测（参考 LWOPS calculate 模块） | D2, C4 |
+### P4：日志中心（参考 SigNoZ）
 
-**夜莺 MCP Server 覆盖的写操作（减少前端工作量）：**
-- 创建/编辑/删除仪表盘
-- 创建/编辑/删除告警规则
-- 配置数据源
-- 配置通知媒介和模板
-- 屏蔽/确认告警
-- 管理告警订阅
+| 模块 | 参考源码 | 内容 |
+|------|---------|------|
+| 日志检索 | signoz-develop/frontend | 全文搜索、字段筛选、时间范围 |
+| 实时日志 | signoz-develop/frontend | Live tail |
+| 聚合分析 | signoz-develop/frontend | 字段聚合、统计图表 |
+| Pipeline | signoz-develop/frontend | 日志接入管道配置 |
+| Saved Views | signoz-develop/frontend | 保存查询视图 |
+| Trace 关联 | signoz-develop/frontend | 日志 ↔ Trace 关联 |
 
-**这意味着阶段 C 的 UI 可以更轻量**——复杂的配置操作用户既可以通过 UI 手动完成，也可以通过 AI 助手对话完成。UI 侧重展示和确认，AI 侧重创建和配置。
+### P5：FindX Agent 完整生命周期
 
-### 阶段 E：垂直能力
+| 模块 | 内容 |
+|------|------|
+| 包仓库 | 包名、版本、平台、架构、签名、校验和、离线包 |
+| 安装向导 | 选择主机、能力包、配置模板、凭据引用、安装前检查 |
+| 本机安装 | Linux curl / Windows certutil / PowerShell |
+| 远程安装 | SSH/WinRM/K8s Helm/Operator/DaemonSet |
+| 配置下发 | 单机/批量/灰度/回滚/漂移检测 |
+| 插件远程修改 | Categraf 插件配置远程修改、下发、回滚、审计 |
+| 心跳+数据到达 | 真实验证，不信任静态状态 |
+| 升级/回滚/卸载 | 完整生命周期 + Evidence Chain |
 
-| 序号 | 模块 | 说明 |
-|------|------|------|
-| E1 | 链路监控 | SkyWalking 服务目录、拓扑、Trace、Profiling |
-| E2 | 日志中心 | SigNoZ 日志检索、字段筛选、Pipeline |
-| E3 | FindX Agent 完整生命周期 | 包仓库、安装、配置下发、升级、回滚、卸载 |
-| E4 | AI SRE 完整 | 诊断会话、工作流、Evidence Chain |
+### P6：AI SRE + MCP（参考 LWOPS Lerwee + calculate）
 
-### 阶段 F：治理与发布
+| 模块 | 内容 |
+|------|------|
+| MCP 基础设施 | server 注册、配置、健康检查、权限 |
+| 夜莺 MCP Server | 读写：指标、仪表盘、告警、数据源 |
+| findx-cmdb-mcp-server | 资产 CRUD、关联、负责人 |
+| findx-agent-mcp-server | 探针部署、配置下发、状态 |
+| findx-knowledge-mcp-server | 知识库、Runbook |
+| AI 助手 UI | 对话界面、31类预定义问题、SSE 流式、Tool Calling |
+| AI 告警预测 | 趋势预测、异常检测 |
+| Evidence Chain | 全链路证据接入 |
+| 诊断会话 | 基于证据的诊断、解释、编排 |
+| 知识库 | MySQL + Qdrant + BM25 + RRF |
 
-- 变更审计、数据质量巡检、审批流
-- 完整测试覆盖
-- 文档完善、发布流程
+### P7：组织权限治理
 
-## 6. 提交规范
+组织、团队、角色、权限、SSO、审计日志、站点设置
 
-### 日常提交
+### P8：商业化补齐
 
-```bash
-# 远端 Ubuntu 验证
-ssh findx-ubuntu "cd /opt/ai-workbench/api && go test -count=1 ./... && go build -o api-linux ."
-# 按 pathspec 提交
-git add -- <具体文件列表>
-git commit -m "<type>: <description>"
-```
+SLO/SLA、事件管理、值班升级、变更关联、Synthetic Monitoring、云资源观测、K8s 观测、网络观测、RUM、数据治理
 
-### 里程碑提交
+## 9. 验证标准
 
-```bash
-# 远端完整验证
-ssh findx-ubuntu "cd /opt/ai-workbench/api && go test -count=1 ./... && go build -o api-linux . && sudo install -m 0755 api-linux /opt/ai-workbench-runtime/api/ai-workbench-api && sudo systemctl restart ai-workbench-api.service"
-ssh findx-ubuntu "sleep 4 && curl -fsS http://127.0.0.1:8080/api/v1/health/storage"
-# Playwright 浏览器验证（如有 UI 变更）
-```
-
-### 禁止提交清单
-
-- `.codex/**`、`.claude/**`、`.playwright-mcp/**`、`.test-evidence/**`
-- `api/data/**`、`logs/**`、`web/dist/**`、`web/node_modules/**`
-- `*.pem`、`*.key`、`*.log`、`*.exe`
-- `api/internal/handler/data/memory-store.json`
-- runtime data、真实凭据
-
-## 7. 技术债管理
-
-函数行数超标、历史乱码等不再阻塞提交：
-- 功能开发触及相关文件时顺带修复
-- 不专门开闭包处理纯重构
-- 敏感信息泄露必须立即修复
-
-## 8. 成熟源码事实源
-
-| 域 | 事实源路径 | 参考内容 |
-|------|------|------|
-| 基础监控前端 | `D:\项目迁移文件\平台源码\fe-main` | 数据源表单、仪表盘编辑器、告警规则、通知模板、指标查询 |
-| 链路监控前端 | `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` | 服务目录、拓扑图、Trace 详情、Profiling |
-| 链路监控后端 | `D:\项目迁移文件\平台源码\skywalking-master` | OAP query、GraphQL schema、存储模型 |
-| 日志中心前端 | `D:\项目迁移文件\平台源码\signoz-develop\frontend` | 日志检索、字段筛选、Pipeline、Saved Views、Trace 关联 |
-| CMDB/Agent 后端 | `D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main` | 主机表、分组、Agent 在线、部署、心跳、CMDB 数据结构 |
-| 采集插件 | `D:\项目迁移文件\平台源码\categraf-main (1)` | 插件目录、配置模板、采集能力 |
-| 巡检诊断 | `D:\项目迁移文件\平台源码\catpaw-master` | 巡检执行、结构化报告、Evidence Chain |
-| CMDB 对象建模 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\` | 模型分类树、属性体系(30+字段)、关联关系、自动发现、监控绑定、拓扑 |
-| AI 智能问答 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\lerwee-*` | 预定义问题模板(31类)、Tool Calling、SSE 流式、会话管理 |
-| AI 告警预测 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\calculate-*` | 趋势预测任务、单指标异常检测、预测告警列表 |
-| 告警中心 | `D:\测试\LWOPS_安全测试资料_2026-05-10\scratch\lwjk_app_extracted\lwjk_app\modules\aialert\` | 统一告警接入 API、SNMP Trap、告警生命周期、第三方 webhook |
-| 导航/菜单体系 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\menu-tree.json` | 194 项菜单树、21 个应用模块、分组结构 |
-
-## 9. 技术架构决策
-
-### 9.1 持久化层：GORM
-
-**决策**：从原生 database/sql 迁移到 GORM GetDB() 模式。
-
-**原因**：
-- CMDB 对象建模需要动态 schema（用户自定义属性），GORM 的 JSON 字段 + AutoMigrate 更合适
-- 自动发现需要频繁的 upsert 操作，GORM 的 `Save`/`FirstOrCreate` 比手写 SQL 高效
-- 关联关系查询用 GORM 的 Preload/Association 比手写 JOIN 可维护
-- 后续 MCP server 需要快速 CRUD，GORM 开发效率更高
-
-**迁移策略**：
-- 新模块（CMDB 对象建模、MCP server）直接用 GORM
-- 现有模块（监控、告警、通知）保持原生 SQL，不强制迁移
-- 两种模式共存：GORM 用独立的 DB 连接实例，不影响现有代码
-
-### 9.2 前端：React-only + 成熟源码迁移
-
-**决策**：参考成熟源码的组件结构、状态流、API 调用模式，用 React 重新实现。
-
-**不是**：
-- 不是直接复制 TypeScript/Ant Design 代码（夜莺用的是 React+Ant Design+TypeScript）
-- 不是 iframe 嵌入
-- 不是 Vue 桥接
-
-**是**：
-- 参考页面结构、路由语义、组件拆分、状态流
-- 参考 API 调用模式和字段契约
-- 用 FindX 自有的 CSS 变量体系（--fx-*）和 JSX 组件风格实现
-- 保持现有 UI 风格不变
+| 场景 | 要求 |
+|------|------|
+| 平台后端日常 | 远端 Ubuntu: go test + go build |
+| 平台后端里程碑 | 远端 Ubuntu: test + build + deploy + health + Playwright |
+| 探针代码 | Windows + Linux 双 build + 双 deploy + 心跳/数据到达验证 |
+| 前端日常 | npm run build |
+| 前端里程碑 | build + Playwright 真实登录 http://10.10.160.202:3000 |
+| Agent 心跳 | 不信任静态数据，必须真实验证进程存活+API 心跳+数据到达 |
 
 ## 10. 环境信息
 
@@ -346,11 +314,3 @@ ssh findx-ubuntu "sleep 4 && curl -fsS http://127.0.0.1:8080/api/v1/health/stora
 | 远端服务 | ai-workbench-api.service | API: :8080, Web: :3000 |
 | Windows 本机 | 开发 + 探针双平台验证 | D:\ai-workbench |
 | WSL | 已废弃 | — |
-
-## 10. 安全边界（已知风险，不阻塞开发）
-
-- `ssh.InsecureIgnoreHostKey()` — 生产需替换
-- WinRM Basic/AllowUnencrypted — 明文传输
-- WMI `Win32_Process.Create` — 只证明进程启动
-- password 注入 PowerShell 脚本 — 进程列表可见
-- 以上在阶段 E3 Agent 完整生命周期时解决
