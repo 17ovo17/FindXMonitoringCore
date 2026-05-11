@@ -42,7 +42,7 @@ function TimeSeriesChart({ series }) {
     if (!container || !svg || series.length === 0) return
 
     const width = container.clientWidth || 400
-    const height = 200
+    const height = Math.max(120, container.clientHeight - 30) || 200
     const margin = { top: 10, right: 12, bottom: 30, left: 50 }
     const innerW = width - margin.left - margin.right
     const innerH = height - margin.top - margin.bottom
@@ -99,9 +99,9 @@ function TimeSeriesChart({ series }) {
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
-      <svg ref={svgRef} style={{ width: '100%', height: '200px', display: 'block' }} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '6px 0', fontSize: '11px' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <svg ref={svgRef} style={{ width: '100%', flex: '1 1 auto', minHeight: '120px', display: 'block' }} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '6px 0', fontSize: '11px', flexShrink: 0 }}>
         {series.map((s, i) => (
           <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ width: 10, height: 3, background: COLORS[i % COLORS.length], display: 'inline-block' }} />

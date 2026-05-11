@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import GridLayout from 'react-grid-layout'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
 import { dashboardsApi } from '../../api/dashboards.js'
 import {
   BLOCKED_BY_CONTRACT,
@@ -15,6 +18,8 @@ import {
   toTags,
 } from './dashboardModel.js'
 import PanelChart from './PanelChart.jsx'
+import PanelEditor from './PanelEditor.jsx'
+import TimeRangePicker, { QUICK_RANGES, REFRESH_OPTIONS } from './TimeRangePicker.jsx'
 import './dashboards.css'
 
 const defaultDraft = {
@@ -109,47 +114,198 @@ function DashboardList({ rows, selected, setSelected, onOpen, onRowAction }) {
   )
 }
 
-function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked, onExport, onShare, onFullscreen, detailError }) {
+function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked, onExport, onShare, onFullscreen, detailError, onUpdateDashboard }) {
   const [timeRangeKey, setTimeRangeKey] = useState('1h')
+  const [refreshKey, setRefreshKey] = useState('off')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleValue, setTitleValue] = useState(dashboard.title)
+  const [layout, setLayout] = useState(() => panels.map((p, i) => ({
+    i: p.id,
+    x: (i % 2) * 12,
+    y: Math.floor(i / 2) * 8,
+    w: 12,
+    h: 8,
+  })))
+  const [editorPanel, setEditorPanel] = useState(null)
+  const [panelList, setPanelList] = useState(panels)
+  const containerRef = useRef(null)
+  const [containerWidth, setContainerWidth] = useState(1200)
+  const refreshTimerRef = useRef(null)
   const datasourceId = 'prometheus-default'
+
+  useEffect(() => {
+    setPanelList(panels)
+    setLayout(panels.map((p, i) => ({
+      i: p.id,
+      x: (i % 2) * 12,
+      y: Math.floor(i / 2) * 8,
+      w: 12,
+      h: 8,
+    })))
+  }, [panels])
+
+  useEffect(() => {
+    setTitleValue(dashboard.title)
+  }, [dashboard.title])
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width)
+      }
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
+    const opt = REFRESH_OPTIONS.find((r) => r.key === refreshKey)
+    if (opt && opt.ms) {
+      refreshTimerRef.current = setInterval(() => onRefresh(), opt.ms)
+    }
+    return () => { if (refreshTimerRef.current) clearInterval(refreshTimerRef.current) }
+  }, [refreshKey, onRefresh])
 
   const timeRange = useMemo(() => {
     const now = Math.floor(Date.now() / 1000)
-    const durations = { '1h': 3600, '6h': 21600, '24h': 86400 }
-    const duration = durations[timeRangeKey] || 3600
+    const range = QUICK_RANGES.find((r) => r.key === timeRangeKey) || QUICK_RANGES[3]
+    const duration = range.seconds
     const step = Math.max(15, Math.floor(duration / 240))
     return { start: now - duration, end: now, step }
   }, [timeRangeKey])
 
+  const handleLayoutChange = useCallback((newLayout) => {
+    setLayout(newLayout)
+  }, [])
+
+  const handleTitleSave = () => {
+    setEditingTitle(false)
+    if (titleValue !== dashboard.title) {
+      onUpdateDashboard?.({ title: titleValue })
+    }
+  }
+
+  const handlePanelAction = (action, panel) => {
+    if (action === 'edit') {
+      setEditorPanel(panel)
+    } else if (action === 'clone') {
+      const cloned = { ...panel, id: 'panel_' + Date.now(), title: panel.title + ' (副本)' }
+      const newPanels = [...panelList, cloned]
+      setPanelList(newPanels)
+      setLayout((prev) => [...prev, { i: cloned.id, x: 0, y: Infinity, w: 12, h: 8 }])
+    } else if (action === 'delete') {
+      if (confirm('确定删除此面板？')) {
+        setPanelList((prev) => prev.filter((p) => p.id !== panel.id))
+        setLayout((prev) => prev.filter((l) => l.i !== panel.id))
+      }
+    }
+  }
+
+  const handleEditorSave = (updatedPanel) => {
+    setPanelList((prev) => prev.map((p) => p.id === updatedPanel.id ? { ...p, ...updatedPanel, raw: updatedPanel } : p))
+    setEditorPanel(null)
+  }
+
+  const handleSave = () => {
+    onUpdateDashboard?.({ title: titleValue, panels: panelList, layout })
+  }
+
   return (
-    <main className='fx-dash-detail'>
-      <header className='fx-dash-detail__head'>
-        <div><button type='button' onClick={onBack}>返回列表</button><h1>{dashboard.title}</h1><p>{dashboard.description || '无说明'}</p></div>
-        <div className='fx-dash-actions'><button type='button' onClick={onRefresh}>刷新</button><button type='button' onClick={onShare}>分享</button><button type='button' onClick={onExport}>导出</button><button type='button' onClick={onFullscreen}>放大</button><button type='button' onClick={() => onBlocked('设置', blockedContracts.panelEditor)}>设置</button></div>
+    <main className="fx-dash-detail" ref={containerRef}>
+      <header className="fx-dash-detail__head fx-dash-detail__head--sticky">
+        <div className="fx-dash-detail__head-left">
+          <button type="button" className="fx-dash-back-btn" onClick={onBack}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+            返回
+          </button>
+          {editingTitle ? (
+            <input
+              className="fx-dash-title-input"
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave() }}
+              autoFocus
+            />
+          ) : (
+            <h1 className="fx-dash-detail__title" onClick={() => setEditingTitle(true)}>{titleValue}</h1>
+          )}
+          <div className="fx-dash-detail__tags">
+            {dashboard.tags.map((tag) => <span className="fx-dash-tag" key={tag}>{tag}</span>)}
+          </div>
+        </div>
+        <div className="fx-dash-detail__head-right">
+          <TimeRangePicker
+            rangeKey={timeRangeKey}
+            refreshKey={refreshKey}
+            onRangeChange={setTimeRangeKey}
+            onRefreshChange={setRefreshKey}
+          />
+          <button type="button" className="is-primary" onClick={handleSave}>保存</button>
+        </div>
       </header>
-      {detailError && <div className='fx-dash-alert is-warning'>{detailError}</div>}
-      <section className='fx-dash-runtime'>
-        <label><span>时间范围</span><select value={timeRangeKey} onChange={(e) => setTimeRangeKey(e.target.value)}><option value='1h'>近 1 小时</option><option value='6h'>近 6 小时</option><option value='24h'>近 24 小时</option></select></label>
-        <label><span>刷新</span><select disabled value='off'><option value='off'>关闭</option><option value='30s'>30s</option><option value='1m'>1m</option><option value='5m'>5m</option></select></label>
-        <label><span>时区</span><select disabled value='local'><option value='local'>本地时区</option><option value='utc'>UTC</option></select></label>
-        <button type='button' onClick={() => onBlocked('查询参数', blockedContracts.inspect)}>查询参数</button>
-      </section>
-      <section className='fx-dash-vars'>
+      {detailError && <div className="fx-dash-alert is-warning">{detailError}</div>}
+      <section className="fx-dash-vars">
         {variables.map((item) => (
-          <label key={item.key}><span>{item.label}</span>{item.options.length ? <select defaultValue={item.value}>{item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <input defaultValue={item.value} />}{item.blocked && <em>{blockedContracts.variableOptions}</em>}</label>
+          <label key={item.key}>
+            <span>{item.label}</span>
+            {item.options.length ? (
+              <select defaultValue={item.value}>
+                {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            ) : (
+              <input defaultValue={item.value} />
+            )}
+          </label>
         ))}
-        {variables.length === 0 && <span className='muted'>暂无变量</span>}
+        {variables.length === 0 && <span className="muted">暂无变量</span>}
       </section>
-      <div className='fx-dash-panel-actions'>{['Time series', 'Stat', 'Table', 'Text', 'Pie', 'Gauge', 'Bar chart', 'Heatmap', '导入 Panel'].map((type) => <button key={type} type='button' onClick={() => onBlocked(`添加图表：${type}`, type === '导入 Panel' ? blockedContracts.importPanel : blockedContracts.panelEditor)}>添加 {type}</button>)}</div>
-      <section className='fx-dash-grid'>
-        {panels.map((panel) => (
-          <article className='fx-dash-panel' key={panel.id}>
-            <header><strong>{panel.title}</strong><select onChange={(event) => { if (event.target.value) onBlocked(`${event.target.value}：${panel.title}`, event.target.value === '复制' ? displayJson(panel.raw) : blockedContracts.panelEditor); event.target.value = '' }}><option value=''>...</option><option value='编辑'>编辑</option><option value='复制'>复制配置</option><option value='检查'>检查</option><option value='删除'>删除</option></select></header>
-            <PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} />
-          </article>
-        ))}
-        {panels.length === 0 && <div className='fx-dash-empty'>暂无面板</div>}
+      <section className="fx-dash-grid-container">
+        {panelList.length > 0 ? (
+          <GridLayout
+            className="fx-dash-rgl"
+            layout={layout}
+            cols={24}
+            rowHeight={40}
+            width={containerWidth - 32}
+            draggableHandle=".fx-panel-drag"
+            onLayoutChange={handleLayoutChange}
+            isResizable={true}
+            isDraggable={true}
+            margin={[12, 12]}
+          >
+            {panelList.map((panel) => (
+              <div key={panel.id} className="fx-dash-panel">
+                <header className="fx-panel-drag">
+                  <strong>{panel.title}</strong>
+                  <select onChange={(e) => { if (e.target.value) { handlePanelAction(e.target.value, panel); e.target.value = '' } }}>
+                    <option value="">...</option>
+                    <option value="edit">编辑</option>
+                    <option value="clone">克隆</option>
+                    <option value="delete">删除</option>
+                  </select>
+                </header>
+                <div className="fx-dash-panel__body">
+                  <PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} />
+                </div>
+              </div>
+            ))}
+          </GridLayout>
+        ) : (
+          <div className="fx-dash-empty">暂无面板</div>
+        )}
       </section>
+      {editorPanel && (
+        <PanelEditor
+          panel={editorPanel.raw || editorPanel}
+          timeRange={timeRange}
+          datasourceId={datasourceId}
+          onSave={handleEditorSave}
+          onClose={() => setEditorPanel(null)}
+        />
+      )}
     </main>
   )
 }
@@ -371,7 +527,7 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   return (
     <main className='fx-dash-page'>
       {section === 'detail' && active ? (
-        <DetailView dashboard={active} variables={variables} panels={panels} detailError={detailError} onBack={() => onNavigate?.({ section: 'list' })} onRefresh={() => openDetail(active.id)} onExport={() => rowAction('export', active)} onShare={() => rowAction('share', active)} onFullscreen={() => document.documentElement.requestFullscreen?.()} onBlocked={blocked} />
+        <DetailView dashboard={active} variables={variables} panels={panels} detailError={detailError} onBack={() => onNavigate?.({ section: 'list' })} onRefresh={() => openDetail(active.id)} onExport={() => rowAction('export', active)} onShare={() => rowAction('share', active)} onFullscreen={() => document.documentElement.requestFullscreen?.()} onBlocked={blocked} onUpdateDashboard={async (updates) => { try { const body = dashboardPayload({ ...active, ...updates }); const saved = normalizeDashboard(await dashboardsApi.update(active.id, body)); setDashboards((rows) => [saved, ...rows.filter((row) => row.id !== saved.id)]) } catch (err) { setDetailError(makeError(err, '保存失败')) } }} />
       ) : (
         <div className='fx-dash-layout'>
           <Sidebar groups={groups} scope={scope} setScope={setScope} />
