@@ -37,11 +37,21 @@ export const aiSreApi = {
     datasources: () => get('/health/datasources'),
     aiProviders: () => get('/health/ai-providers'),
     storage: () => get('/health/storage'),
+    agents: () => get('/health/agents'),
+    prometheus: () => get('/health/prometheus'),
+    check: target => post('/health/check', { target }).then(unwrapData),
+    checkAll: () => post('/health/check-all').then(unwrapData),
+    history: params => get('/health/history', { params: cleanParams(params) }).then(normalizeList),
   },
   workflows: {
     list: params => get('/workflows', { params: cleanParams(params) }).then(normalizeList),
     detail: id => get(`/workflows/${encodeURIComponent(id)}`),
     runs: id => get(`/workflows/${encodeURIComponent(id)}/runs`).then(normalizeList),
+    create: body => post('/workflows', body).then(unwrapData),
+    update: (id, body) => put(`/workflows/${encodeURIComponent(id)}`, body).then(unwrapData),
+    toggle: (id, enabled) => put(`/workflows/${encodeURIComponent(id)}/toggle`, { enabled }).then(unwrapData),
+    execute: id => post(`/workflows/${encodeURIComponent(id)}/execute`).then(unwrapData),
+    runDetail: (wfId, runId) => get(`/workflows/${encodeURIComponent(wfId)}/runs/${encodeURIComponent(runId)}`).then(unwrapData),
   },
   inspections: {
     create: body => post('/aiops/inspections', body).then(unwrapData),
@@ -51,6 +61,14 @@ export const aiSreApi = {
   knowledge: {
     search: body => post('/knowledge/search', body),
     cases: params => get('/knowledge/cases', { params: cleanParams(params) }).then(normalizeList),
+    list: params => get('/knowledge/documents', { params: cleanParams(params) }).then(normalizeList),
+    detail: id => get(`/knowledge/documents/${encodeURIComponent(id)}`).then(unwrapData),
+    create: body => post('/knowledge/documents', body).then(unwrapData),
+    update: (id, body) => put(`/knowledge/documents/${encodeURIComponent(id)}`, body).then(unwrapData),
+    remove: id => del(`/knowledge/documents/${encodeURIComponent(id)}`).then(unwrapData),
+    runbooks: params => get('/knowledge/runbooks', { params: cleanParams(params) }).then(normalizeList),
+    createRunbook: body => post('/knowledge/runbooks', body).then(unwrapData),
+    removeRunbook: id => del(`/knowledge/runbooks/${encodeURIComponent(id)}`).then(unwrapData),
   },
   chat: {
     listSessions: (params = {}) => get('/aiops/sessions', { params: cleanParams(params) }).then(value => {
