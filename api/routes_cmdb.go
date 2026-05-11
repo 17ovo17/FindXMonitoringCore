@@ -24,5 +24,6 @@ func registerCmdbRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 		cmdb.GET("/instances/:id", handler.GetCmdbInstance)
 		cmdb.PUT("/instances/:id", mw.adminRequired, handler.UpdateCmdbInstance)
 		cmdb.DELETE("/instances/:id", mw.adminRequired, handler.DeleteCmdbInstance)
+		cmdb.POST("/discover", mw.adminRequired, handler.CmdbDiscover)
 	}
 }
