@@ -1,7 +1,6 @@
 package store
 
 import (
-	"database/sql"
 	"sort"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// 内存回退（GormOK() == false 时使用）
 var (
 	cmdbCategories []model.CmdbCategory
 	cmdbObjects    []model.CmdbObject
@@ -17,36 +17,14 @@ var (
 	cmdbInstances  []model.CmdbInstance
 )
 
-func migrateCmdb() {
-	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS cmdb_categories (id VARCHAR(64) PRIMARY KEY,label VARCHAR(64) NOT NULL,parent_id VARCHAR(32),sort INT DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		`CREATE TABLE IF NOT EXISTS cmdb_objects (id VARCHAR(64) PRIMARY KEY,name VARCHAR(64) NOT NULL,category_id VARCHAR(32),object_type INT DEFAULT 101,icon VARCHAR(32),created_at DATETIME,updated_at DATETIME,INDEX idx_cmdb_obj_cat(category_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		"CREATE TABLE IF NOT EXISTS cmdb_attributes (id VARCHAR(64) PRIMARY KEY,object_id VARCHAR(64) NOT NULL,label VARCHAR(64) NOT NULL,attr VARCHAR(64) NOT NULL,value_type VARCHAR(16) NOT NULL,tag VARCHAR(32),required TINYINT(1) DEFAULT 0,`unique` TINYINT(1) DEFAULT 0,discovery TINYINT(1) DEFAULT 0,sort INT DEFAULT 0,unit VARCHAR(16),options TEXT,default_val VARCHAR(256),INDEX idx_cmdb_attr_obj(object_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-		`CREATE TABLE IF NOT EXISTS cmdb_instances (id VARCHAR(64) PRIMARY KEY,object_id VARCHAR(64) NOT NULL,data MEDIUMTEXT,creator VARCHAR(64),updater VARCHAR(64),created_at DATETIME,updated_at DATETIME,INDEX idx_cmdb_inst_obj(object_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		`CREATE TABLE IF NOT EXISTS cmdb_relation_types (id VARCHAR(64) PRIMARY KEY,name VARCHAR(32) NOT NULL,label VARCHAR(64)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-		`CREATE TABLE IF NOT EXISTS cmdb_instance_relations (id VARCHAR(64) PRIMARY KEY,source_instance_id VARCHAR(64) NOT NULL,target_instance_id VARCHAR(64) NOT NULL,relation_type_id VARCHAR(64) NOT NULL,created_at DATETIME,INDEX idx_cmdb_rel_src(source_instance_id),INDEX idx_cmdb_rel_tgt(target_instance_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-	}
-	for _, s := range stmts {
-		if _, err := db.Exec(s); err != nil {
-			logrus.WithError(err).Warn("cmdb migrate failed")
-		}
-	}
-}
 func ListCmdbCategories() []model.CmdbCategory {
-	if mysqlOK {
-		rows, err := db.Query(`SELECT id,label,parent_id,sort FROM cmdb_categories ORDER BY sort`)
-		if err == nil {
-			defer rows.Close()
-			var out []model.CmdbCategory
-			for rows.Next() {
-				var c model.CmdbCategory
-				if rows.Scan(&c.ID, &c.Label, &c.ParentID, &c.Sort) == nil {
-					out = append(out, c)
-				}
-			}
-			return out
+	if GormOK() {
+		var rows []model.CmdbCategory
+		if err := GetDB().Order("sort asc").Find(&rows).Error; err != nil {
+			logrus.WithError(err).Warn("cmdb: list categories failed")
+			return nil
 		}
-		logrus.WithError(err).Warn("cmdb categories query failed")
+		return rows
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -55,42 +33,30 @@ func ListCmdbCategories() []model.CmdbCategory {
 	sort.Slice(out, func(i, j int) bool { return out[i].Sort < out[j].Sort })
 	return out
 }
+
 func CreateCmdbCategory(cat *model.CmdbCategory) error {
 	cat.ID = NewID()
-	if mysqlOK {
-		_, err := db.Exec(`INSERT INTO cmdb_categories (id,label,parent_id,sort) VALUES (?,?,?,?)`,
-			cat.ID, cat.Label, cat.ParentID, cat.Sort)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Create(cat).Error
 	}
 	mu.Lock()
 	cmdbCategories = append(cmdbCategories, *cat)
 	mu.Unlock()
 	return nil
 }
+
 func ListCmdbObjects(categoryID string) []model.CmdbObject {
-	if mysqlOK {
-		q := `SELECT id,name,category_id,object_type,icon,created_at,updated_at FROM cmdb_objects`
-		var rows *sql.Rows
-		var err error
+	if GormOK() {
+		var rows []model.CmdbObject
+		q := GetDB().Order("updated_at desc")
 		if categoryID != "" {
-			rows, err = db.Query(q+` WHERE category_id=? ORDER BY updated_at DESC`, categoryID)
-		} else {
-			rows, err = db.Query(q + ` ORDER BY updated_at DESC`)
+			q = q.Where("category_id = ?", categoryID)
 		}
-		if err == nil {
-			defer rows.Close()
-			var out []model.CmdbObject
-			for rows.Next() {
-				var o model.CmdbObject
-				if rows.Scan(&o.ID, &o.Name, &o.CategoryID, &o.ObjectType, &o.Icon, &o.CreatedAt, &o.UpdatedAt) == nil {
-					out = append(out, o)
-				}
-			}
-			return out
+		if err := q.Find(&rows).Error; err != nil {
+			logrus.WithError(err).Warn("cmdb: list objects failed")
+			return nil
 		}
-		logrus.WithError(err).Warn("cmdb objects query failed")
+		return rows
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -103,17 +69,14 @@ func ListCmdbObjects(categoryID string) []model.CmdbObject {
 	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedAt.After(out[j].UpdatedAt) })
 	return out
 }
+
 func GetCmdbObject(id string) (*model.CmdbObject, bool) {
-	if mysqlOK {
-		var o model.CmdbObject
-		err := db.QueryRow(`SELECT id,name,category_id,object_type,icon,created_at,updated_at FROM cmdb_objects WHERE id=?`, id).
-			Scan(&o.ID, &o.Name, &o.CategoryID, &o.ObjectType, &o.Icon, &o.CreatedAt, &o.UpdatedAt)
-		if err == nil {
-			return &o, true
+	if GormOK() {
+		var obj model.CmdbObject
+		if err := GetDB().Where("id = ?", id).First(&obj).Error; err != nil {
+			return nil, false
 		}
-		if err != sql.ErrNoRows {
-			logrus.WithError(err).Warn("cmdb object get failed")
-		}
+		return &obj, true
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -125,31 +88,25 @@ func GetCmdbObject(id string) (*model.CmdbObject, bool) {
 	}
 	return nil, false
 }
+
 func CreateCmdbObject(obj *model.CmdbObject) error {
 	obj.ID = NewID()
 	now := time.Now()
 	obj.CreatedAt = now
 	obj.UpdatedAt = now
-	if mysqlOK {
-		_, err := db.Exec(`INSERT INTO cmdb_objects (id,name,category_id,object_type,icon,created_at,updated_at) VALUES (?,?,?,?,?,?,?)`,
-			obj.ID, obj.Name, obj.CategoryID, obj.ObjectType, obj.Icon, obj.CreatedAt, obj.UpdatedAt)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Create(obj).Error
 	}
 	mu.Lock()
 	cmdbObjects = append(cmdbObjects, *obj)
 	mu.Unlock()
 	return nil
 }
+
 func UpdateCmdbObject(obj *model.CmdbObject) error {
 	obj.UpdatedAt = time.Now()
-	if mysqlOK {
-		_, err := db.Exec(`UPDATE cmdb_objects SET name=?,category_id=?,object_type=?,icon=?,updated_at=? WHERE id=?`,
-			obj.Name, obj.CategoryID, obj.ObjectType, obj.Icon, obj.UpdatedAt, obj.ID)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Save(obj).Error
 	}
 	mu.Lock()
 	for i := range cmdbObjects {
@@ -161,11 +118,10 @@ func UpdateCmdbObject(obj *model.CmdbObject) error {
 	mu.Unlock()
 	return nil
 }
+
 func DeleteCmdbObject(id string) error {
-	if mysqlOK {
-		if _, err := db.Exec(`DELETE FROM cmdb_objects WHERE id=?`, id); err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Where("id = ?", id).Delete(&model.CmdbObject{}).Error
 	}
 	mu.Lock()
 	for i := range cmdbObjects {
@@ -177,21 +133,16 @@ func DeleteCmdbObject(id string) error {
 	mu.Unlock()
 	return nil
 }
+// PLACEHOLDER_CMDB_PART3
+
 func ListCmdbAttributes(objectID string) []model.CmdbAttribute {
-	if mysqlOK {
-		rows, err := db.Query("SELECT id,object_id,label,attr,value_type,tag,required,`unique`,discovery,sort,unit,options,default_val FROM cmdb_attributes WHERE object_id=? ORDER BY sort", objectID)
-		if err == nil {
-			defer rows.Close()
-			var out []model.CmdbAttribute
-			for rows.Next() {
-				var a model.CmdbAttribute
-				if rows.Scan(&a.ID, &a.ObjectID, &a.Label, &a.Attr, &a.ValueType, &a.Tag, &a.Required, &a.Unique, &a.Discovery, &a.Sort, &a.Unit, &a.Options, &a.DefaultVal) == nil {
-					out = append(out, a)
-				}
-			}
-			return out
+	if GormOK() {
+		var rows []model.CmdbAttribute
+		if err := GetDB().Where("object_id = ?", objectID).Order("sort asc").Find(&rows).Error; err != nil {
+			logrus.WithError(err).Warn("cmdb: list attributes failed")
+			return nil
 		}
-		logrus.WithError(err).Warn("cmdb attributes query failed")
+		return rows
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -204,27 +155,21 @@ func ListCmdbAttributes(objectID string) []model.CmdbAttribute {
 	sort.Slice(out, func(i, j int) bool { return out[i].Sort < out[j].Sort })
 	return out
 }
+
 func CreateCmdbAttribute(attr *model.CmdbAttribute) error {
 	attr.ID = NewID()
-	if mysqlOK {
-		_, err := db.Exec("INSERT INTO cmdb_attributes (id,object_id,label,attr,value_type,tag,required,`unique`,discovery,sort,unit,options,default_val) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-			attr.ID, attr.ObjectID, attr.Label, attr.Attr, attr.ValueType, attr.Tag, attr.Required, attr.Unique, attr.Discovery, attr.Sort, attr.Unit, attr.Options, attr.DefaultVal)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Create(attr).Error
 	}
 	mu.Lock()
 	cmdbAttributes = append(cmdbAttributes, *attr)
 	mu.Unlock()
 	return nil
 }
+
 func UpdateCmdbAttribute(attr *model.CmdbAttribute) error {
-	if mysqlOK {
-		_, err := db.Exec("UPDATE cmdb_attributes SET label=?,attr=?,value_type=?,tag=?,required=?,`unique`=?,discovery=?,sort=?,unit=?,options=?,default_val=? WHERE id=?",
-			attr.Label, attr.Attr, attr.ValueType, attr.Tag, attr.Required, attr.Unique, attr.Discovery, attr.Sort, attr.Unit, attr.Options, attr.DefaultVal, attr.ID)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Save(attr).Error
 	}
 	mu.Lock()
 	for i := range cmdbAttributes {
@@ -236,11 +181,10 @@ func UpdateCmdbAttribute(attr *model.CmdbAttribute) error {
 	mu.Unlock()
 	return nil
 }
+
 func DeleteCmdbAttribute(id string) error {
-	if mysqlOK {
-		if _, err := db.Exec(`DELETE FROM cmdb_attributes WHERE id=?`, id); err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Where("id = ?", id).Delete(&model.CmdbAttribute{}).Error
 	}
 	mu.Lock()
 	for i := range cmdbAttributes {
@@ -252,24 +196,23 @@ func DeleteCmdbAttribute(id string) error {
 	mu.Unlock()
 	return nil
 }
+// PLACEHOLDER_CMDB_PART4
+
 func ListCmdbInstances(objectID string, page, limit int) ([]model.CmdbInstance, int64) {
-	if mysqlOK {
+	if GormOK() {
+		var rows []model.CmdbInstance
 		var total int64
-		db.QueryRow(`SELECT COUNT(*) FROM cmdb_instances WHERE object_id=?`, objectID).Scan(&total)
-		offset := (page - 1) * limit
-		rows, err := db.Query(`SELECT id,object_id,data,creator,updater,created_at,updated_at FROM cmdb_instances WHERE object_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?`, objectID, limit, offset)
-		if err == nil {
-			defer rows.Close()
-			var out []model.CmdbInstance
-			for rows.Next() {
-				var inst model.CmdbInstance
-				if rows.Scan(&inst.ID, &inst.ObjectID, &inst.Data, &inst.Creator, &inst.Updater, &inst.CreatedAt, &inst.UpdatedAt) == nil {
-					out = append(out, inst)
-				}
-			}
-			return out, total
+		q := GetDB().Where("object_id = ?", objectID)
+		q.Model(&model.CmdbInstance{}).Count(&total)
+		if limit <= 0 {
+			limit = 20
 		}
-		logrus.WithError(err).Warn("cmdb instances query failed")
+		offset := (page - 1) * limit
+		if err := q.Order("created_at desc").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
+			logrus.WithError(err).Warn("cmdb: list instances failed")
+			return nil, 0
+		}
+		return rows, total
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -291,17 +234,14 @@ func ListCmdbInstances(objectID string, page, limit int) ([]model.CmdbInstance, 
 	}
 	return filtered[start:end], total
 }
+
 func GetCmdbInstance(id string) (*model.CmdbInstance, bool) {
-	if mysqlOK {
+	if GormOK() {
 		var inst model.CmdbInstance
-		err := db.QueryRow(`SELECT id,object_id,data,creator,updater,created_at,updated_at FROM cmdb_instances WHERE id=?`, id).
-			Scan(&inst.ID, &inst.ObjectID, &inst.Data, &inst.Creator, &inst.Updater, &inst.CreatedAt, &inst.UpdatedAt)
-		if err == nil {
-			return &inst, true
+		if err := GetDB().Where("id = ?", id).First(&inst).Error; err != nil {
+			return nil, false
 		}
-		if err != sql.ErrNoRows {
-			logrus.WithError(err).Warn("cmdb instance get failed")
-		}
+		return &inst, true
 	}
 	mu.RLock()
 	defer mu.RUnlock()
@@ -313,31 +253,25 @@ func GetCmdbInstance(id string) (*model.CmdbInstance, bool) {
 	}
 	return nil, false
 }
+
 func CreateCmdbInstance(inst *model.CmdbInstance) error {
 	inst.ID = NewID()
 	now := time.Now()
 	inst.CreatedAt = now
 	inst.UpdatedAt = now
-	if mysqlOK {
-		_, err := db.Exec(`INSERT INTO cmdb_instances (id,object_id,data,creator,updater,created_at,updated_at) VALUES (?,?,?,?,?,?,?)`,
-			inst.ID, inst.ObjectID, inst.Data, inst.Creator, inst.Updater, inst.CreatedAt, inst.UpdatedAt)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Create(inst).Error
 	}
 	mu.Lock()
 	cmdbInstances = append(cmdbInstances, *inst)
 	mu.Unlock()
 	return nil
 }
+
 func UpdateCmdbInstance(inst *model.CmdbInstance) error {
 	inst.UpdatedAt = time.Now()
-	if mysqlOK {
-		_, err := db.Exec(`UPDATE cmdb_instances SET data=?,updater=?,updated_at=? WHERE id=?`,
-			inst.Data, inst.Updater, inst.UpdatedAt, inst.ID)
-		if err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Save(inst).Error
 	}
 	mu.Lock()
 	for i := range cmdbInstances {
@@ -349,11 +283,10 @@ func UpdateCmdbInstance(inst *model.CmdbInstance) error {
 	mu.Unlock()
 	return nil
 }
+
 func DeleteCmdbInstance(id string) error {
-	if mysqlOK {
-		if _, err := db.Exec(`DELETE FROM cmdb_instances WHERE id=?`, id); err != nil {
-			return err
-		}
+	if GormOK() {
+		return GetDB().Where("id = ?", id).Delete(&model.CmdbInstance{}).Error
 	}
 	mu.Lock()
 	for i := range cmdbInstances {
@@ -365,28 +298,26 @@ func DeleteCmdbInstance(id string) error {
 	mu.Unlock()
 	return nil
 }
+
 func CountCmdbInstancesByObject() map[string]int64 {
-	if mysqlOK {
-		rows, err := db.Query(`SELECT object_id, COUNT(*) FROM cmdb_instances GROUP BY object_id`)
-		if err == nil {
-			defer rows.Close()
-			out := make(map[string]int64)
-			for rows.Next() {
-				var oid string
-				var cnt int64
-				if rows.Scan(&oid, &cnt) == nil {
-					out[oid] = cnt
-				}
-			}
-			return out
+	if GormOK() {
+		type result struct {
+			ObjectID string
+			Count    int64
 		}
-		logrus.WithError(err).Warn("cmdb count instances failed")
+		var rows []result
+		GetDB().Model(&model.CmdbInstance{}).Select("object_id, count(*) as count").Group("object_id").Find(&rows)
+		m := make(map[string]int64, len(rows))
+		for _, r := range rows {
+			m[r.ObjectID] = r.Count
+		}
+		return m
 	}
 	mu.RLock()
 	defer mu.RUnlock()
-	out := make(map[string]int64)
+	m := make(map[string]int64)
 	for _, inst := range cmdbInstances {
-		out[inst.ObjectID]++
+		m[inst.ObjectID]++
 	}
-	return out
+	return m
 }

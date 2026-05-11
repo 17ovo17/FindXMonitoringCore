@@ -96,9 +96,10 @@ type AuditEvent struct {
 	IntegrityHash string    `json:"integrity_hash,omitempty"`
 }
 
-// Init initializes MySQL, Redis, topology seed, and fallback snapshot.
+// Init initializes MySQL, GORM, Redis, topology seed, and fallback snapshot.
 func Init() {
 	initMySQL()
+	InitGormDB()
 	initRedis()
 	seedPlatformTopology()
 	loadFallbackSnapshot()
@@ -182,7 +183,6 @@ func migrate() error {
 	for _, stmt := range tolerantMigrationStatements {
 		_, _ = db.Exec(stmt)
 	}
-	migrateCmdb()
 	return nil
 }
 
