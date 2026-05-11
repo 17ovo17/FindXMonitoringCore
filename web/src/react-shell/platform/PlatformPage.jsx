@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { formatPlatformError, platformApi, PLATFORM_BLOCKERS, safePlatformJson } from '../api/platform.js'
 import { McpServersSection } from './McpServersSection.jsx'
+import { SsoSection } from './SsoSection.jsx'
 import './platform.css'
 
 const sections = [
@@ -318,7 +319,8 @@ export function PlatformPage({ query = {}, onNavigate }) {
       </section>
       {section === 'models' && <ModelsSection />}
       {section === 'mcp' && <McpServersSection />}
-      {['site', 'variables', 'sso', 'alerting-engines'].includes(section) && <ContractSection type={section} />}
+      {section === 'sso' && <SsoSection />}
+      {['site', 'variables', 'alerting-engines'].includes(section) && <ContractSection type={section} />}
       {section === 'health' && <HealthSection />}
       {section === 'audit' && <AuditSection q={q} />}
     </main>
