@@ -165,6 +165,7 @@ export const navGroups = [
     defaultSection: 'models',
     children: [
       { section: 'models', label: 'AI 模型配置' },
+      { section: 'mcp', label: 'MCP 服务' },
       { section: 'site', label: '站点设置' },
       { section: 'variables', label: '变量设置' },
       { section: 'sso', label: '单点登录' },

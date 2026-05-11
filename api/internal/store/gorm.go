@@ -42,6 +42,7 @@ func InitGormDB() {
 	gormDB = db
 	autoMigrateCmdb()
 	SeedCmdbDefaults()
+	SeedMcpDefaults()
 }
 
 func autoMigrateCmdb() {
@@ -52,6 +53,7 @@ func autoMigrateCmdb() {
 		&model.CmdbInstance{},
 		&model.CmdbRelationType{},
 		&model.CmdbInstanceRelation{},
+		&model.McpServer{},
 	)
 	if err != nil {
 		logrus.WithError(err).Error("gorm: auto migrate cmdb failed")
