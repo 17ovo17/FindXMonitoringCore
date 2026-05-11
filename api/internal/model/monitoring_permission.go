@@ -111,7 +111,7 @@ func monitorPermissionResult(known, allowed bool, resource, action, reason strin
 func monitorUserPermissionAllowed(resource, action string) bool {
 	switch resource {
 	case "monitor.health", "monitor.datasource", "monitor.metric", "monitor.label",
-		"monitor.audit_log", "monitor.dashboard", "findx_agent":
+		"monitor.audit_log", "monitor.dashboard", "monitor.integration", "monitor.builtin", "findx_agent":
 		return action == "read"
 	case "monitor.query":
 		return action == "execute" || action == "execute_range"
@@ -131,9 +131,11 @@ func monitorPermissionMatrix() map[string]map[string]bool {
 		"monitor.label":       {"read": true},
 		"monitor.target":      {"read": true, "create": true, "update": true, "delete": true},
 		"monitor.dashboard":   {"read": true, "create": true, "update": true, "delete": true, "clone": true, "share": true},
+		"monitor.integration": {"read": true, "create": true, "update": true, "delete": true, "sort": true, "hide": true, "write": true},
+		"monitor.builtin":     {"read": true, "create": true, "update": true, "delete": true},
 		"monitor.alert_rule":  {"read": true, "create": true, "update": true, "delete": true, "enable": true, "disable": true, "clone": true, "tryrun": true, "rollback": true},
 		"monitor.alert_event": {"read": true, "ack": true, "assign": true, "resolve": true, "archive": true},
 		"monitor.audit_log":   {"read": true},
-		"findx_agent":         {"read": true},
+		"findx_agent":         {"read": true, "write": true},
 	}
 }
