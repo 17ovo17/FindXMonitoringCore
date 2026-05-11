@@ -172,3 +172,72 @@ func TestCORSAllowsWildcardOnlyWhenExplicit(t *testing.T) {
 		t.Fatalf("wildcard CORS should not also set explicit origins: %v", cfg.AllowOrigins)
 	}
 }
+
+func TestExpandConfigValueExpandsEnvPlaceholders(t *testing.T) {
+	const (
+		dsnEnv     = "AI_WORKBENCH_TEST_DSN"
+		apiKeyEnv  = "AI_WORKBENCH_TEST_API_KEY"
+		emptyEnv   = "AI_WORKBENCH_TEST_EMPTY"
+		missingEnv = "AI_WORKBENCH_TEST_MISSING"
+	)
+
+	t.Setenv(dsnEnv, "expanded-dsn-from-env")
+	t.Setenv(apiKeyEnv, "expanded-api-key-from-env")
+	t.Setenv(emptyEnv, "")
+	unsetEnvForExpandConfigTest(t, missingEnv)
+
+	input := map[string]any{
+		"mysql": map[string]any{
+			"dsn": "${AI_WORKBENCH_TEST_DSN}",
+			"backup": map[string]any{
+				"dsn": "$AI_WORKBENCH_TEST_DSN",
+			},
+			"literal": "localhost:3306/no-placeholder",
+		},
+		"providers": []any{
+			map[string]any{"apikey": "$AI_WORKBENCH_TEST_API_KEY"},
+			map[string]any{"apikey": "${AI_WORKBENCH_TEST_MISSING}"},
+			map[string]any{"apikey": "${AI_WORKBENCH_TEST_EMPTY}"},
+		},
+	}
+
+	want := map[string]any{
+		"mysql": map[string]any{
+			"dsn": "expanded-dsn-from-env",
+			"backup": map[string]any{
+				"dsn": "expanded-dsn-from-env",
+			},
+			"literal": "localhost:3306/no-placeholder",
+		},
+		"providers": []any{
+			map[string]any{"apikey": "expanded-api-key-from-env"},
+			map[string]any{"apikey": "${AI_WORKBENCH_TEST_MISSING}"},
+			map[string]any{"apikey": "${AI_WORKBENCH_TEST_EMPTY}"},
+		},
+	}
+
+	got := expandConfigValue(input)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expanded config mismatch:\ngot:  %#v\nwant: %#v", got, want)
+	}
+}
+
+func unsetEnvForExpandConfigTest(t *testing.T, key string) {
+	t.Helper()
+
+	previous, hadPrevious := os.LookupEnv(key)
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatalf("unset test env %s: %v", key, err)
+	}
+	t.Cleanup(func() {
+		if hadPrevious {
+			if err := os.Setenv(key, previous); err != nil {
+				t.Fatalf("restore test env %s: %v", key, err)
+			}
+			return
+		}
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatalf("cleanup test env %s: %v", key, err)
+		}
+	})
+}

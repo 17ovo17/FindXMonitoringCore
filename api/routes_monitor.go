@@ -1,0 +1,93 @@
+package main
+
+import (
+	"ai-workbench-api/internal/handler"
+
+	"github.com/gin-gonic/gin"
+)
+
+func registerAuthAndUserRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
+	v1.GET("/credentials", handler.ListCredentials)
+	v1.POST("/credentials", mw.adminRequired, handler.SaveCredential)
+	v1.DELETE("/credentials/:id", mw.adminRequired, handler.DeleteCredential)
+	v1.POST("/auth/login", handler.Login)
+	v1.POST("/auth/logout", handler.Logout)
+	v1.GET("/auth/me", handler.RequireAuth(), handler.GetMe)
+	v1.POST("/auth/change-password", handler.RequireAuth(), handler.ChangePassword)
+	handler.RegisterOrgRoutes(v1, mw.readRequired, mw.roleAdminRequired)
+	v1.GET("/user-profiles", handler.ListUserProfiles)
+	v1.POST("/user-profiles", handler.SaveUserProfile)
+	v1.DELETE("/user-profiles/:id", handler.DeleteUserProfile)
+	v1.GET("/dashboard/summary", handler.DashboardSummary)
+	v1.GET("/correlate", handler.CorrelateHandler)
+	v1.POST("/workflows/route-preview", handler.RoutePreviewHandler)
+}
+
+func registerMonitorCoreRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
+	v1.GET("/monitor/permissions/me", mw.readRequired, handler.GetMonitorPermissionMe)
+	v1.POST("/monitor/permissions/check", mw.readRequired, handler.CheckMonitorPermission)
+	v1.GET("/monitor/health", mw.monitorRequired("monitor.health", "read"), handler.MonitorHealth)
+	v1.GET("/monitor/datasources", mw.monitorRequired("monitor.datasource", "read"), handler.ListMonitorDatasources)
+	v1.POST("/monitor/query", mw.monitorRequired("monitor.query", "execute"), handler.MonitorQuery)
+	v1.POST("/monitor/query-range", mw.monitorRequired("monitor.query", "execute_range"), handler.MonitorQueryRange)
+	v1.GET("/monitor/metrics", mw.monitorRequired("monitor.metric", "read"), handler.ListMonitorMetrics)
+	v1.GET("/monitor/labels", mw.monitorRequired("monitor.label", "read"), handler.ListMonitorLabels)
+	v1.GET("/monitor/label-values", mw.monitorRequired("monitor.label", "read"), handler.ListMonitorLabelValues)
+	v1.GET("/monitor/targets", mw.monitorRequired("monitor.target", "read"), handler.ListMonitorTargets)
+	v1.POST("/monitor/targets", mw.monitorRequired("monitor.target", "create"), handler.SaveMonitorTarget)
+	v1.GET("/monitor/targets/:id", mw.monitorRequired("monitor.target", "read"), handler.GetMonitorTarget)
+	v1.PUT("/monitor/targets/:id", mw.monitorRequired("monitor.target", "update"), handler.SaveMonitorTarget)
+	v1.DELETE("/monitor/targets/:id", mw.monitorRequired("monitor.target", "delete"), handler.DeleteMonitorTarget)
+	v1.GET("/monitor/dashboards", mw.monitorRequired("monitor.dashboard", "read"), handler.ListMonitorDashboards)
+	v1.POST("/monitor/dashboards", mw.monitorRequired("monitor.dashboard", "create"), handler.CreateMonitorDashboard)
+	v1.GET("/monitor/dashboard-templates", mw.monitorRequired("monitor.dashboard", "read"), handler.ListMonitorDashboardTemplates)
+	v1.GET("/monitor/dashboard-templates/:id", mw.monitorRequired("monitor.dashboard", "read"), handler.GetMonitorDashboardTemplate)
+	v1.POST("/monitor/dashboard-templates/:id/import", mw.monitorRequired("monitor.dashboard", "create"), handler.ImportMonitorDashboardTemplate)
+}
+
+func registerMonitorCatalogRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
+	v1.GET("/monitor/builtin-components", mw.monitorRequired("monitor.builtin", "read"), handler.ListMonitoringBuiltinComponents)
+	v1.POST("/monitor/builtin-components", mw.monitorRequired("monitor.builtin", "create"), handler.CreateMonitoringBuiltinComponents)
+	v1.PUT("/monitor/builtin-components", mw.monitorRequired("monitor.builtin", "update"), handler.UpdateMonitoringBuiltinComponent)
+	v1.DELETE("/monitor/builtin-components", mw.monitorRequired("monitor.builtin", "delete"), handler.DeleteMonitoringBuiltinComponents)
+	v1.GET("/monitor/builtin-payloads/cates", mw.monitorRequired("monitor.builtin", "read"), handler.ListMonitoringBuiltinPayloadTypes)
+	v1.GET("/monitor/builtin-payloads", mw.monitorRequired("monitor.builtin", "read"), handler.ListMonitoringBuiltinPayloads)
+	v1.POST("/monitor/builtin-payloads", mw.monitorRequired("monitor.builtin", "create"), handler.CreateMonitoringBuiltinPayloads)
+	v1.PUT("/monitor/builtin-payloads", mw.monitorRequired("monitor.builtin", "update"), handler.UpdateMonitoringBuiltinPayload)
+	v1.DELETE("/monitor/builtin-payloads", mw.monitorRequired("monitor.builtin", "delete"), handler.DeleteMonitoringBuiltinPayloads)
+	v1.GET("/monitor/builtin-payload/:id", mw.monitorRequired("monitor.builtin", "read"), handler.GetMonitoringBuiltinPayload)
+	v1.GET("/monitor/system-integrations", mw.monitorRequired("monitor.integration", "read"), handler.ListMonitoringSystemIntegrations)
+	v1.POST("/monitor/system-integrations", mw.monitorRequired("monitor.integration", "create"), handler.CreateMonitoringSystemIntegration)
+	v1.PUT("/monitor/system-integrations/weights", mw.monitorRequired("monitor.integration", "sort"), handler.UpdateMonitoringSystemIntegrationWeights)
+	v1.GET("/monitor/system-integrations/:id", mw.monitorRequired("monitor.integration", "read"), handler.GetMonitoringSystemIntegration)
+	v1.PUT("/monitor/system-integrations/:id", mw.monitorRequired("monitor.integration", "update"), handler.UpdateMonitoringSystemIntegration)
+	v1.DELETE("/monitor/system-integrations/:id", mw.monitorRequired("monitor.integration", "delete"), handler.DeleteMonitoringSystemIntegration)
+	v1.PUT("/monitor/system-integrations/:id/hide", mw.monitorRequired("monitor.integration", "hide"), handler.SetMonitoringSystemIntegrationHide)
+	v1.GET("/monitor/dashboards/:id", mw.monitorRequired("monitor.dashboard", "read"), handler.GetMonitorDashboard)
+	v1.PUT("/monitor/dashboards/:id", mw.monitorRequired("monitor.dashboard", "update"), handler.UpdateMonitorDashboard)
+	v1.DELETE("/monitor/dashboards/:id", mw.monitorRequired("monitor.dashboard", "delete"), handler.DeleteMonitorDashboard)
+	v1.POST("/monitor/dashboards/:id/clone", mw.monitorRequired("monitor.dashboard", "clone"), handler.CloneMonitorDashboard)
+	v1.POST("/monitor/dashboards/:id/share", mw.monitorRequired("monitor.dashboard", "share"), handler.ShareMonitorDashboard)
+}
+
+func registerMonitorAlertRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
+	v1.GET("/monitor/alert-rules", mw.monitorRequired("monitor.alert_rule", "read"), handler.ListMonitorAlertRules)
+	v1.POST("/monitor/alert-rules", mw.monitorRequired("monitor.alert_rule", "create"), handler.CreateMonitorAlertRule)
+	v1.GET("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "read"), handler.GetMonitorAlertRule)
+	v1.PUT("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "update"), handler.UpdateMonitorAlertRule)
+	v1.DELETE("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "delete"), handler.DeleteMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/:id/enable", mw.monitorRequired("monitor.alert_rule", "enable"), handler.EnableMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/:id/disable", mw.monitorRequired("monitor.alert_rule", "disable"), handler.DisableMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/:id/clone", mw.monitorRequired("monitor.alert_rule", "clone"), handler.CloneMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/:id/tryrun", mw.monitorRequired("monitor.alert_rule", "tryrun"), handler.TryRunMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/:id/rollback", mw.monitorRequired("monitor.alert_rule", "rollback"), handler.RollbackMonitorAlertRule)
+	v1.GET("/monitor/events/current", mw.monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsCurrent)
+	v1.GET("/monitor/events/history", mw.monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsHistory)
+	v1.GET("/monitor/events/:id", mw.monitorRequired("monitor.alert_event", "read"), handler.GetMonitorEvent)
+	v1.POST("/monitor/events/:id/ack", mw.monitorRequired("monitor.alert_event", "ack"), handler.AckMonitorEvent)
+	v1.POST("/monitor/events/:id/assign", mw.monitorRequired("monitor.alert_event", "assign"), handler.AssignMonitorEvent)
+	v1.POST("/monitor/events/:id/resolve", mw.monitorRequired("monitor.alert_event", "resolve"), handler.ResolveMonitorEvent)
+	v1.POST("/monitor/events/:id/archive", mw.monitorRequired("monitor.alert_event", "archive"), handler.ArchiveMonitorEvent)
+	v1.GET("/monitor/audit-logs", mw.monitorRequired("monitor.audit_log", "read"), handler.ListMonitorAuditLogs)
+	v1.GET("/monitor/audit-logs/:id", mw.monitorRequired("monitor.audit_log", "read"), handler.GetMonitorAuditLog)
+}

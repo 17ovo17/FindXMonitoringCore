@@ -4,7 +4,6 @@ import (
 	"ai-workbench-api/internal/embedding"
 	"ai-workbench-api/internal/handler"
 	"ai-workbench-api/internal/knowledge"
-	"ai-workbench-api/internal/middleware"
 	"ai-workbench-api/internal/scheduler"
 	"ai-workbench-api/internal/store"
 	"io"
@@ -24,6 +23,8 @@ func main() {
 		logrus.Fatalf("读取配置失败: %v", err)
 	}
 
+	expandConfigEnvVars()
+
 	os.MkdirAll("../logs", 0755)
 	logFile, _ := os.OpenFile("../logs/api.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	logrus.SetOutput(io.MultiWriter(os.Stdout, logFile))
@@ -39,276 +40,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(cors.New(corsConfig()))
-	r.Use(middleware.RateLimit(100))
-	r.GET("/metrics", handler.Metrics)
-	adminRequired := requireAdminToken()
-	readRequired := handler.RequireAuth()
-	roleAdminRequired := handler.RequireRole("admin")
-	monitorRequired := handler.RequireMonitorPermission
-
-	v1 := r.Group("/api/v1")
-	{
-		v1.GET("/models", handler.Models)
-		v1.POST("/chat", handler.Chat)
-		v1.GET("/chat/sessions", handler.ListChatSessions)
-		v1.POST("/chat/sessions", handler.CreateChatSession)
-		v1.GET("/chat/sessions/:id", handler.GetChatSession)
-		v1.PUT("/chat/sessions/:id", handler.RenameChatSession)
-		v1.DELETE("/chat/sessions/:id", handler.DeleteChatSession)
-		v1.POST("/agent/llm/chat", handler.AgentLLMChat)
-		v1.POST("/aiops/sessions", handler.AIOpsCreateSession)
-		v1.POST("/aiops/sessions/:id/messages", handler.AIOpsPostMessage)
-		v1.GET("/aiops/sessions/:id/messages", handler.AIOpsGetMessages)
-		v1.GET("/aiops/ws/sessions/:id", handler.AIOpsSessionWS)
-		v1.POST("/aiops/sessions/:id/actions/execute", adminRequired, handler.AIOpsExecuteAction)
-		v1.POST("/aiops/inspections", adminRequired, handler.AIOpsCreateInspection)
-		v1.GET("/aiops/inspections/:id/progress", handler.AIOpsInspectionProgress)
-		v1.GET("/aiops/inspections/:id/report", handler.AIOpsInspectionReport)
-		v1.POST("/aiops/data/prometheus/query", adminRequired, handler.AIOpsPrometheusQuery)
-		v1.POST("/aiops/data/prometheus/query_range", adminRequired, handler.AIOpsPrometheusQueryRange)
-		v1.POST("/aiops/data/catpaw/query", adminRequired, handler.AIOpsCatpawQuery)
-		v1.POST("/aiops/topology/generate", adminRequired, handler.AIOpsTopologyGenerate)
-
-		v1.POST("/diagnose", adminRequired, handler.StartDiagnose)
-		v1.GET("/diagnose", handler.ListDiagnose)
-		v1.GET("/diagnose/compare", handler.CompareDiagnoses)
-		v1.DELETE("/diagnose", adminRequired, handler.CleanupDiagnose)
-		v1.DELETE("/diagnose/:id", adminRequired, handler.DeleteDiagnose)
-
-		v1.POST("/catpaw/heartbeat", handler.CatpawHeartbeat)
-		v1.POST("/catpaw/report", handler.CatpawReport)
-		v1.GET("/catpaw/agents", handler.ListAgents)
-		v1.DELETE("/catpaw/agents/:ip", adminRequired, handler.DeleteAgent)
-
-		v1.POST("/alert/webhook", handler.AlertWebhook)
-		v1.POST("/alert/catpaw", handler.CatpawAlert)
-		v1.GET("/alerts", handler.ListAlerts)
-		v1.PUT("/alerts/:id/resolve", adminRequired, handler.ResolveAlert)
-		v1.PUT("/alerts/:id/:action", adminRequired, handler.AlertAction)
-		v1.DELETE("/alerts/:id", adminRequired, handler.DeleteAlert)
-
-		v1.POST("/remote/exec", adminRequired, handler.RemoteExec)
-		v1.POST("/remote/check-port", adminRequired, handler.CheckRemotePort)
-		v1.POST("/remote/install-catpaw", adminRequired, handler.InstallCatpaw)
-		v1.POST("/remote/uninstall-catpaw", adminRequired, handler.UninstallCatpaw)
-		v1.POST("/remote/install-cmd", adminRequired, handler.GenerateInstallCmd)
-
-		v1.GET("/catpaw/chat-ws", handler.CatpawChat)
-
-		v1.GET("/platform/ip", handler.GetPlatformIP)
-		v1.GET("/prometheus/instances", handler.GetPrometheusInstances)
-		v1.GET("/prometheus/hosts", handler.PrometheusHosts)
-		v1.GET("/prometheus/metrics", handler.PrometheusMetrics)
-		v1.GET("/health/datasources", handler.CheckDataSourceHealth)
-		v1.GET("/health/ai-providers", handler.CheckAIProviderHealth)
-		v1.GET("/health/storage", handler.HealthStorage)
-		v1.GET("/audit/events", readRequired, handler.ListAuditEvents)
-		v1.GET("/oncall/config", handler.GetOnCallConfig)
-		v1.POST("/oncall/config", adminRequired, handler.SaveOnCallConfig)
-		v1.GET("/oncall/groups", handler.ListOnCallGroups)
-		v1.POST("/oncall/groups", adminRequired, handler.SaveOnCallGroup)
-		v1.DELETE("/oncall/groups/:id", adminRequired, handler.DeleteOnCallGroup)
-		v1.GET("/oncall/channels", handler.ListOnCallChannels)
-		v1.POST("/oncall/channels", adminRequired, handler.SaveOnCallChannel)
-		v1.DELETE("/oncall/channels/:id", adminRequired, handler.DeleteOnCallChannel)
-		v1.GET("/oncall/schedules", handler.ListOnCallSchedules)
-		v1.POST("/oncall/schedules", adminRequired, handler.SaveOnCallSchedule)
-		v1.DELETE("/oncall/schedules/:id", adminRequired, handler.DeleteOnCallSchedule)
-		v1.GET("/oncall/records", handler.ListOnCallRecords)
-		v1.POST("/oncall/test-send", adminRequired, handler.TestOnCallNotification)
-
-		v1.GET("/topology", handler.GetTopology)
-		v1.POST("/topology", adminRequired, handler.SaveTopology)
-		v1.GET("/topology/resources", handler.TopologyResources)
-		v1.POST("/topology/discover", adminRequired, handler.DiscoverTopology)
-		v1.POST("/topology/ai/generate", adminRequired, handler.GenerateAITopology)
-		v1.GET("/topology/businesses", handler.ListTopologyBusinesses)
-		v1.POST("/topology/businesses", adminRequired, handler.SaveTopologyBusiness)
-		v1.GET("/topology/businesses/:id", handler.GetTopologyBusiness)
-		v1.GET("/topology/businesses/:id/inspect", handler.InspectTopologyBusiness)
-		v1.DELETE("/topology/businesses/:id", adminRequired, handler.DeleteTopologyBusiness)
-
-		v1.GET("/workspaces", readRequired, handler.ListWorkspaces)
-		v1.POST("/workspaces", roleAdminRequired, handler.CreateWorkspace)
-		v1.GET("/workspaces/:id", readRequired, handler.GetWorkspace)
-		v1.PUT("/workspaces/:id", roleAdminRequired, handler.UpdateWorkspace)
-		v1.DELETE("/workspaces/:id", roleAdminRequired, handler.DeleteWorkspace)
-		v1.GET("/resource-groups", readRequired, handler.ListResourceGroups)
-		v1.POST("/resource-groups", roleAdminRequired, handler.CreateResourceGroup)
-		v1.GET("/resource-groups/:id", readRequired, handler.GetResourceGroup)
-		v1.PUT("/resource-groups/:id", roleAdminRequired, handler.UpdateResourceGroup)
-		v1.DELETE("/resource-groups/:id", roleAdminRequired, handler.DeleteResourceGroup)
-		v1.GET("/host-assets", readRequired, handler.ListHostAssets)
-		v1.GET("/host-assets/:id", readRequired, handler.GetHostAsset)
-		v1.PUT("/host-assets/:id/tags", roleAdminRequired, handler.UpdateHostAssetTags)
-		v1.PUT("/host-assets/:id/resource-group", roleAdminRequired, handler.UpdateHostAssetResourceGroup)
-		v1.PUT("/host-assets/:id/workspace", roleAdminRequired, handler.UpdateHostAssetWorkspace)
-
-		v1.GET("/ai-providers", handler.GetAIProviders)
-		v1.POST("/ai-providers", adminRequired, handler.SaveAIProviders)
-		v1.GET("/data-sources", handler.GetDataSources)
-		v1.POST("/data-sources", adminRequired, handler.SaveDataSources)
-
-		v1.GET("/credentials", handler.ListCredentials)
-		v1.POST("/credentials", adminRequired, handler.SaveCredential)
-		v1.DELETE("/credentials/:id", adminRequired, handler.DeleteCredential)
-
-		v1.POST("/auth/login", handler.Login)
-		v1.POST("/auth/logout", handler.Logout)
-		v1.GET("/auth/me", handler.RequireAuth(), handler.GetMe)
-		v1.POST("/auth/change-password", handler.RequireAuth(), handler.ChangePassword)
-
-		v1.GET("/user-profiles", handler.ListUserProfiles)
-		v1.POST("/user-profiles", handler.SaveUserProfile)
-		v1.DELETE("/user-profiles/:id", handler.DeleteUserProfile)
-
-		v1.GET("/dashboard/summary", handler.DashboardSummary)
-
-		v1.GET("/correlate", handler.CorrelateHandler)
-		v1.POST("/workflows/route-preview", handler.RoutePreviewHandler)
-
-		v1.GET("/monitor/permissions/me", readRequired, handler.GetMonitorPermissionMe)
-		v1.POST("/monitor/permissions/check", readRequired, handler.CheckMonitorPermission)
-		v1.GET("/monitor/health", monitorRequired("monitor.health", "read"), handler.MonitorHealth)
-		v1.GET("/monitor/datasources", monitorRequired("monitor.datasource", "read"), handler.ListMonitorDatasources)
-		v1.POST("/monitor/query", monitorRequired("monitor.query", "execute"), handler.MonitorQuery)
-		v1.POST("/monitor/query-range", monitorRequired("monitor.query", "execute_range"), handler.MonitorQueryRange)
-		v1.GET("/monitor/metrics", monitorRequired("monitor.metric", "read"), handler.ListMonitorMetrics)
-		v1.GET("/monitor/labels", monitorRequired("monitor.label", "read"), handler.ListMonitorLabels)
-		v1.GET("/monitor/label-values", monitorRequired("monitor.label", "read"), handler.ListMonitorLabelValues)
-		v1.GET("/monitor/targets", monitorRequired("monitor.target", "read"), handler.ListMonitorTargets)
-		v1.POST("/monitor/targets", monitorRequired("monitor.target", "create"), handler.SaveMonitorTarget)
-		v1.GET("/monitor/targets/:id", monitorRequired("monitor.target", "read"), handler.GetMonitorTarget)
-		v1.PUT("/monitor/targets/:id", monitorRequired("monitor.target", "update"), handler.SaveMonitorTarget)
-		v1.DELETE("/monitor/targets/:id", monitorRequired("monitor.target", "delete"), handler.DeleteMonitorTarget)
-		v1.GET("/monitor/dashboards", monitorRequired("monitor.dashboard", "read"), handler.ListMonitorDashboards)
-		v1.POST("/monitor/dashboards", monitorRequired("monitor.dashboard", "create"), handler.CreateMonitorDashboard)
-		v1.GET("/monitor/dashboard-templates", monitorRequired("monitor.dashboard", "read"), handler.ListMonitorDashboardTemplates)
-		v1.GET("/monitor/dashboard-templates/:id", monitorRequired("monitor.dashboard", "read"), handler.GetMonitorDashboardTemplate)
-		v1.POST("/monitor/dashboard-templates/:id/import", monitorRequired("monitor.dashboard", "create"), handler.ImportMonitorDashboardTemplate)
-		v1.GET("/monitor/dashboards/:id", monitorRequired("monitor.dashboard", "read"), handler.GetMonitorDashboard)
-		v1.PUT("/monitor/dashboards/:id", monitorRequired("monitor.dashboard", "update"), handler.UpdateMonitorDashboard)
-		v1.DELETE("/monitor/dashboards/:id", monitorRequired("monitor.dashboard", "delete"), handler.DeleteMonitorDashboard)
-		v1.POST("/monitor/dashboards/:id/clone", monitorRequired("monitor.dashboard", "clone"), handler.CloneMonitorDashboard)
-		v1.POST("/monitor/dashboards/:id/share", monitorRequired("monitor.dashboard", "share"), handler.ShareMonitorDashboard)
-		v1.GET("/monitor/alert-rules", monitorRequired("monitor.alert_rule", "read"), handler.ListMonitorAlertRules)
-		v1.POST("/monitor/alert-rules", monitorRequired("monitor.alert_rule", "create"), handler.CreateMonitorAlertRule)
-		v1.GET("/monitor/alert-rules/:id", monitorRequired("monitor.alert_rule", "read"), handler.GetMonitorAlertRule)
-		v1.PUT("/monitor/alert-rules/:id", monitorRequired("monitor.alert_rule", "update"), handler.UpdateMonitorAlertRule)
-		v1.DELETE("/monitor/alert-rules/:id", monitorRequired("monitor.alert_rule", "delete"), handler.DeleteMonitorAlertRule)
-		v1.POST("/monitor/alert-rules/:id/enable", monitorRequired("monitor.alert_rule", "enable"), handler.EnableMonitorAlertRule)
-		v1.POST("/monitor/alert-rules/:id/disable", monitorRequired("monitor.alert_rule", "disable"), handler.DisableMonitorAlertRule)
-		v1.POST("/monitor/alert-rules/:id/clone", monitorRequired("monitor.alert_rule", "clone"), handler.CloneMonitorAlertRule)
-		v1.POST("/monitor/alert-rules/:id/tryrun", monitorRequired("monitor.alert_rule", "tryrun"), handler.TryRunMonitorAlertRule)
-		v1.POST("/monitor/alert-rules/:id/rollback", monitorRequired("monitor.alert_rule", "rollback"), handler.RollbackMonitorAlertRule)
-		v1.GET("/monitor/events/current", monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsCurrent)
-		v1.GET("/monitor/events/history", monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsHistory)
-		v1.GET("/monitor/events/:id", monitorRequired("monitor.alert_event", "read"), handler.GetMonitorEvent)
-		v1.POST("/monitor/events/:id/ack", monitorRequired("monitor.alert_event", "ack"), handler.AckMonitorEvent)
-		v1.POST("/monitor/events/:id/assign", monitorRequired("monitor.alert_event", "assign"), handler.AssignMonitorEvent)
-		v1.POST("/monitor/events/:id/resolve", monitorRequired("monitor.alert_event", "resolve"), handler.ResolveMonitorEvent)
-		v1.POST("/monitor/events/:id/archive", monitorRequired("monitor.alert_event", "archive"), handler.ArchiveMonitorEvent)
-		v1.GET("/monitor/audit-logs", monitorRequired("monitor.audit_log", "read"), handler.ListMonitorAuditLogs)
-		v1.GET("/monitor/audit-logs/:id", monitorRequired("monitor.audit_log", "read"), handler.GetMonitorAuditLog)
-
-		v1.GET("/findx-agents", monitorRequired("findx_agent", "read"), handler.ListFindXAgents)
-		v1.POST("/findx-agents/register", handler.FindXAgentRegister)
-		v1.POST("/findx-agents/heartbeat", handler.FindXAgentHeartbeat)
-
-		v1.GET("/n9e/agents", handler.ListN9eAgents)
-		v1.GET("/n9e/alerts", handler.ListN9eAlerts)
-
-		// 知识库
-		v1.GET("/knowledge/cases", adminRequired, handler.ListCases)
-		v1.GET("/knowledge/cases/export", adminRequired, handler.ExportCases)
-		v1.POST("/knowledge/cases", adminRequired, handler.CreateCase)
-		v1.POST("/knowledge/cases/import", adminRequired, handler.ImportCases)
-		v1.GET("/knowledge/cases/:id", handler.GetCase)
-		v1.PUT("/knowledge/cases/:id", adminRequired, handler.UpdateCase)
-		v1.DELETE("/knowledge/cases/:id", adminRequired, handler.DeleteCase)
-
-		// 知识库文档管理
-		v1.POST("/knowledge/documents/upload", adminRequired, handler.UploadDocument)
-		v1.GET("/knowledge/documents", handler.ListDocumentsHandler)
-		v1.GET("/knowledge/documents/:id", handler.GetDocumentHandler)
-		v1.DELETE("/knowledge/documents/:id", adminRequired, handler.DeleteDocumentHandler)
-		v1.POST("/knowledge/documents/:id/reindex", adminRequired, handler.ReindexDocumentHandler)
-		v1.POST("/knowledge/search", handler.SearchKnowledge)
-		v1.GET("/knowledge/search/stats", handler.KnowledgeSearchStats)
-		v1.POST("/knowledge/search/badcase", adminRequired, handler.SubmitSearchBadcase)
-		v1.POST("/knowledge/reindex-all", adminRequired, handler.ReindexAllHandler)
-
-		// 诊断工作流
-		v1.POST("/diagnosis/start", adminRequired, handler.StartDiagnosisWorkflow)
-
-		// 工作流管理
-		v1.GET("/workflows", handler.ListWorkflows)
-		v1.GET("/workflows/:id", handler.GetWorkflow)
-		v1.POST("/workflows", adminRequired, handler.CreateWorkflow)
-		v1.PUT("/workflows/:id", adminRequired, handler.UpdateWorkflow)
-		v1.DELETE("/workflows/:id", adminRequired, handler.DeleteWorkflow)
-		v1.POST("/workflows/:id/run", handler.RunWorkflowAPI)
-		v1.POST("/workflows/:id/stream", handler.StreamWorkflowAPI)
-		v1.GET("/workflows/:id/runs", handler.ListWorkflowRuns)
-
-		// 定时调度
-		v1.GET("/schedules", handler.ListSchedulesHandler)
-		v1.POST("/schedules", adminRequired, handler.CreateScheduleHandler)
-		v1.DELETE("/schedules/:id", adminRequired, handler.DeleteScheduleHandler)
-
-		// 通知渠道
-		v1.GET("/notifications/channels", handler.ListNotificationChannels)
-		v1.POST("/notifications/channels", adminRequired, handler.SaveNotificationChannel)
-		v1.DELETE("/notifications/channels/:id", adminRequired, handler.DeleteNotificationChannel)
-
-		// 指标映射
-		v1.POST("/metrics/scan", adminRequired, handler.ScanMetrics)
-		v1.POST("/metrics/auto-adapt", adminRequired, handler.AutoAdaptMetrics)
-		v1.GET("/metrics/mappings", handler.ListMetricsMappings)
-		v1.PUT("/metrics/mappings/:id", adminRequired, handler.UpdateMetricMapping)
-		v1.POST("/metrics/mappings/confirm", adminRequired, handler.ConfirmMappings)
-
-		// 知识库 - Runbook
-		v1.GET("/knowledge/runbooks", handler.ListRunbooks)
-		v1.GET("/knowledge/runbooks/:id", handler.GetRunbook)
-		v1.POST("/knowledge/runbooks", adminRequired, handler.CreateRunbook)
-		v1.PUT("/knowledge/runbooks/:id", adminRequired, handler.UpdateRunbook)
-		v1.DELETE("/knowledge/runbooks/:id", adminRequired, handler.DeleteRunbook)
-		v1.POST("/knowledge/runbooks/:id/execute", adminRequired, handler.ExecuteRunbook)
-		v1.GET("/knowledge/runbooks/:id/history", handler.ListRunbookHistory)
-
-		// 诊断反馈与归档
-		v1.POST("/diagnosis/feedback", handler.SubmitFeedback)
-		v1.GET("/diagnosis/feedback", handler.ListFeedbacksByDiagnosisHandler)
-		v1.GET("/diagnosis/feedback/all", handler.ListAllFeedbacks)
-		v1.GET("/diagnosis/feedback/stats", handler.FeedbackStats)
-		v1.GET("/diagnosis/verifications", handler.ListVerifications)
-		v1.POST("/diagnosis/archive", adminRequired, handler.ArchiveDiagnosis)
-
-		// Prompt 模板管理
-		v1.GET("/prompts", handler.ListPromptTemplates)
-		v1.GET("/prompts/:name", handler.GetPromptTemplate)
-		v1.POST("/prompts", adminRequired, handler.CreatePromptTemplate)
-		v1.PUT("/prompts/:name", adminRequired, handler.UpdatePromptTemplate)
-		v1.DELETE("/prompts/:name", adminRequired, handler.DeletePromptTemplate)
-
-		// AI 设置
-		v1.GET("/settings/ai", handler.GetAISettings)
-		v1.PUT("/settings/ai", adminRequired, handler.UpdateAISettings)
-		v1.GET("/settings/ai/:key", handler.GetAISetting)
-		v1.PUT("/settings/ai/:key", adminRequired, handler.UpdateAISettingHandler)
-		v1.DELETE("/settings/ai/:key", adminRequired, handler.DeleteAISetting)
-
-		// Embedding + Reranker 配置
-		v1.GET("/settings/embedding", handler.GetEmbeddingSettings)
-		v1.PUT("/settings/embedding", adminRequired, handler.UpdateEmbeddingSettings)
-		v1.POST("/settings/embedding/test", adminRequired, handler.TestEmbeddingConnection)
-		v1.GET("/settings/reranker", handler.GetRerankerSettings)
-		v1.PUT("/settings/reranker", adminRequired, handler.UpdateRerankerSettings)
-
-		// catpaw 二进制内网分发
-		r.Static("/download", "./assets")
-	}
+	registerRoutes(r)
 
 	host := viper.GetString("server.host")
 	if host == "" {
@@ -344,6 +76,41 @@ func defaultLocalhostOrigins() []string {
 		"http://127.0.0.1:5173",
 		"http://localhost:8080",
 		"http://127.0.0.1:8080",
+	}
+}
+
+func expandConfigEnvVars() {
+	settings := expandConfigValue(viper.AllSettings())
+	if expanded, ok := settings.(map[string]any); ok {
+		for key, value := range expanded {
+			viper.Set(key, value)
+		}
+	}
+}
+
+func expandConfigValue(value any) any {
+	switch typed := value.(type) {
+	case string:
+		return os.Expand(typed, func(key string) string {
+			if value, ok := os.LookupEnv(key); ok && strings.TrimSpace(value) != "" {
+				return value
+			}
+			return "${" + key + "}"
+		})
+	case []any:
+		expanded := make([]any, len(typed))
+		for i, item := range typed {
+			expanded[i] = expandConfigValue(item)
+		}
+		return expanded
+	case map[string]any:
+		expanded := make(map[string]any, len(typed))
+		for key, item := range typed {
+			expanded[key] = expandConfigValue(item)
+		}
+		return expanded
+	default:
+		return value
 	}
 }
 
