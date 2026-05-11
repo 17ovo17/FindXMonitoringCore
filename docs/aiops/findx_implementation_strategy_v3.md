@@ -290,17 +290,54 @@ ssh findx-ubuntu "sleep 4 && curl -fsS http://127.0.0.1:8080/api/v1/health/stora
 
 ## 8. 成熟源码事实源
 
-| 域 | 事实源路径 |
-|------|------|
-| 基础监控 | `D:\项目迁移文件\平台源码\fe-main` |
-| 链路监控 | `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` |
-| 日志中心 | `D:\项目迁移文件\平台源码\signoz-develop\frontend` |
-| CMDB/Agent | `D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main` |
-| 采集插件 | `D:\项目迁移文件\平台源码\categraf-main (1)` |
-| 巡检诊断 | `D:\项目迁移文件\平台源码\catpaw-master` |
-| CMDB 对象建模参考 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\` |
+| 域 | 事实源路径 | 参考内容 |
+|------|------|------|
+| 基础监控前端 | `D:\项目迁移文件\平台源码\fe-main` | 数据源表单、仪表盘编辑器、告警规则、通知模板、指标查询 |
+| 链路监控前端 | `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` | 服务目录、拓扑图、Trace 详情、Profiling |
+| 链路监控后端 | `D:\项目迁移文件\平台源码\skywalking-master` | OAP query、GraphQL schema、存储模型 |
+| 日志中心前端 | `D:\项目迁移文件\平台源码\signoz-develop\frontend` | 日志检索、字段筛选、Pipeline、Saved Views、Trace 关联 |
+| CMDB/Agent 后端 | `D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main` | 主机表、分组、Agent 在线、部署、心跳、CMDB 数据结构 |
+| 采集插件 | `D:\项目迁移文件\平台源码\categraf-main (1)` | 插件目录、配置模板、采集能力 |
+| 巡检诊断 | `D:\项目迁移文件\平台源码\catpaw-master` | 巡检执行、结构化报告、Evidence Chain |
+| CMDB 对象建模 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\` | 模型分类树、属性体系(30+字段)、关联关系、自动发现、监控绑定、拓扑 |
+| AI 智能问答 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\lerwee-*` | 预定义问题模板(31类)、Tool Calling、SSE 流式、会话管理 |
+| AI 告警预测 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\calculate-*` | 趋势预测任务、单指标异常检测、预测告警列表 |
+| 告警中心 | `D:\测试\LWOPS_安全测试资料_2026-05-10\scratch\lwjk_app_extracted\lwjk_app\modules\aialert\` | 统一告警接入 API、SNMP Trap、告警生命周期、第三方 webhook |
+| 导航/菜单体系 | `D:\测试\LWOPS_安全测试资料_2026-05-10\reverse-poc\public\captures\menu-tree.json` | 194 项菜单树、21 个应用模块、分组结构 |
 
-## 9. 环境信息
+## 9. 技术架构决策
+
+### 9.1 持久化层：GORM
+
+**决策**：从原生 database/sql 迁移到 GORM GetDB() 模式。
+
+**原因**：
+- CMDB 对象建模需要动态 schema（用户自定义属性），GORM 的 JSON 字段 + AutoMigrate 更合适
+- 自动发现需要频繁的 upsert 操作，GORM 的 `Save`/`FirstOrCreate` 比手写 SQL 高效
+- 关联关系查询用 GORM 的 Preload/Association 比手写 JOIN 可维护
+- 后续 MCP server 需要快速 CRUD，GORM 开发效率更高
+
+**迁移策略**：
+- 新模块（CMDB 对象建模、MCP server）直接用 GORM
+- 现有模块（监控、告警、通知）保持原生 SQL，不强制迁移
+- 两种模式共存：GORM 用独立的 DB 连接实例，不影响现有代码
+
+### 9.2 前端：React-only + 成熟源码迁移
+
+**决策**：参考成熟源码的组件结构、状态流、API 调用模式，用 React 重新实现。
+
+**不是**：
+- 不是直接复制 TypeScript/Ant Design 代码（夜莺用的是 React+Ant Design+TypeScript）
+- 不是 iframe 嵌入
+- 不是 Vue 桥接
+
+**是**：
+- 参考页面结构、路由语义、组件拆分、状态流
+- 参考 API 调用模式和字段契约
+- 用 FindX 自有的 CSS 变量体系（--fx-*）和 JSX 组件风格实现
+- 保持现有 UI 风格不变
+
+## 10. 环境信息
 
 | 环境 | 用途 | 地址 |
 |------|------|------|
