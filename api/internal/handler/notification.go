@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,10 +13,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// NotificationChannel 通知渠道配置（钉钉/飞书/企业微信）。
 type NotificationChannel struct {
 	ID       string `json:"id"`
-	Type     string `json:"type"` // dingtalk / feishu / wecom
+	Type     string `json:"type"`
 	Name     string `json:"name"`
 	Endpoint string `json:"endpoint,omitempty"`
 	Receiver string `json:"receiver,omitempty"`
@@ -29,18 +29,24 @@ var (
 	notificationChannelsMu sync.RWMutex
 )
 
-// ListNotificationChannels GET /api/v1/notifications/channels
 func ListNotificationChannels(c *gin.Context) {
 	notificationChannelsMu.RLock()
 	defer notificationChannelsMu.RUnlock()
-	c.JSON(http.StatusOK, gin.H{"items": notificationChannels})
+	items := make([]NotificationChannel, 0, len(notificationChannels))
+	for _, ch := range notificationChannels {
+		items = append(items, redactNotificationChannel(ch))
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
 }
 
-// SaveNotificationChannel POST /api/v1/notifications/channels
 func SaveNotificationChannel(c *gin.Context) {
 	var ch NotificationChannel
 	if err := c.ShouldBindJSON(&ch); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid notification channel payload"})
+		return
+	}
+	if strings.TrimSpace(ch.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "notification channel name required"})
 		return
 	}
 	if ch.ID == "" {
@@ -57,6 +63,7 @@ func SaveNotificationChannel(c *gin.Context) {
 	found := false
 	for i, existing := range notificationChannels {
 		if existing.ID == ch.ID {
+			ch = mergeNotificationChannelSecrets(ch, existing)
 			notificationChannels[i] = ch
 			found = true
 			break
@@ -67,11 +74,9 @@ func SaveNotificationChannel(c *gin.Context) {
 	}
 	notificationChannelsMu.Unlock()
 
-	ch.Secret = ""
-	c.JSON(http.StatusOK, ch)
+	c.JSON(http.StatusOK, redactNotificationChannel(ch))
 }
 
-// DeleteNotificationChannel DELETE /api/v1/notifications/channels/:id
 func DeleteNotificationChannel(c *gin.Context) {
 	id := c.Param("id")
 	notificationChannelsMu.Lock()
@@ -86,7 +91,6 @@ func DeleteNotificationChannel(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 }
 
-// SendNotification 发送通知到所有启用的渠道。
 func SendNotification(title, content, level string) {
 	notificationChannelsMu.RLock()
 	defer notificationChannelsMu.RUnlock()
