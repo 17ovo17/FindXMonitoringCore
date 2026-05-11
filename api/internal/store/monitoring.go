@@ -118,6 +118,25 @@ func UpsertFindXAgentHeartbeat(hb model.FindXAgentHeartbeat) (*model.FindXAgent,
 	return out, target, nil
 }
 
+func GetFindXAgent(id string) (*model.FindXAgent, bool) {
+	if mysqlOK {
+		if rows, err := db.Query(`SELECT id,ident,target_id,ip,hostname,os,arch,version,collector,status,COALESCE(capabilities,'[]'),COALESCE(global_labels,'{}'),config_version,last_seen,created_at,updated_at FROM findx_agents WHERE id=?`, id); err == nil {
+			defer rows.Close()
+			agents := scanFindXAgents(rows)
+			if len(agents) > 0 {
+				return agents[0], true
+			}
+		}
+	}
+	mu.RLock()
+	defer mu.RUnlock()
+	agent, ok := findxAgents[id]
+	if !ok {
+		return nil, false
+	}
+	return copyFindXAgent(agent), true
+}
+
 func ListFindXAgents() []*model.FindXAgent {
 	if mysqlOK {
 		if rows, err := db.Query(`SELECT id,ident,target_id,ip,hostname,os,arch,version,collector,status,COALESCE(capabilities,'[]'),COALESCE(global_labels,'{}'),config_version,last_seen,created_at,updated_at FROM findx_agents ORDER BY last_seen DESC LIMIT 1000`); err == nil {

@@ -28,6 +28,8 @@ func registerFindXAgentRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/findx-agents/tasks", mw.monitorRequired("findx_agent", "write"), handler.CreateFindXAgentTask)
 	v1.GET("/n9e/agents", handler.ListN9eAgents)
 	v1.GET("/n9e/alerts", handler.ListN9eAlerts)
+	v1.POST("/findx-agents/:id/verify-heartbeat", mw.monitorRequired("findx_agent", "read"), handler.VerifyAgentHeartbeat)
+	v1.POST("/findx-agents/batch-verify", mw.monitorRequired("findx_agent", "read"), handler.BatchVerifyAgentHeartbeat)
 }
 
 func registerKnowledgeRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
