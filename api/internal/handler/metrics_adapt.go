@@ -33,7 +33,7 @@ type adaptResult struct {
 }
 
 // AutoAdaptMetrics POST /api/v1/metrics/auto-adapt
-// 璋冪敤 LLM 瀵规湭閫傞厤鐨勬寚鏍囪繘琛屾壒閲忛€傞厤銆?
+// 调用 LLM 对未适配的指标进行批量适配。
 func AutoAdaptMetrics(c *gin.Context) {
 	var req struct {
 		DatasourceID string `json:"datasource_id"`
@@ -66,7 +66,7 @@ func AutoAdaptMetrics(c *gin.Context) {
 	})
 }
 
-// runAutoAdapt 鎵ц澶氳疆鎵归噺閫傞厤锛岃繑鍥炲鐞嗘€绘暟鍜屾垚鍔熼€傞厤鏁般€?
+// runAutoAdapt 执行多轮批量适配，返回处理总数和成功适配数。
 func runAutoAdapt(datasourceID, prompt string, maxBatches int) (int, int) {
 	processed := 0
 	adapted := 0
@@ -100,7 +100,7 @@ func runAutoAdapt(datasourceID, prompt string, maxBatches int) (int, int) {
 	return processed, adapted
 }
 
-// loadAdaptPrompt 鍔犺浇鎸囨爣閫傞厤 Prompt 妯℃澘銆?
+// loadAdaptPrompt 加载指标适配 Prompt 模板。
 func loadAdaptPrompt() (string, error) {
 	data, err := os.ReadFile("assets/prompts/metrics_adapt.txt")
 	if err != nil {
@@ -109,13 +109,13 @@ func loadAdaptPrompt() (string, error) {
 	return string(data), nil
 }
 
-// callLLMForAdapt 璋冪敤 LLM 澶勭悊涓€鎵规寚鏍囷紝杩斿洖閫傞厤缁撴灉鏁扮粍銆?
+// callLLMForAdapt 调用 LLM 处理一批指标，返回适配结果数组。
 func callLLMForAdapt(prompt string, batch []model.MetricsMapping) ([]adaptResult, error) {
 	names := make([]string, len(batch))
 	for i, m := range batch {
 		names[i] = m.RawName
 	}
-	userMsg := "璇烽€傞厤浠ヤ笅鎸囨爣鍒楄〃锛堜粎杩斿洖 JSON 鏁扮粍锛夛細\n" + joinLines(names)
+	userMsg := "请适配以下指标列表（仅返回 JSON 数组）：\n" + joinLines(names)
 
 	model := resolveDefaultModel()
 
@@ -160,7 +160,7 @@ func callLLMForAdapt(prompt string, batch []model.MetricsMapping) ([]adaptResult
 	return parseAdaptJSON(upstream.Choices[0].Message.Content)
 }
 
-// parseAdaptJSON 浠?LLM 鍝嶅簲涓彁鍙?JSON 鏁扮粍銆?
+// parseAdaptJSON 从 LLM 响应中提取 JSON 数组。
 func parseAdaptJSON(content string) ([]adaptResult, error) {
 	var lastErr error
 	for _, candidate := range adaptJSONCandidates(content) {

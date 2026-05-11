@@ -182,7 +182,11 @@ func dashboardFromTemplate(tpl model.MonitorDashboardTemplate, input model.Monit
 		Panels:          append([]byte{}, tpl.Panels...),
 		Status:          model.MonitorDashboardStatusActive,
 	}
-	return item, validateMonitorDashboardPayload(item)
+	checks := validateMonitorDashboardPayload(item)
+	if strings.TrimSpace(item.ResourceGroupID) == "" {
+		checks = append(checks, "resource_group_id is required")
+	}
+	return item, checks
 }
 
 func templateImportTags(defaults, input []string) []string {

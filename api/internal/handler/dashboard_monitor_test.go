@@ -201,12 +201,17 @@ func TestMonitorDashboardTemplateImportRejectsInvalidRequests(t *testing.T) {
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("missing template import should be 404, got %d body=%s", missing.Code, missing.Body.String())
 	}
-	badVariables := map[string]any{"variables": []any{"not-object"}}
-	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", badVariables)
+	emptyGroup := map[string]any{"resource_group_id": " "}
+	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", emptyGroup)
+	if resp.Code != http.StatusBadRequest || !strings.Contains(resp.Body.String(), "resource_group_id is required") {
+		t.Fatalf("empty template import resource group should be 400 with clear check, got %d body=%s", resp.Code, resp.Body.String())
+	}
+	badVariables := map[string]any{"resource_group_id": "rg-template", "variables": []any{"not-object"}}
+	resp = performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", badVariables)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("non-object template variables should be 400, got %d body=%s", resp.Code, resp.Body.String())
 	}
-	longTitle := map[string]any{"title": strings.Repeat("x", maxDashboardTitleLen+1)}
+	longTitle := map[string]any{"title": strings.Repeat("x", maxDashboardTitleLen+1), "resource_group_id": "rg-template"}
 	resp = performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", longTitle)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("too long template import title should be 400, got %d body=%s", resp.Code, resp.Body.String())
