@@ -4,7 +4,6 @@ import (
 	"ai-workbench-api/internal/security"
 	"ai-workbench-api/internal/store"
 
-	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,10 +11,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-	"unicode/utf16"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/ssh"
 )
 
 type RemoteCredential struct {
@@ -108,7 +105,7 @@ func execLocalShell(script string) (string, error) {
 	cmd := exec.Command("bash", "-lc", script)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("??????????: %v", err)
+		return string(out), fmt.Errorf("本地脚本执行失败: %v", err)
 	}
 	return string(out), nil
 }
@@ -150,6 +147,18 @@ func requireSavedCredential(c *gin.Context, cred *RemoteCredential, credentialID
 	return true
 }
 
+// dispatchRemoteExec 根据协议分发远程执行并返回输出
+func dispatchRemoteExec(req RemoteExecRequest) (string, error) {
+	switch req.Protocol {
+	case "wmi":
+		return execWMI(req)
+	case "winrm":
+		return execWinRM(req)
+	default:
+		return execSSH(req)
+	}
+}
+
 func RemoteExec(c *gin.Context) {
 	var req RemoteExecRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -179,179 +188,36 @@ func RemoteExec(c *gin.Context) {
 		return
 	}
 	auditEvent(c, "remote.exec", req.IP, commandDecision.Level, "allow", commandDecision.Reason, req.TestBatchID)
-	switch req.Protocol {
-	case "wmi":
-		out, err := execWMI(req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": out})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"output": out})
+	out, err := dispatchRemoteExec(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": out})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"output": out})
+}
+
+// executeInstall 根据协议选择安装脚本并执行
+func executeInstall(cred RemoteCredential, protocol, ip, reportURL, mode string) (string, error) {
+	switch protocol {
 	case "winrm":
-		out, err := execWinRM(req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": out})
-			return
+		if !hasAsset("catpaw_windows_amd64.exe") {
+			return "", fmt.Errorf("缺少 Windows 探针二进制: ./assets/catpaw_windows_amd64.exe")
 		}
-		c.JSON(http.StatusOK, gin.H{"output": out})
+		script := buildWinRMInstallCmd(reportURL)
+		return execWinRM(RemoteExecRequest{RemoteCredential: cred, Command: script})
+	case "wmi":
+		if !hasAsset("catpaw_windows_amd64.exe") {
+			return "", fmt.Errorf("缺少 Windows 探针二进制: ./assets/catpaw_windows_amd64.exe")
+		}
+		script := buildWMIInstallScript(reportURL)
+		return execWMI(RemoteExecRequest{RemoteCredential: cred, Command: script})
 	default:
-		out, err := execSSH(req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		script := buildInstallScript(ip, reportURL, mode)
+		if protocol == "local" || isLocalRemoteTarget(ip) {
+			return execLocalShell(script)
 		}
-		c.JSON(http.StatusOK, gin.H{"output": out})
+		return execSSH(RemoteExecRequest{RemoteCredential: cred, Command: script})
 	}
-}
-
-func encodePowerShell(script string) string {
-	encoded := utf16.Encode([]rune(script))
-	bytes := make([]byte, len(encoded)*2)
-	for i, value := range encoded {
-		bytes[i*2] = byte(value)
-		bytes[i*2+1] = byte(value >> 8)
-	}
-	return base64.StdEncoding.EncodeToString(bytes)
-}
-
-func cleanPowerShellOutput(out []byte) string {
-	text := string(out)
-	text = strings.ReplaceAll(text, "#< CLIXML\r\n", "")
-	text = strings.ReplaceAll(text, "#< CLIXML\n", "")
-	if idx := strings.Index(text, "<Objs Version="); idx >= 0 {
-		text = text[:idx]
-	}
-	return strings.TrimSpace(text)
-}
-
-func execWMI(req RemoteExecRequest) (string, error) {
-	port := req.Port
-	if port == 0 {
-		port = 135
-	}
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", req.IP, port), 5*time.Second)
-	if err != nil {
-		return "", fmt.Errorf("WMI 连接失败: %s:%d 不可达: %v", req.IP, port, err)
-	}
-	conn.Close()
-	localTarget := req.IP == "127.0.0.1" || strings.EqualFold(req.IP, "localhost")
-	remoteCommand := fmt.Sprintf("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand %s", encodePowerShell(req.Command))
-	script := ""
-	if localTarget && strings.TrimSpace(req.Password) == "" {
-		script = fmt.Sprintf(`
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$result = Invoke-WmiMethod -ComputerName %q -Class Win32_Process -Name Create -ArgumentList %q -ErrorAction Stop
-if ($result.ReturnValue -ne 0) { throw "WMI process create failed: ReturnValue=$($result.ReturnValue)" }
-Write-Output "WMI process started: ProcessId=$($result.ProcessId)"
-`, req.IP, remoteCommand)
-	} else {
-		if strings.TrimSpace(req.Password) == "" {
-			return "", fmt.Errorf("WMI 连接失败: password is required")
-		}
-		script = fmt.Sprintf(`
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$secure = ConvertTo-SecureString %q -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential(%q, $secure)
-$result = Invoke-WmiMethod -ComputerName %q -Credential $cred -Class Win32_Process -Name Create -ArgumentList %q -ErrorAction Stop
-if ($result.ReturnValue -ne 0) { throw "WMI process create failed: ReturnValue=$($result.ReturnValue)" }
-Write-Output "WMI process started: ProcessId=$($result.ProcessId)"
-`, req.Password, req.Username, req.IP, remoteCommand)
-	}
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodePowerShell(script))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return string(out), fmt.Errorf("WMI 连接失败: %v；请确认目标已开放 WMI/DCOM、445/135 与动态 RPC 端口、防火墙允许远程管理，且凭据属于本地管理员", err)
-	}
-	if strings.Contains(string(out), "拒绝访问") || strings.Contains(strings.ToLower(string(out)), "access is denied") || strings.Contains(string(out), "UnauthorizedAccessException") {
-		return string(out), fmt.Errorf("WMI 连接失败: 目标拒绝访问；请确认用户名格式、管理员权限、远程 UAC 本地账号限制与 WMI/DCOM 权限")
-	}
-	return cleanPowerShellOutput(out), nil
-}
-
-func execSSH(req RemoteExecRequest) (string, error) {
-	port := req.Port
-	if port == 0 {
-		port = 22
-	}
-	var auth []ssh.AuthMethod
-	if req.SSHKey != "" {
-		signer, err := ssh.ParsePrivateKey([]byte(req.SSHKey))
-		if err != nil {
-			return "", fmt.Errorf("解析 SSH 密钥失败: %v", err)
-		}
-		auth = append(auth, ssh.PublicKeys(signer))
-	}
-	if req.Password != "" {
-		auth = append(auth, ssh.Password(req.Password))
-	}
-	cfg := &ssh.ClientConfig{
-		User:            req.Username,
-		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         30 * time.Second,
-	}
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", req.IP, port), cfg)
-	if err != nil {
-		return "", fmt.Errorf("SSH 连接失败: %v", err)
-	}
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-	defer session.Close()
-
-	out, err := session.CombinedOutput(req.Command)
-	return string(out), err
-}
-
-func execWinRM(req RemoteExecRequest) (string, error) {
-	port := req.Port
-	if port == 0 {
-		port = 5985
-	}
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", req.IP, port), 5*time.Second)
-	if err != nil {
-		return "", fmt.Errorf("WinRM 连接失败: %s:%d 不可达: %v", req.IP, port, err)
-	}
-	conn.Close()
-	if strings.TrimSpace(req.Password) == "" {
-		return "", fmt.Errorf("WinRM 连接失败: password is required")
-	}
-	script := fmt.Sprintf(`
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$secure = ConvertTo-SecureString %q -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential(%q, $secure)
-$sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
-$session = $null
-$lastError = $null
-foreach ($auth in @('Negotiate','Basic')) {
-  try {
-    $session = New-PSSession -ComputerName %q -Port %d -Credential $cred -Authentication $auth -SessionOption $sessionOption
-    break
-  } catch {
-    $lastError = $_
-  }
-}
-if (-not $session) { throw $lastError }
-try {
-  Invoke-Command -Session $session -ScriptBlock { %s }
-} finally {
-  if ($session) { Remove-PSSession $session }
-}
-`, req.Password, req.Username, req.IP, port, req.Command)
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encodePowerShell(script))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return string(out), fmt.Errorf("WinRM 连接失败: %v；如目标为 Windows/IP 直连，请确认目标端已执行 RDP 引导，且平台侧已以管理员执行 WinRM 客户端配置：TrustedHosts、AllowUnencrypted", err)
-	}
-	return cleanPowerShellOutput(out), nil
 }
 
 // InstallCatpaw 通过 SSH/WinRM 一键安装 catpaw 到目标机器
@@ -379,7 +245,6 @@ func InstallCatpaw(c *gin.Context) {
 	if req.Mode == "" {
 		req.Mode = "run"
 	}
-
 	reportURL := c.GetHeader("X-Platform-URL")
 	if reportURL == "" {
 		reportURL = "http://your-ai-workbench:8080"
@@ -388,33 +253,12 @@ func InstallCatpaw(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": decision.Reason, "safety": decision})
 		return
 	}
-
-	var script string
-	var out string
-	var err error
-	if req.Protocol == "winrm" {
-		if !hasAsset("catpaw_windows_amd64.exe") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 Windows 探针二进制: ./assets/catpaw_windows_amd64.exe"})
-			return
-		}
-		script = buildWinRMInstallCmd(reportURL)
-		out, err = execWinRM(RemoteExecRequest{RemoteCredential: req.RemoteCredential, Command: script})
-	} else if req.Protocol == "wmi" {
-		if !hasAsset("catpaw_windows_amd64.exe") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 Windows 探针二进制: ./assets/catpaw_windows_amd64.exe"})
-			return
-		}
-		script = buildWMIInstallScript(reportURL)
-		out, err = execWMI(RemoteExecRequest{RemoteCredential: req.RemoteCredential, Command: script})
-	} else {
-		script = buildInstallScript(req.IP, reportURL, req.Mode)
-		if req.Protocol == "local" || isLocalRemoteTarget(req.IP) {
-			out, err = execLocalShell(script)
-		} else {
-			out, err = execSSH(RemoteExecRequest{RemoteCredential: req.RemoteCredential, Command: script})
-		}
-	}
+	out, err := executeInstall(req.RemoteCredential, req.Protocol, req.IP, reportURL, req.Mode)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "缺少") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "output": out})
 		return
 	}
@@ -461,216 +305,4 @@ func GenerateInstallCmd(c *gin.Context) {
 		cmd = buildCurlInstallCmd(req.ReportURL)
 	}
 	c.JSON(http.StatusOK, gin.H{"command": cmd})
-}
-
-func buildRDPWinRMBootstrapCmd(reportURL string) string {
-	return strings.TrimSpace(fmt.Sprintf(`# RDP 引导命令：请在目标 Windows 主机的“管理员 PowerShell”中执行
-# 作用：启用 WinRM、开放远程管理防火墙、解除本地管理员远程 UAC 令牌过滤。
-# 完成后回到平台选择 Windows + WinRM 安装 Catpaw。
-
-$ErrorActionPreference = "Stop"
-Write-Host "[1/6] Enable WinRM service"
-Enable-PSRemoting -Force
-
-Write-Host "[2/6] Configure WinRM for local administrator remote management"
-winrm quickconfig -quiet
-winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-winrm set winrm/config/service/auth '@{Basic="true"}'
-
-Write-Host "[3/6] Open Windows firewall rules"
-Enable-NetFirewallRule -DisplayGroup "Windows Remote Management" -ErrorAction SilentlyContinue
-Enable-NetFirewallRule -DisplayGroup "Windows Management Instrumentation (WMI)" -ErrorAction SilentlyContinue
-Enable-NetFirewallRule -DisplayGroup "Remote Service Management" -ErrorAction SilentlyContinue
-
-Write-Host "[4/6] Disable remote UAC token filtering for local admin accounts"
-New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Force | Out-Null
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name LocalAccountTokenFilterPolicy -Type DWord -Value 1
-
-Write-Host "[5/6] Verify WinRM listener"
-winrm enumerate winrm/config/listener
-
-Write-Host "[6/6] Platform URL for Catpaw callback: %s"
-Write-Host "RDP bootstrap completed. Now install from AI WorkBench with protocol: WinRM, port: 5985."
-
-# 平台侧也需要以管理员 PowerShell 执行一次（把 <TARGET_IP> 改成目标 IP，例如 192.168.1.7）：
-# Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value "<TARGET_IP>" -Force
-# Set-Item -Path WSMan:\localhost\Client\AllowUnencrypted -Value $true -Force
-`, reportURL))
-}
-
-func buildInstallScript(ip, reportURL, mode string) string {
-	_ = ip
-	return strings.TrimSpace(fmt.Sprintf(`
-set -e
-ARCH=$(uname -m)
-[ "$ARCH" = "x86_64" ] && ARCH=amd64 || ARCH=arm64
-# 获取本机 IP
-HOST_IP=$(hostname -I | awk '{print $1}')
-pkill -x catpaw 2>/dev/null || true
-sleep 1
-curl -kfsSL "%s/download/catpaw_linux_${ARCH}" -o /tmp/catpaw.$$ 
-chmod +x /tmp/catpaw.$$
-mv /tmp/catpaw.$$ /usr/local/bin/catpaw
-mkdir -p /etc/catpaw/conf.d
-cat > /etc/catpaw/conf.d/config.toml << EOF
-[global.labels]
-from_hostip = "${HOST_IP}"
-
-[notify.webapi]
-enabled = true
-url = "%s/api/v1/catpaw/report"
-method = "POST"
-
-[notify.heartbeat]
-enabled = true
-url = "%s/api/v1/catpaw/heartbeat"
-interval = "60s"
-
-[ai]
-enabled = true
-model_priority = []
-max_rounds = 10
-request_timeout = "120s"
-max_retries = 1
-retry_backoff = "2s"
-tool_timeout = "20s"
-queue_full_policy = "wait"
-language = "zh"
-
-[ai.gateway]
-enabled = true
-base_url = "%s/api/v1/agent/llm"
-max_retries = 1
-request_timeout = "120s"
-fallback_to_direct = false
-EOF
-nohup catpaw --configs /etc/catpaw/conf.d %s > /var/log/catpaw.log 2>&1 &
-echo "catpaw started (ip=${HOST_IP}) in %s mode"
-`, reportURL, reportURL, reportURL, reportURL, mode, mode))
-}
-
-func buildCurlInstallCmd(reportURL string) string {
-	return fmt.Sprintf(`ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH=amd64 || ARCH=arm64
-HOST_IP=$(hostname -I | awk '{print $1}')
-pkill -x catpaw 2>/dev/null || true
-sleep 1
-curl -kfsSL "%s/download/catpaw_linux_${ARCH}" -o /tmp/catpaw.$$ && chmod +x /tmp/catpaw.$$ && mv /tmp/catpaw.$$ /usr/local/bin/catpaw
-mkdir -p /etc/catpaw/conf.d
-cat > /etc/catpaw/conf.d/config.toml << EOF
-[global.labels]
-from_hostip = "${HOST_IP}"
-[notify.webapi]
-enabled = true
-url = "%s/api/v1/catpaw/report"
-method = "POST"
-[notify.heartbeat]
-enabled = true
-url = "%s/api/v1/catpaw/heartbeat"
-interval = "60s"
-
-[ai]
-enabled = true
-model_priority = []
-max_rounds = 10
-request_timeout = "120s"
-max_retries = 1
-retry_backoff = "2s"
-tool_timeout = "20s"
-queue_full_policy = "wait"
-language = "zh"
-
-[ai.gateway]
-enabled = true
-base_url = "%s/api/v1/agent/llm"
-max_retries = 1
-request_timeout = "120s"
-fallback_to_direct = false
-EOF
-nohup catpaw --configs /etc/catpaw/conf.d run > /var/log/catpaw.log 2>&1 &
-echo "catpaw started (ip=${HOST_IP})"`, reportURL, reportURL, reportURL, reportURL)
-}
-
-func buildWMIInstallScript(reportURL string) string {
-	return fmt.Sprintf(`$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-New-Item -ItemType Directory -Force -Path C:\catpaw\conf.d | Out-Null
-$hostIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike '*Loopback*' -and $_.IPAddress -notlike '169.254.*'} | Select-Object -First 1).IPAddress
-certutil -urlcache -f "%s/download/catpaw_windows_amd64.exe" C:\catpaw\catpaw.exe | Out-Null
-$cfg = @"
-[global.labels]
-from_hostip = "$hostIP"
-[notify.webapi]
-enabled = true
-url = "%s/api/v1/catpaw/report"
-method = "POST"
-[notify.heartbeat]
-enabled = true
-url = "%s/api/v1/catpaw/heartbeat"
-interval = "30s"
-[ai.gateway]
-enabled = true
-base_url = "%s/api/v1/agent/llm"
-fallback_to_direct = false
-"@
-[System.IO.File]::WriteAllText('C:\catpaw\conf.d\config.toml', $cfg, [System.Text.UTF8Encoding]::new($false))
-$bat = @'
-@echo off
-cd /d C:\catpaw
-C:\catpaw\catpaw.exe run --configs C:\catpaw\conf.d >> C:\catpaw\catpaw.stdout.log 2>> C:\catpaw\catpaw.stderr.log
-'@
-[System.IO.File]::WriteAllText('C:\catpaw\start-catpaw.bat', $bat, [System.Text.ASCIIEncoding]::new())
-schtasks /End /TN Catpaw /F 2>$null
-schtasks /Delete /TN Catpaw /F 2>$null
-schtasks /Create /TN Catpaw /SC ONSTART /RL HIGHEST /F /TR 'C:\catpaw\start-catpaw.bat' | Out-Null
-Start-Process -FilePath 'C:\catpaw\start-catpaw.bat' -WindowStyle Hidden
-Start-Sleep -Seconds 3
-if (-not (Get-Process catpaw -ErrorAction SilentlyContinue)) { throw "catpaw did not start" }
-Write-Output "catpaw started"
-`, reportURL, reportURL, reportURL, reportURL)
-}
-
-func buildWinRMInstallCmd(reportURL string) string {
-	return fmt.Sprintf(`# PowerShell 安装（在目标机器上执行）
-$hostIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike '*Loopback*'} | Select-Object -First 1).IPAddress
-New-Item -ItemType Directory -Force -Path C:\catpaw\conf.d | Out-Null
-certutil -urlcache -f "%s/download/catpaw_windows_amd64.exe" C:\catpaw\catpaw.exe
-@"
-[global.labels]
-from_hostip = "$hostIP"
-
-[notify.webapi]
-enabled = true
-url = "%s/api/v1/catpaw/report"
-method = "POST"
-
-[notify.heartbeat]
-enabled = true
-url = "%s/api/v1/catpaw/heartbeat"
-interval = "60s"
-
-[ai]
-enabled = true
-model_priority = []
-max_rounds = 10
-request_timeout = "120s"
-max_retries = 1
-retry_backoff = "2s"
-tool_timeout = "20s"
-queue_full_policy = "wait"
-language = "zh"
-
-[ai.gateway]
-enabled = true
-base_url = "%s/api/v1/agent/llm"
-max_retries = 1
-request_timeout = "120s"
-fallback_to_direct = false
-"@ | Out-File C:\catpaw\conf.d\config.toml -Encoding UTF8
-schtasks /End /TN Catpaw /F 2>$null
-schtasks /Delete /TN Catpaw /F 2>$null
-schtasks /Create /TN Catpaw /SC ONSTART /RL HIGHEST /F /TR 'C:\catpaw\catpaw.exe run --configs C:\catpaw\conf.d' | Out-Null
-schtasks /Run /TN Catpaw | Out-Null
-Start-Sleep -Seconds 2
-if (-not (Get-Process catpaw -ErrorAction SilentlyContinue)) { throw "catpaw scheduled task did not start" }
-Write-Output "catpaw scheduled task started"`, reportURL, reportURL, reportURL, reportURL)
 }
