@@ -30,6 +30,17 @@ func registerFindXAgentRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/n9e/alerts", handler.ListN9eAlerts)
 	v1.POST("/findx-agents/:id/verify-heartbeat", mw.monitorRequired("findx_agent", "read"), handler.VerifyAgentHeartbeat)
 	v1.POST("/findx-agents/batch-verify", mw.monitorRequired("findx_agent", "read"), handler.BatchVerifyAgentHeartbeat)
+
+	// P5: Agent complete lifecycle endpoints
+	v1.GET("/agent-packages", mw.monitorRequired("findx_agent", "read"), handler.ListAgentPackagesV2)
+	v1.POST("/agent-packages", mw.monitorRequired("findx_agent", "write"), handler.RegisterAgentPackage)
+	v1.DELETE("/agent-packages/:id", mw.monitorRequired("findx_agent", "write"), handler.DeleteAgentPackageHandler)
+	v1.POST("/findx-agents/:id/install", mw.monitorRequired("findx_agent", "write"), handler.InstallFindXAgent)
+	v1.POST("/findx-agents/:id/upgrade", mw.monitorRequired("findx_agent", "write"), handler.UpgradeFindXAgent)
+	v1.POST("/findx-agents/:id/rollback", mw.monitorRequired("findx_agent", "write"), handler.RollbackFindXAgent)
+	v1.POST("/findx-agents/:id/uninstall", mw.monitorRequired("findx_agent", "write"), handler.UninstallFindXAgent)
+	v1.POST("/findx-agents/:id/config-push", mw.monitorRequired("findx_agent", "write"), handler.ConfigPushFindXAgent)
+	v1.GET("/findx-agents/:id/evidence-chain", mw.monitorRequired("findx_agent", "read"), handler.GetAgentEvidenceChain)
 }
 
 func registerKnowledgeRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
