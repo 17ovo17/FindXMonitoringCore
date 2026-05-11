@@ -182,6 +182,7 @@ func migrate() error {
 	for _, stmt := range tolerantMigrationStatements {
 		_, _ = db.Exec(stmt)
 	}
+	migrateCmdb()
 	return nil
 }
 
