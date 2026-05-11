@@ -155,43 +155,58 @@ func (b *LLMBridge) ChatCompletion(ctx context.Context, req node.ChatRequest) (*
 	if !llmBreaker.allow() {
 		return nil, fmt.Errorf("LLM service circuit breaker open, try again later")
 	}
-	select {
-	case llmSemaphore <- struct{}{}:
-		defer func() { <-llmSemaphore }()
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	release, err := acquireLLMSlot(ctx)
+	if err != nil {
+		return nil, err
 	}
-
-	baseURL := bridgeBaseURL()
-	apiKey := bridgeAPIKey()
-	if baseURL == "" || apiKey == "" {
-		return nil, fmt.Errorf("AI provider not configured: base_url or api_key missing")
+	defer release()
+	baseURL, apiKey, model, err := resolveLLMRequestConfig(req)
+	if err != nil {
+		return nil, err
 	}
-	model := req.Model
-	if model == "" {
-		model = bridgeDefaultModel()
-	}
-
 	payload := buildLLMPayload(model, req)
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal llm request: %w", err)
 	}
-
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build http request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
-
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		llmBreaker.recordFailure()
 		return nil, fmt.Errorf("llm http call: %w", err)
 	}
 	defer resp.Body.Close()
+	return readLLMHTTPResponse(resp)
+}
 
+func acquireLLMSlot(ctx context.Context) (func(), error) {
+	select {
+	case llmSemaphore <- struct{}{}:
+		return func() { <-llmSemaphore }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func resolveLLMRequestConfig(req node.ChatRequest) (string, string, string, error) {
+	baseURL := bridgeBaseURL()
+	apiKey := bridgeAPIKey()
+	if baseURL == "" || apiKey == "" {
+		return "", "", "", fmt.Errorf("AI provider not configured: base_url or api_key missing")
+	}
+	model := req.Model
+	if model == "" {
+		model = bridgeDefaultModel()
+	}
+	return baseURL, apiKey, model, nil
+}
+
+func readLLMHTTPResponse(resp *http.Response) (*node.ChatResponse, error) {
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read llm response: %w", err)
@@ -378,41 +393,6 @@ func RunWorkflowStreaming(ctx context.Context, name string, inputs map[string]an
 	runner := NewDefaultRegistry()
 	eng := engine.NewEngine(graph, runner, *cfg)
 	return eng.RunStreaming(ctx, inputs)
-}
-
-// loadWorkflowGraph tries builtin first, then custom from store.
-func loadWorkflowGraph(name string) (*engine.Graph, *engine.EngineConfig, error) {
-	// Try builtin
-	graph, cfg, err := engine.LoadBuiltinWorkflow(name)
-	if err == nil {
-		return graph, cfg, nil
-	}
-
-	// Try custom from store
-	w, ok := store.GetWorkflow(name)
-	if !ok {
-		return nil, nil, fmt.Errorf("workflow %q not found (builtin err: %v)", name, err)
-	}
-	graph, cfg, parseErr := engine.ParseDSL([]byte(w.DSL))
-	if parseErr != nil {
-		return nil, nil, fmt.Errorf("parse custom workflow %q: %w", name, parseErr)
-	}
-	return graph, cfg, nil
-}
-
-// ListBuiltinWorkflowNames returns the names of all builtin workflows.
-func ListBuiltinWorkflowNames() []string {
-	return []string{
-		"smart_diagnosis",
-		"domain_diagnosis",
-		"health_inspection",
-		"metrics_insight",
-		"security_compliance",
-		"incident_review",
-		"network_check",
-		"runbook_execute",
-		"knowledge_enrich",
-	}
 }
 
 func init() {
