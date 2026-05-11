@@ -11,6 +11,7 @@ func registerCmdbRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	{
 		cmdb.GET("/tree", handler.CmdbTree)
 		cmdb.GET("/objects", handler.ListCmdbObjects)
+		cmdb.GET("/objects/:id", handler.GetCmdbObject)
 		cmdb.POST("/objects", mw.adminRequired, handler.CreateCmdbObject)
 		cmdb.PUT("/objects/:id", mw.adminRequired, handler.UpdateCmdbObject)
 		cmdb.DELETE("/objects/:id", mw.adminRequired, handler.DeleteCmdbObject)

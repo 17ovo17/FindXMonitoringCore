@@ -10,6 +10,8 @@ import { GroupTree, ResourceGroupsSection } from './ResourceGroupsSection.jsx'
 import { Blocked, ErrorBox, Status } from './Shared.jsx'
 import './assets.css'
 
+const CMDB_BUILD = '20260511b'
+
 async function settle(label, fn) {
   try {
     return { label, rows: await fn(), error: '' }
@@ -19,8 +21,7 @@ async function settle(label, fn) {
 }
 
 export function AssetsPage({ query, onNavigate }) {
-  const extendedSections = new Set([...sectionSet, 'models', 'model-detail'])
-  const section = extendedSections.has(query?.section) ? query.section : 'overview'
+  const section = sectionSet.has(query?.section) ? query.section : 'overview'
   const meta = sections.find(item => item.value === section) || sections[0]
   const [workspaces, setWorkspaces] = useState([])
   const [groups, setGroups] = useState([])
@@ -54,9 +55,9 @@ export function AssetsPage({ query, onNavigate }) {
   const refresh = () => setReloadToken(prev => prev + 1)
 
   return (
-    <main className='fx-assets-page'>
+    <main className='fx-assets-page' data-build={CMDB_BUILD}>
       <header className='fx-assets-head'>
-        <div><p>基础设施</p><h1>{meta.label}</h1><span>{meta.desc}</span></div>
+        <div><p>资产中心</p><h1>{meta.label}</h1><span>{meta.desc}</span></div>
       </header>
       {section === 'overview' && <OverviewSection rows={{ workspaces, groups, hosts, agents }} errors={errors} loading={loading} onNavigate={onNavigate} onRefresh={refresh} />}
       {section === 'business' && <BusinessSection rows={workspaces} error={errors.business} q={query.q || ''} onRefresh={refresh} />}

@@ -10,30 +10,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CmdbTree 返回分类树 + 每个模型的实例计数
+// CmdbTree 返回分类树 + 模型列表 + 实例计数
 func CmdbTree(c *gin.Context) {
 	categories := store.ListCmdbCategories()
+	allObjects := store.ListCmdbObjects("")
 	counts := store.CountCmdbInstancesByObject()
 
-	type objectNode struct {
-		model.CmdbObject
-		Count int64 `json:"count"`
-	}
-	type categoryNode struct {
-		model.CmdbCategory
-		Children []objectNode `json:"children"`
-	}
-
-	tree := make([]categoryNode, 0, len(categories))
-	for _, cat := range categories {
-		objects := store.ListCmdbObjects(cat.ID)
-		children := make([]objectNode, 0, len(objects))
-		for _, obj := range objects {
-			children = append(children, objectNode{CmdbObject: obj, Count: counts[obj.ID]})
-		}
-		tree = append(tree, categoryNode{CmdbCategory: cat, Children: children})
-	}
-	c.JSON(http.StatusOK, gin.H{"tree": tree})
+	c.JSON(http.StatusOK, gin.H{
+		"categories": categories,
+		"objects":    allObjects,
+		"counts":    counts,
+	})
 }
 
 // ListCmdbObjects 按分类查询模型列表
@@ -52,6 +39,17 @@ func CreateCmdbObject(c *gin.Context) {
 	}
 	if err := store.CreateCmdbObject(&obj); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建模型失败"})
+		return
+	}
+	c.JSON(http.StatusOK, obj)
+}
+
+// GetCmdbObject 获取单个模型详情
+func GetCmdbObject(c *gin.Context) {
+	id := c.Param("id")
+	obj, ok := store.GetCmdbObject(id)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "模型不存在"})
 		return
 	}
 	c.JSON(http.StatusOK, obj)
