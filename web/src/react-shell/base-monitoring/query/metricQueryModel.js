@@ -122,9 +122,11 @@ export const createPanel = () => ({
   relativeRange: '1h',
   unit: '',
   graphMode: 'line',
-  maxDataPoints: 600,
-  minStep: 15,
+  maxDataPoints: 300,
+  minStep: 0,
   step: 15,
+  showLegend: true,
+  autocomplete: true,
   collapsed: false,
   loading: false,
   error: '',
@@ -135,7 +137,47 @@ export const createPanel = () => ({
   metrics: [],
   metricSearch: '',
   historySearch: '',
+  showHistory: false,
+  showMetrics: false,
+  showGraphSettings: false,
+  showAiInput: false,
+  aiPrompt: '',
+  aiLoading: false,
 })
+
+export const UNITS = [
+  { value: '', label: 'none' },
+  { value: 'bytes', label: 'bytes' },
+  { value: '%', label: 'percent' },
+  { value: 's', label: 'seconds' },
+  { value: 'ms', label: 'ms' },
+]
+
+export const VIEW_STORAGE_KEY = 'findx-metric-explorer-views'
+
+export const readViews = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(VIEW_STORAGE_KEY) || '[]')
+    return Array.isArray(raw) ? raw : []
+  } catch { return [] }
+}
+
+export const saveView = (name, datasource, panels) => {
+  const snapshot = panels.map((p) => ({
+    query: p.query, relativeRange: p.relativeRange, unit: p.unit,
+    maxDataPoints: p.maxDataPoints, minStep: p.minStep, step: p.step,
+  }))
+  const views = readViews().filter((v) => v.name !== name)
+  views.unshift({ name, datasource, panels: snapshot, time: Date.now() })
+  localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(views.slice(0, 20)))
+  return views
+}
+
+export const deleteView = (name) => {
+  const views = readViews().filter((v) => v.name !== name)
+  localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(views))
+  return views
+}
 
 export const historyKey = (datasource) => `findx-query-promql-history-${datasource || 'default'}`
 
