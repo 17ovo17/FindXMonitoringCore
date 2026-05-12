@@ -34,7 +34,6 @@ const formatError = (error) => {
   return redactText(error?.message || '指标查询失败')
 }
 
-const cleanPanel = (panel) => ({ datasource_id: panel.datasourceId, query: panel.query.trim(), timeout_seconds: 10 })
 const lastMetricToken = (query) => { const m = String(query || '').match(/[a-zA-Z_:][a-zA-Z0-9_:]*$/); return m?.[0] || '' }
 
 const datasourceLabel = (row) => {
@@ -43,6 +42,8 @@ const datasourceLabel = (row) => {
   if (String(name || '').toLowerCase().endsWith(` / ${String(type || '').toLowerCase()}`)) return name
   return type ? `${name} / ${type}` : name
 }
+
+/* PLACEHOLDER_BLOCKED_SECTION */
 
 function QueryBlockedSection({ section }) {
   const titles = { 'built-in-metrics': '内置指标', objects: '对象快捷视图', 'recording-rules': '记录规则' }
@@ -56,6 +57,7 @@ function QueryBlockedSection({ section }) {
     </main>
   )
 }
+
 function MetricBrowserModal({ open, onClose, onPick }) {
   const [allMetrics, setAllMetrics] = useState([])
   const [search, setSearch] = useState('')
@@ -129,70 +131,83 @@ function ViewManager({ onSave, onLoad }) {
   )
 }
 
+/* PLACEHOLDER_MAIN_EXPORT */
+
 export function MetricExplorerPage({ query = {}, onNavigate }) {
   const section = validSections.has(query.section) ? query.section : 'metrics'
   const [datasources, setDatasources] = useState([])
-  const [datasource, setDatasource] = useState(String(query.data_source_id || ''))
   const [loadingSources, setLoadingSources] = useState(false)
   const [sourceError, setSourceError] = useState('')
   const [panels, setPanels] = useState([createPanel()])
   const [historyItems, setHistoryItems] = useState([])
   const [showBrowser, setShowBrowser] = useState(false)
   const [activePanel, setActivePanel] = useState(0)
-  const inputRefs = useRef(new Map())
   const suggestTimers = useRef(new Map())
   const metricTimers = useRef(new Map())
 
-  const loadHistory = (id = datasource) => setHistoryItems(readHistory(historyKey(id)))
+  // 每个面板独立数据源，默认取第一个可用
+  const [defaultDatasource, setDefaultDatasource] = useState(String(query.data_source_id || ''))
+
+  const loadHistory = (id) => setHistoryItems(readHistory(historyKey(id || defaultDatasource)))
 
   const loadDatasources = async () => {
     setLoadingSources(true); setSourceError('')
     try {
       const rows = normalizeList(await metricQueryApi.datasources()).filter(isPromqlDatasource)
-      setDatasources(rows)
+      const labeled = rows.map((r) => ({ ...r, _label: datasourceLabel(r) }))
+      setDatasources(labeled)
       const queryId = String(query.data_source_id || '')
-      const current = rows.find((r) => String(datasourceId(r)) === String(datasource || queryId))
-      const next = current || rows.find((r) => r.default) || rows[0]
-      if (next) { const id = String(datasourceId(next)); setDatasource(id); loadHistory(id) }
-      else { setDatasource(''); setSourceError(blockedContracts.datasource) }
+      const current = labeled.find((r) => String(datasourceId(r)) === String(defaultDatasource || queryId))
+      const next = current || labeled.find((r) => r.default) || labeled[0]
+      if (next) {
+        const id = String(datasourceId(next))
+        setDefaultDatasource(id)
+        loadHistory(id)
+        // 给已有面板设置默认数据源
+        setPanels((c) => c.map((p) => p.datasourceId ? p : { ...p, datasourceId: id }))
+      } else { setDefaultDatasource(''); setSourceError(blockedContracts.datasource) }
     } catch (e) { setSourceError(formatError(e)) }
     finally { setLoadingSources(false) }
   }
 
   useEffect(() => { if (section === 'metrics') loadDatasources() }, [section])
-  useEffect(() => { loadHistory(datasource) }, [datasource])
+  useEffect(() => { loadHistory(defaultDatasource) }, [defaultDatasource])
 
   if (section !== 'metrics') return <QueryBlockedSection section={section} />
 
   const patchPanel = (id, patch) => setPanels((c) => c.map((p) => (p.id === id ? { ...p, ...patch } : p)))
-  const queryBody = (panel) => cleanPanel({ ...panel, datasourceId: datasource })
+
+  const panelDatasource = (panel) => panel.datasourceId || defaultDatasource
 
   const runQuery = async (panel) => {
-    if (!datasource) { patchPanel(panel.id, { error: '请先选择数据源。' }); return }
+    const ds = panelDatasource(panel)
+    if (!ds) { patchPanel(panel.id, { error: '请先选择数据源。' }); return }
     if (!panel.query.trim()) { patchPanel(panel.id, { error: '请先输入 PromQL。' }); return }
     const { start, end } = resolveRelativeRange(panel.relativeRange)
     const minStep = Number(panel.minStep) || 0
     const step = Math.max(minStep || Number(panel.step) || 15, Math.ceil((end - start) / Math.max(Number(panel.maxDataPoints) || 300, 1)))
     patchPanel(panel.id, { loading: true, error: '', instantResult: null, rangeResult: null })
+    const body = { datasource_id: ds, query: panel.query.trim(), timeout_seconds: 10 }
     try {
       const [instantResult, rangeResult] = await Promise.all([
-        metricQueryApi.instantQuery({ ...queryBody(panel), time: end }),
-        metricQueryApi.rangeQuery({ ...queryBody(panel), start, end, step }),
+        metricQueryApi.instantQuery({ ...body, time: end }),
+        metricQueryApi.rangeQuery({ ...body, start, end, step }),
       ])
       patchPanel(panel.id, { instantResult, rangeResult })
-      setHistoryItems(saveHistory(historyKey(datasource), panel.query))
+      setHistoryItems(saveHistory(historyKey(ds), panel.query))
     } catch (e) { patchPanel(panel.id, { error: formatError(e) }) }
     finally { patchPanel(panel.id, { loading: false }) }
   }
 
   const loadMetrics = (panel, value, asSuggestion = false) => {
-    if (!datasource) return
+    const ds = panelDatasource(panel)
+    if (!ds) return
     const timers = asSuggestion ? suggestTimers.current : metricTimers.current
     window.clearTimeout(timers.get(panel.id))
     timers.set(panel.id, window.setTimeout(async () => {
       patchPanel(panel.id, asSuggestion ? {} : { metricsLoading: true })
       try {
-        const rows = normalizeList(await metricQueryApi.metrics({ datasource_id: datasource, q: value, limit: asSuggestion ? 8 : 24 }))
+        const rows = normalizeList(await metricQueryApi.metrics({ datasource_id: ds, q: value, limit: asSuggestion ? 8 : 24 }))
         patchPanel(panel.id, asSuggestion ? { suggestions: rows } : { metrics: rows, metricsLoading: false })
       } catch (e) { patchPanel(panel.id, { error: formatError(e), metricsLoading: false, suggestions: [] }) }
     }, asSuggestion ? 260 : 180))
@@ -209,11 +224,8 @@ export function MetricExplorerPage({ query = {}, onNavigate }) {
   const insertMetric = (panel, metric) => {
     const text = typeof metric === 'string' ? metric : metricName(metric)
     if (!text) return
-    const input = inputRefs.current.get(panel.id)
     const current = panel.query || ''
-    const start = input?.selectionStart ?? current.length
-    const end = input?.selectionEnd ?? current.length
-    const next = `${current.slice(0, start)}${text}${current.slice(end)}`
+    const next = current ? `${current}${text}` : text
     patchPanel(panel.id, { query: next, suggestions: [], showMetrics: false })
   }
 
@@ -243,15 +255,9 @@ export function MetricExplorerPage({ query = {}, onNavigate }) {
     downloadCsv(`findx-metric-range-${Date.now()}.csv`, ['metric', 'time', 'value'], rows)
   }
 
-  const chooseDatasource = (value) => {
-    setDatasource(value)
-    setPanels((c) => c.map((p) => ({ ...p, suggestions: [], metrics: [], instantResult: null, rangeResult: null, error: '' })))
-    onNavigate?.({ section: 'metrics', data_source_id: value })
-  }
-
-  const handleSaveView = (name) => saveView(name, datasource, panels)
+  const handleSaveView = (name) => saveView(name, defaultDatasource, panels)
   const handleLoadView = (view) => {
-    if (view.datasource) setDatasource(view.datasource)
+    if (view.datasource) setDefaultDatasource(view.datasource)
     if (Array.isArray(view.panels)) setPanels(view.panels.map((snap) => ({ ...createPanel(), ...snap })))
   }
 
@@ -260,13 +266,8 @@ export function MetricExplorerPage({ query = {}, onNavigate }) {
       <header className='fx-query-header'>
         <h1>指标查询</h1>
         <div className='fx-query-header__right'>
-          <button type='button' onClick={() => setShowBrowser(true)}>指标浏览</button>
           <ViewManager onSave={handleSaveView} onLoad={handleLoadView} />
-          <select className='fx-query-ds-select' value={datasource} onChange={(e) => chooseDatasource(e.target.value)}>
-            <option value=''>选择数据源</option>
-            {datasources.map((row) => { const id = String(datasourceId(row)); return <option value={id} key={id}>{datasourceLabel(row)}</option> })}
-          </select>
-          <button type='button' className='fx-query-refresh' disabled={loadingSources} onClick={loadDatasources}>{loadingSources ? '...' : '刷新'}</button>
+          <button type='button' className='fx-query-refresh' disabled={loadingSources} onClick={loadDatasources}>{loadingSources ? '...' : '刷新数据源'}</button>
         </div>
       </header>
 
@@ -276,8 +277,10 @@ export function MetricExplorerPage({ query = {}, onNavigate }) {
         onPick={(name) => { const p = panels[activePanel] || panels[0]; if (p) insertMetric(p, name) }} />
 
       {panels.map((panel, index) => (
-        <QueryPanel key={panel.id} panel={panel} index={index} canRemove={panels.length > 1} history={historyItems}
-          inputRef={(node) => { if (node) inputRefs.current.set(panel.id, node); else inputRefs.current.delete(panel.id) }}
+        <QueryPanel key={panel.id} panel={panel} canRemove={panels.length > 1} history={historyItems}
+          datasources={datasources} datasource={panelDatasource(panel)}
+          onDatasourceChange={(value) => { patchPanel(panel.id, { datasourceId: value }); loadHistory(value) }}
+          onOpenBrowser={() => { setActivePanel(index); setShowBrowser(true) }}
           onPatch={(patch) => patchPanel(panel.id, patch)}
           onQueryChange={(value) => { setActivePanel(index); onQueryChange(panel, value) }}
           onInsertMetric={(metric) => insertMetric(panel, metric)}

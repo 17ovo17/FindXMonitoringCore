@@ -1,18 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import * as d3 from 'd3'
+import uPlot from 'uplot'
+import 'uplot/dist/uPlot.min.css'
 import { queryPanel } from './panelQuery.js'
 
 const COLORS = [
-  'var(--fx-blue)',
-  '#e6550d',
-  '#31a354',
-  '#756bb1',
-  '#636363',
-  '#6baed6',
-  '#fd8d3c',
-  '#74c476',
-  '#9e9ac8',
-  '#969696',
+  '#1769ff', '#e6550d', '#31a354', '#756bb1', '#636363',
+  '#6baed6', '#fd8d3c', '#74c476', '#9e9ac8', '#969696',
 ]
 
 function formatMetricLabel(series) {
@@ -32,138 +25,83 @@ function formatMetricLabel(series) {
   return labels ? `${name}{${labels}}` : name || 'series'
 }
 
-/**
- * 时序图（支持 brush 框选时间范围）
- */
-function TimeSeriesChart({ series, annotations, onBrushEnd }) {
+function TimeSeriesChart({ series, onBrushEnd }) {
   const containerRef = useRef(null)
-  const svgRef = useRef(null)
-
-  const draw = useCallback(() => {
-    const container = containerRef.current
-    const svg = svgRef.current
-    if (!container || !svg || series.length === 0) return
-
-    const width = container.clientWidth || 400
-    const height = Math.max(120, container.clientHeight - 30) || 200
-    const margin = { top: 10, right: 12, bottom: 30, left: 50 }
-    const innerW = width - margin.left - margin.right
-    const innerH = height - margin.top - margin.bottom
-
-    const allValues = series.flatMap((s) => s.values)
-    const xExtent = d3.extent(allValues, (d) => d[0] * 1000)
-    const yExtent = d3.extent(allValues, (d) => d[1])
-    if (!xExtent[0] || yExtent[0] === undefined) return
-
-    const yPad = (yExtent[1] - yExtent[0]) * 0.1 || 1
-    const xScale = d3.scaleTime().domain(xExtent).range([0, innerW])
-    const yScale = d3.scaleLinear()
-      .domain([yExtent[0] - yPad, yExtent[1] + yPad])
-      .range([innerH, 0])
-
-    const sel = d3.select(svg)
-    sel.selectAll('*').remove()
-    sel.attr('width', width).attr('height', height)
-
-    const g = sel.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`)
-
-    // Grid lines
-    g.append('g')
-      .attr('transform', `translate(0,${innerH})`)
-      .call(d3.axisBottom(xScale).ticks(5).tickSize(-innerH)
-        .tickFormat(d3.timeFormat('%H:%M')))
-      .selectAll('line').attr('stroke', 'var(--fx-border)')
-    g.append('g')
-      .call(d3.axisLeft(yScale).ticks(5).tickSize(-innerW))
-      .selectAll('line').attr('stroke', 'var(--fx-border)')
-
-    sel.selectAll('.domain').attr('stroke', 'var(--fx-border)')
-    sel.selectAll('text').attr('fill', 'var(--fx-ink)').style('font-size', '10px')
-
-    // Lines
-    const line = d3.line()
-      .x((d) => xScale(d[0] * 1000))
-      .y((d) => yScale(d[1]))
-      .curve(d3.curveMonotoneX)
-    series.forEach((s, i) => {
-      g.append('path')
-        .datum(s.values)
-        .attr('fill', 'none')
-        .attr('stroke', COLORS[i % COLORS.length])
-        .attr('stroke-width', 1.5)
-        .attr('d', line)
-    })
-
-    // Annotations
-    if (annotations && annotations.length > 0) {
-      const ag = g.append('g').attr('class', 'fx-annotations')
-      annotations.forEach((ann) => {
-        const ts = Number(ann.time) * 1000
-        if (ts < xExtent[0] || ts > xExtent[1]) return
-        const x = xScale(ts)
-        const color = ann.color || '#e6550d'
-        ag.append('line')
-          .attr('x1', x).attr('x2', x)
-          .attr('y1', 0).attr('y2', innerH)
-          .attr('stroke', color)
-          .attr('stroke-width', 1.5)
-          .attr('stroke-dasharray', '4,2')
-        ag.append('circle')
-          .attr('cx', x).attr('cy', 0)
-          .attr('r', 4).attr('fill', color)
-        ag.append('text')
-          .attr('x', x + 4).attr('y', 12)
-          .attr('fill', color)
-          .style('font-size', '9px')
-          .text(ann.text || '')
-      })
-    }
-
-    // Brush selection for time range zoom
-    if (onBrushEnd) {
-      const brush = d3.brushX()
-        .extent([[0, 0], [innerW, innerH]])
-        .on('end', (event) => {
-          if (!event.selection) return
-          const [x0, x1] = event.selection
-          const t0 = xScale.invert(x0)
-          const t1 = xScale.invert(x1)
-          // Clear brush visual
-          g.select('.fx-brush').call(brush.move, null)
-          onBrushEnd({
-            start: Math.floor(t0.getTime() / 1000),
-            end: Math.floor(t1.getTime() / 1000),
-          })
-        })
-
-      g.append('g')
-        .attr('class', 'fx-brush')
-        .call(brush)
-        .selectAll('rect')
-        .attr('height', innerH)
-    }
-  }, [series, annotations, onBrushEnd])
+  const chartRef = useRef(null)
 
   useEffect(() => {
-    draw()
-    const observer = new ResizeObserver(() => draw())
-    if (containerRef.current) observer.observe(containerRef.current)
-    return () => observer.disconnect()
-  }, [draw])
+    if (!containerRef.current || series.length === 0) return
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+
+    const allTimestamps = new Set()
+    series.forEach((s) => s.values.forEach(([t]) => allTimestamps.add(Number(t))))
+    const timestamps = [...allTimestamps].sort((a, b) => a - b)
+    if (!timestamps.length) return
+
+    const timeMap = new Map(timestamps.map((t, i) => [t, i]))
+    const uSeries = series.map((s, i) => {
+      const values = new Float64Array(timestamps.length).fill(NaN)
+      s.values.forEach(([t, v]) => {
+        const idx = timeMap.get(Number(t))
+        if (idx !== undefined) values[idx] = Number(v)
+      })
+      return { name: formatMetricLabel(s), values, color: COLORS[i % COLORS.length] }
+    })
+
+    const uData = [timestamps, ...uSeries.map((s) => Array.from(s.values))]
+    const width = containerRef.current.clientWidth || 400
+    const height = Math.min(Math.max(containerRef.current.clientHeight - 30, 120), 300)
+
+    const opts = {
+      width,
+      height,
+      cursor: { drag: { x: true, y: false } },
+      select: { show: true },
+      hooks: {
+        setSelect: [
+          (u) => {
+            if (!u.select.width || u.select.width < 5) return
+            const min = u.posToVal(u.select.left, 'x')
+            const max = u.posToVal(u.select.left + u.select.width, 'x')
+            u.setSelect({ left: 0, width: 0, top: 0, height: 0 }, false)
+            if (max - min > 1 && onBrushEnd) {
+              onBrushEnd({ start: Math.floor(min), end: Math.floor(max) })
+            }
+          },
+        ],
+      },
+      series: [
+        { label: 'Time' },
+        ...uSeries.map((s) => ({ label: s.name, stroke: s.color, width: 1.5 })),
+      ],
+      axes: [
+        { stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 40 },
+        { stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 50 },
+      ],
+    }
+
+    chartRef.current = new uPlot(opts, uData, containerRef.current)
+
+    const handleResize = () => {
+      if (chartRef.current && containerRef.current) {
+        chartRef.current.setSize({ width: containerRef.current.clientWidth, height })
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+    }
+  }, [series, onBrushEnd])
 
   if (series.length === 0) {
-    return (
-      <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>
-        无数据
-      </div>
-    )
+    return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <svg ref={svgRef} style={{ width: '100%', flex: '1 1 auto', minHeight: '120px', display: 'block' }} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '6px 0', fontSize: '11px', flexShrink: 0 }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div ref={containerRef} style={{ flex: '1 1 auto', minHeight: '120px' }} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '4px 0', fontSize: '11px', flexShrink: 0 }}>
         {series.map((s, i) => (
           <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ width: 10, height: 3, background: COLORS[i % COLORS.length], display: 'inline-block' }} />
