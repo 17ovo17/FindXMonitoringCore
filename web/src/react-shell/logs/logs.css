@@ -214,3 +214,17 @@
   .fx-live-line { grid-template-columns: 80px 50px 1fr; }
   .fx-live-line__svc { display: none; }
 }
+
+/* DEGRADE-048: Query Builder */
+.fx-query-builder { border: 1px solid var(--fx-log-border, #e3e8f1); border-radius: 8px; background: var(--fx-log-surface, #fff); padding: 12px; margin-bottom: 12px; }
+.fx-query-builder__head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.fx-query-builder__body { display: flex; flex-direction: column; gap: 8px; }
+.fx-condition-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fx-condition-row__logic { min-width: 60px; max-width: 70px; }
+.fx-condition-row__logic-placeholder { min-width: 60px; font-size: 12px; font-weight: 700; color: var(--fx-log-text-weak, #66758d); text-align: center; }
+
+/* DEGRADE-051: Field table */
+.fx-field-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.fx-field-table th, .fx-field-table td { border-bottom: 1px solid #eef2f8; padding: 6px 10px; font-size: 12px; text-align: left; }
+.fx-field-table th { background: #f8fbff; color: var(--fx-log-text-weak, #66758d); font-weight: 800; }
+.fx-field-type { display: inline-block; padding: 1px 6px; border-radius: 4px; background: #f0f3f8; color: #3d5288; font-size: 11px; font-weight: 600; }

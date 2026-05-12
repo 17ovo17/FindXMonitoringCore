@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 
 // Severity metadata -- used by chips, row badges, line borders, chart bars.
 export const SEVERITY_META = {
@@ -63,22 +63,8 @@ export function buildHistogram(rows, bucketCount = 20) {
   return { buckets, start, end }
 }
 
-// ---------------------------------------------------------------------------
 // Query builder bar: free-text search + time range + submit + extra buttons.
-// ---------------------------------------------------------------------------
-export function LogsQueryBuilder({
-  query,
-  onQueryChange,
-  onSubmit,
-  loading,
-  timeRange,
-  onTimeRangeChange,
-  hideTimeRange = false,
-  submitLabel = '检索',
-  submittingLabel = '检索中...',
-  extraRight,
-  placeholder = '输入关键词检索日志：动作、资源、Trace ID、摘要内容...',
-}) {
+export function LogsQueryBuilder({ query, onQueryChange, onSubmit, loading, timeRange, onTimeRangeChange, hideTimeRange = false, submitLabel = '检索', submittingLabel = '检索中...', extraRight, placeholder = '输入关键词检索日志：动作、资源、Trace ID、摘要内容...' }) {
   const handleKey = (event) => {
     if (event.key === 'Enter') onSubmit()
   }
@@ -106,15 +92,7 @@ export function LogsQueryBuilder({
 }
 
 // Severity chips + service / host filters.
-export function SeverityChips({
-  value,
-  onChange,
-  serviceFilter,
-  onServiceChange,
-  hostFilter,
-  onHostChange,
-  onClearAll,
-}) {
+export function SeverityChips({ value, onChange, serviceFilter, onServiceChange, hostFilter, onHostChange, onClearAll }) {
   return (
     <div className='fx-qb-chips'>
       <span className='fx-qb-chips__label'>级别：</span>
@@ -158,29 +136,19 @@ export function SeverityChips({
   )
 }
 
-// ---------------------------------------------------------------------------
 // View toolbar: List / Chart / Table tabs + Raw / Default / Column format.
-// ---------------------------------------------------------------------------
 const PANELS = [
   { value: 'list',  label: 'List view' },
   { value: 'chart', label: 'Chart view' },
   { value: 'table', label: 'Table view' },
 ]
-
 const FORMATS = [
   { value: 'raw',     label: 'Raw' },
   { value: 'default', label: 'Default' },
   { value: 'column',  label: 'Column' },
 ]
 
-export function ViewToolbar({
-  panel,
-  onPanelChange,
-  format,
-  onFormatChange,
-  showFormat = true,
-  meta = [],
-}) {
+export function ViewToolbar({ panel, onPanelChange, format, onFormatChange, showFormat = true, meta = [] }) {
   return (
     <div className='fx-view-bar'>
       <div className='fx-view-tabs'>
@@ -225,9 +193,7 @@ export function ViewToolbar({
   )
 }
 
-// ---------------------------------------------------------------------------
 // List body: renders rows in default / raw / column layout.
-// ---------------------------------------------------------------------------
 export function LogListBody({ rows, format = 'default', onRowClick, activeRow, hasMore, onLoadMore, loadingMore }) {
   return (
     <div className='fx-loglist'>
@@ -320,215 +286,7 @@ function NoResults() {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Chart view: simple SVG bar chart of log counts per bucket.
-// ---------------------------------------------------------------------------
-export function LogChartView({ histogram, title = '日志数量分布（按时间桶）', height = 200 }) {
-  const buckets = histogram?.buckets || []
-  if (!buckets.length) {
-    return (
-      <div className='fx-chart'>
-        <h4 className='fx-chart__title'>{title}</h4>
-        <div className='fx-chart__empty'>暂无数据可绘制柱状图。</div>
-      </div>
-    )
-  }
-  const width = 960
-  const pad = { top: 16, right: 16, bottom: 24, left: 28 }
-  const innerW = width - pad.left - pad.right
-  const innerH = height - pad.top - pad.bottom
-  const maxCount = buckets.reduce((m, b) => Math.max(m, b.count), 1)
-  const barW = innerW / buckets.length - 2
-  const yTicks = 4
-  const start = histogram.start ? new Date(histogram.start) : null
-  const end = histogram.end ? new Date(histogram.end) : null
-  return (
-    <div className='fx-chart'>
-      <h4 className='fx-chart__title'>{title}</h4>
-      <svg className='fx-chart__svg' viewBox={`0 0 ${width} ${height}`} preserveAspectRatio='none'>
-        {Array.from({ length: yTicks + 1 }, (_, i) => {
-          const y = pad.top + (innerH * i) / yTicks
-          const v = Math.round(maxCount * (1 - i / yTicks))
-          return (
-            <g key={i}>
-              <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} className='fx-chart__axis' />
-              <text x={pad.left - 6} y={y + 3} className='fx-chart__label' textAnchor='end'>{v}</text>
-            </g>
-          )
-        })}
-        {buckets.map((bucket, idx) => {
-          const h = (bucket.count / maxCount) * innerH
-          const x = pad.left + (innerW * idx) / buckets.length + 1
-          const y = pad.top + innerH - h
-          const className = bucket.error > 0
-            ? 'fx-chart__bar is-error'
-            : bucket.warn > 0 ? 'fx-chart__bar is-warn' : 'fx-chart__bar'
-          return (
-            <rect key={idx} className={className} x={x} y={y} width={Math.max(barW, 1)} height={Math.max(h, 1)}>
-              <title>{`${bucket.count} 条 (error=${bucket.error}, warn=${bucket.warn})`}</title>
-            </rect>
-          )
-        })}
-        {start && (
-          <text x={pad.left} y={height - 6} className='fx-chart__label'>{start.toLocaleTimeString()}</text>
-        )}
-        {end && (
-          <text x={width - pad.right} y={height - 6} className='fx-chart__label' textAnchor='end'>{end.toLocaleTimeString()}</text>
-        )}
-      </svg>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Table view.
-// ---------------------------------------------------------------------------
-export function LogTableView({ rows, onRowClick, activeRow }) {
-  if (!rows.length) {
-    return (
-      <div className='fx-logtable__wrap'>
-        <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--fx-text-weak,#66758d)' }}>暂无匹配数据</div>
-      </div>
-    )
-  }
-  return (
-    <div className='fx-logtable__wrap'>
-      <table className='fx-logtable'>
-        <thead>
-          <tr>
-            <th style={{ width: 170 }}>时间</th>
-            <th style={{ width: 64 }}>级别</th>
-            <th style={{ width: 140 }}>服务</th>
-            <th style={{ width: 140 }}>主机</th>
-            <th>内容</th>
-            <th style={{ width: 140 }}>Trace</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => {
-            const levelKey = normalizeLevel(row.severity_text || row.level)
-            const active = row === activeRow
-            return (
-              <tr key={row.id || idx} onClick={() => onRowClick && onRowClick(row)} style={active ? { background: 'var(--fx-primary-weak, rgba(23,105,255,.08))' } : null}>
-                <td>{formatTime(row.timestamp)}</td>
-                <td style={{ color: SEVERITY_META[levelKey]?.color, fontWeight: 700 }}>{levelKey.toUpperCase()}</td>
-                <td>{row.source_name || row.service_name || row.source || '-'}</td>
-                <td>{row.host_name || row.host || '-'}</td>
-                <td style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.body || row.message || '-'}</td>
-                <td>{row.trace_id ? row.trace_id.slice(0, 16) + '...' : '-'}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Log detail drawer: slides from right, 40% width.
-// ---------------------------------------------------------------------------
-export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimilar }) {
-  const entries = useMemo(() => flattenRow(row), [row])
-  const levelKey = normalizeLevel(row.severity_text || row.level)
-  const ts = formatTime(row.timestamp)
-  const svc = row.source_name || row.service_name || row.source || '-'
-  const host = row.host_name || row.host || '-'
-  const trace = row.trace_id || ''
-  const span = row.span_id || ''
-
-  const openTrace = () => {
-    if (!trace) return
-    window.location.href = `/tracing?traceId=${encodeURIComponent(trace)}${span ? `&spanId=${encodeURIComponent(span)}` : ''}`
-  }
-
-  const copyJson = () => {
-    try {
-      const text = JSON.stringify(row, null, 2)
-      if (navigator?.clipboard) navigator.clipboard.writeText(text)
-    } catch (_) { /* noop */ }
-  }
-
-  const handleMaskClick = (event) => {
-    if (event.target === event.currentTarget) onClose()
-  }
-
-  return (
-    <>
-      <div className='fx-drawer-mask' onClick={handleMaskClick} />
-      <aside className='fx-drawer' role='dialog' aria-label='日志详情'>
-        <div className='fx-drawer__head'>
-          <h3 className='fx-drawer__title'>日志详情</h3>
-          <button type='button' className='fx-drawer__close' onClick={onClose} aria-label='关闭详情'>×</button>
-        </div>
-        <div className='fx-drawer__meta'>
-          <span><b>时间</b>{ts}</span>
-          <span style={{ color: SEVERITY_META[levelKey]?.color, fontWeight: 700 }}><b>级别</b>{levelKey.toUpperCase()}</span>
-          <span><b>服务</b>{svc}</span>
-          <span><b>主机</b>{host}</span>
-          {trace && <span><b>Trace</b>{trace.slice(0, 16)}...</span>}
-        </div>
-        <div className='fx-drawer__body'>
-          <div className='fx-drawer__section'>
-            <h4>消息体</h4>
-            <pre className='fx-msg'>{row.body || row.message || '-'}</pre>
-          </div>
-          <div className='fx-drawer__section'>
-            <h4>属性（{entries.length} 项）</h4>
-            <dl className='fx-kv'>
-              {entries.map(([key, value]) => (
-                <React.Fragment key={key}>
-                  <dt>{key}</dt>
-                  <dd>{value}</dd>
-                </React.Fragment>
-              ))}
-            </dl>
-          </div>
-          {similarRows.length > 0 && (
-            <div className='fx-drawer__section'>
-              <h4>相似日志（{similarRows.length}）</h4>
-              <div className='fx-loglist' style={{ borderRadius: 6 }}>
-                <div className='fx-loglist__body' style={{ maxHeight: 220 }}>
-                  {similarRows.map((r, idx) => {
-                    const lk = normalizeLevel(r.severity_text || r.level)
-                    return (
-                      <div key={r.id || idx} className={`fx-logrow is-${lk}`} onClick={() => onSelectSimilar && onSelectSimilar(r)}>
-                        <span className='fx-logrow__ts'>{formatTime(r.timestamp)}</span>
-                        <span className={`fx-logrow__lvl is-${lk}`}>{lk}</span>
-                        <span className='fx-logrow__svc'>{r.source_name || r.service_name || '-'}</span>
-                        <span className='fx-logrow__body'>{r.body || r.message || '-'}</span>
-                        <span className='fx-logrow__trace'>{r.trace_id ? r.trace_id.slice(0,12)+'...' : '-'}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className='fx-drawer__foot'>
-          <button type='button' onClick={copyJson}>复制 JSON</button>
-          <button type='button' disabled={!trace} onClick={openTrace} className={trace ? 'is-primary' : ''}>
-            {trace ? '查看链路详情' : '无 Trace ID'}
-          </button>
-        </div>
-      </aside>
-    </>
-  )
-}
-
-// Flatten an arbitrary object into key=value entries up to depth 2.
-function flattenRow(row) {
-  const out = []
-  for (const [key, value] of Object.entries(row || {})) {
-    if (key === '__proto__') continue
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      for (const [k2, v2] of Object.entries(value)) {
-        out.push([`${key}.${k2}`, formatDetailValue(v2)])
-      }
-    } else {
-      out.push([key, formatDetailValue(value)])
-    }
-  }
-  return out
-}
+// Chart and Table views: extracted to LogsDataViews.jsx
+export { LogChartView, LogTableView } from './LogsDataViews.jsx'
+// Log detail drawer: extracted to LogDetailDrawer.jsx
+export { LogDetailDrawer } from './LogDetailDrawer.jsx'

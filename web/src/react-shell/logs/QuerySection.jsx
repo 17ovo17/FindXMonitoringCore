@@ -3,7 +3,6 @@ import { agentApi, formatAgentError } from '../api/agents.js'
 import { formatLogError, LOG_BLOCKERS, LOG_SOURCES, logsApi } from '../api/logs.js'
 import { Blocked, Field } from './LogsShared.jsx'
 import {
-  LogsQueryBuilder,
   SeverityChips,
   ViewToolbar,
   LogListBody,
@@ -14,6 +13,7 @@ import {
   buildHistogram,
   normalizeLevel,
 } from './LogsViewKit.jsx'
+import { QueryBuilder } from './QueryBuilder.jsx'
 
 const PAGE_SIZE = 50
 
@@ -24,8 +24,8 @@ export function QuerySection() {
   const [arrivalLoading, setArrivalLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [source, setSource] = useState('findx_audit')
-  const [panel, setPanel] = useState('list')     // list | chart | table
-  const [format, setFormat] = useState('default') // raw | default | column
+  const [panel, setPanel] = useState('list')
+  const [format, setFormat] = useState('default')
   const [timeRange, setTimeRange] = useState('24h')
   const [severity, setSeverity] = useState('')
   const [serviceFilter, setServiceFilter] = useState('')
@@ -36,10 +36,12 @@ export function QuerySection() {
   const [activeRow, setActiveRow] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
+  const [conditions, setConditions] = useState([])
+  const [queryMode, setQueryMode] = useState('builder')
 
   const buildParams = useCallback((pageNum) => ({
     source,
-    query,
+    query: queryMode === 'raw' ? query : buildQueryFromConditions(conditions, query),
     view: panel,
     limit: PAGE_SIZE,
     offset: (pageNum - 1) * PAGE_SIZE,
@@ -47,7 +49,7 @@ export function QuerySection() {
     severity: severity || undefined,
     service: serviceFilter || undefined,
     host: hostFilter || undefined,
-  }), [source, query, panel, timeRange, severity, serviceFilter, hostFilter])
+  }), [source, query, panel, timeRange, severity, serviceFilter, hostFilter, conditions, queryMode])
 
   const runQuery = async () => {
     setLoading(true)
@@ -57,7 +59,7 @@ export function QuerySection() {
     if (source !== 'findx_audit') {
       setRows([])
       setMeta(null)
-      setError(LOG_BLOCKERS.query)
+      setError(`BLOCKED_BY_CONTRACT: 需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`)
       setLoading(false)
       return
     }
@@ -136,20 +138,23 @@ export function QuerySection() {
 
   return (
     <section className='fx-logs-work'>
-      <LogsQueryBuilder
+      {/* DEGRADE-047: 数据源选择器 */}
+      <DataSourceSelector source={source} onChange={setSource} />
+
+      {/* DEGRADE-048: 查询构建器 / 原始查询切换 */}
+      <QueryBuilder
         query={query}
         onQueryChange={setQuery}
+        conditions={conditions}
+        onConditionsChange={setConditions}
+        mode={queryMode}
+        onModeChange={setQueryMode}
         onSubmit={runQuery}
         loading={loading}
         timeRange={timeRange}
         onTimeRangeChange={setTimeRange}
         extraRight={
           <>
-            <Field label='来源'>
-              <select value={source} onChange={e => setSource(e.target.value)} className='fx-qb__select'>
-                {LOG_SOURCES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            </Field>
             <button type='button' className='fx-qb__btn fx-qb__btn--ghost' onClick={openAgent}>进入主机 Agent</button>
             <button type='button' className='fx-qb__btn fx-qb__btn--ghost' onClick={loadArrival} disabled={arrivalLoading}>{arrivalLoading ? '读取中' : '数据到达'}</button>
           </>
@@ -166,7 +171,7 @@ export function QuerySection() {
         onClearAll={activeFilters.length ? clearFilters : null}
       />
 
-      {source !== 'findx_audit' && <Blocked>{LOG_BLOCKERS.query}</Blocked>}
+      {source !== 'findx_audit' && <Blocked>{`BLOCKED_BY_CONTRACT: 需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`}</Blocked>}
       {error && <Blocked>{error}</Blocked>}
 
       <ViewToolbar
@@ -212,6 +217,42 @@ export function QuerySection() {
       )}
     </section>
   )
+}
+
+function DataSourceSelector({ source, onChange }) {
+  return (
+    <div className='fx-qb' style={{ marginBottom: 8 }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fx-log-heading,#17233c)' }}>数据源：</span>
+      {LOG_SOURCES.map(item => (
+        <button
+          key={item.value}
+          type='button'
+          className={'fx-chip' + (source === item.value ? ' is-active' : '')}
+          onClick={() => onChange(item.value)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function sourceLabel(value) {
+  const item = LOG_SOURCES.find(s => s.value === value)
+  return item ? item.label : value
+}
+
+function buildQueryFromConditions(conditions, freeText) {
+  const parts = []
+  if (freeText) parts.push(freeText)
+  if (!conditions.length) return parts.join(' ')
+  const grouped = conditions.reduce((acc, c, idx) => {
+    const expr = `${c.field} ${c.operator} "${c.value}"`
+    if (idx === 0) return expr
+    return `${acc} ${c.logic || 'AND'} ${expr}`
+  }, '')
+  if (grouped) parts.push(grouped)
+  return parts.join(' ')
 }
 
 function findLogsArrival(rows) {

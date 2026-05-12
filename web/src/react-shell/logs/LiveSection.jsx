@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { agentApi, formatAgentError } from '../api/agents.js'
-import { formatLogError, LOG_BLOCKERS, LOG_SOURCES, logsApi } from '../api/logs.js'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { LOG_SOURCES } from '../api/logs.js'
 import { Blocked, Field } from './LogsShared.jsx'
 import {
   LogsQueryBuilder,
@@ -10,8 +9,7 @@ import {
   normalizeLevel,
   formatTime,
 } from './LogsViewKit.jsx'
-
-const LIVE_STATES = { stopped: 'STOPPED', playing: 'PLAYING', paused: 'PAUSED' }
+import { useLiveFollow, LIVE_STATES, WS_STATES } from './useLiveFollow.js'
 
 const INTERVALS = [
   { value: 3, label: '3 秒' },
@@ -21,7 +19,7 @@ const INTERVALS = [
 ]
 
 export function LiveSection() {
-  const live = useAuditLiveFollow()
+  const live = useLiveFollow()
   const histogram = useMemo(() => buildHistogram(live.rows, 24), [live.rows])
   return (
     <section className='fx-logs-work'>
@@ -65,6 +63,11 @@ export function LiveSection() {
       <LiveToolbar live={live} />
 
       {live.source === 'findx_audit' && live.blocked && <Blocked>{live.blocked}</Blocked>}
+      {live.wsNotice && (
+        <div className='fx-logs-blocked' style={{ borderColor: '#ffd591', background: '#fffbe6', color: '#ad6800' }}>
+          {live.wsNotice}
+        </div>
+      )}
 
       <LogChartView
         histogram={histogram}
@@ -95,31 +98,29 @@ function LiveToolbar({ live }) {
           {live.loading ? '连接中...' : '开始跟随'}
         </button>
       ) : (
-        <button type='button' className='fx-qb__btn fx-qb__btn--warn' onClick={live.pauseFollow}>
-          暂停
-        </button>
+        <button type='button' className='fx-qb__btn fx-qb__btn--warn' onClick={live.pauseFollow}>暂停</button>
       )}
-      <button type='button' className='fx-qb__btn fx-qb__btn--ghost' onClick={live.stopFollow} disabled={live.state === LIVE_STATES.stopped && !live.rows.length}>
-        停止
-      </button>
-      <button type='button' className='fx-qb__btn fx-qb__btn--danger' onClick={live.clearLogs} disabled={!live.rows.length}>
-        清空
-      </button>
+      <button type='button' className='fx-qb__btn fx-qb__btn--ghost' onClick={live.stopFollow} disabled={live.state === LIVE_STATES.stopped && !live.rows.length}>停止</button>
+      <button type='button' className='fx-qb__btn fx-qb__btn--danger' onClick={live.clearLogs} disabled={!live.rows.length}>清空</button>
       <span className='fx-qb__divider' />
       <LiveIndicator state={live.state} />
+      <TransportBadge transport={live.transport} />
       {live.updatedAt && <span style={{ fontSize: 12, color: 'var(--fx-text-weak,#66758d)' }}>最近刷新：{live.updatedAt}</span>}
       <span style={{ fontSize: 12, color: 'var(--fx-text-weak,#66758d)' }}>已接收 {live.rows.length} 条 · 轮询 {live.pollCount} 次</span>
     </div>
   )
 }
 
+function TransportBadge({ transport }) {
+  const isWs = transport === WS_STATES.connected
+  const label = isWs ? 'WebSocket' : transport === WS_STATES.connecting ? '连接中...' : '轮询'
+  const style = isWs ? { background: '#e8f8ef', color: '#167346' } : { background: '#f5f5f5', color: '#595959' }
+  return <span style={{ ...style, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{label}</span>
+}
+
 function LiveIndicator({ state }) {
-  const cls = state === LIVE_STATES.playing ? 'is-playing'
-           : state === LIVE_STATES.paused  ? 'is-paused'
-           : 'is-stopped'
-  const text = state === LIVE_STATES.playing ? '实时跟随中'
-            : state === LIVE_STATES.paused  ? '已暂停'
-            : '未启动'
+  const cls = state === LIVE_STATES.playing ? 'is-playing' : state === LIVE_STATES.paused ? 'is-paused' : 'is-stopped'
+  const text = state === LIVE_STATES.playing ? '实时跟随中' : state === LIVE_STATES.paused ? '已暂停' : '未启动'
   return (
     <span className={`fx-live-indicator ${cls}`}>
       <span className='fx-live-indicator__dot' />
@@ -133,16 +134,13 @@ function LiveStreamView({ live }) {
   const [autoScroll, setAutoScroll] = useState(true)
 
   useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-    }
+    if (autoScroll && containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight
   }, [live.rows.length, autoScroll])
 
   const handleScroll = () => {
     if (!containerRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current
-    const atBottom = scrollHeight - scrollTop - clientHeight < 40
-    setAutoScroll(atBottom)
+    setAutoScroll(scrollHeight - scrollTop - clientHeight < 40)
   }
 
   if (live.source !== 'findx_audit') {
@@ -156,26 +154,20 @@ function LiveStreamView({ live }) {
   return (
     <div className='fx-live'>
       {!autoScroll && live.state === LIVE_STATES.playing && (
-        <button type='button' className='fx-live__notice' onClick={() => setAutoScroll(true)}>
-          有新日志到达，点击回到底部
-        </button>
+        <button type='button' className='fx-live__notice' onClick={() => setAutoScroll(true)}>有新日志到达，点击回到底部</button>
       )}
       <div ref={containerRef} onScroll={handleScroll} className='fx-live__scroll'>
         {live.rows.length === 0 ? (
           <div className='fx-live__empty'>
             <big>{'>_'}</big>
-            <p style={{ margin: 0 }}>
-              {live.state === LIVE_STATES.playing
-                ? '等待日志到达...'
-                : `点击「开始跟随」启动实时日志流（轮询模式，每 ${live.intervalSeconds} 秒刷新）`}
-            </p>
+            <p style={{ margin: 0 }}>{live.state === LIVE_STATES.playing ? '等待日志到达...' : '点击「开始跟随」启动实时日志流'}</p>
           </div>
         ) : (
           live.rows.map((row, idx) => <LiveLogLine key={row.id || idx} row={row} />)
         )}
       </div>
       <div className='fx-live__foot'>
-        <span>模式：轮询（WebSocket 未接入） · 间隔：{live.intervalSeconds}s</span>
+        <span>模式：{live.transport === WS_STATES.connected ? 'WebSocket' : `轮询（间隔 ${live.intervalSeconds}s）`}</span>
         <span>{live.rows.length} 条日志 · {autoScroll ? '自动滚动中' : '手动浏览'}</span>
       </div>
     </div>
@@ -193,162 +185,4 @@ function LiveLogLine({ row }) {
       <span className='fx-live-line__body'>{row.body || row.message || '-'}</span>
     </div>
   )
-}
-
-function useAuditLiveFollow() {
-  const timerRef = useRef(null)
-  const [control, setControl] = useState({
-    source: 'findx_audit',
-    query: '',
-    severityFilter: '',
-    serviceFilter: '',
-    hostFilter: '',
-    intervalSeconds: 3,
-    state: LIVE_STATES.stopped,
-  })
-  const [data, setData] = useState(emptyData())
-  const [arrival, setArrival] = useState(null)
-  const [blocked, setBlocked] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [arrivalLoading, setArrivalLoading] = useState(false)
-
-  const clearTimer = () => closeTimer(timerRef)
-  const setControlValue = patch => setControl(current => ({ ...current, ...patch }))
-
-  const fetchRows = useCallback(() => {
-    fetchLiveRows({ control, setData, setBlocked, setLoading, clearTimer, setControlValue })
-  }, [control])
-
-  const loadArrival = async () => {
-    setBlocked('')
-    setArrivalLoading(true)
-    try {
-      const rows = await agentApi.dataArrival()
-      const logsRow = findLogsArrival(rows)
-      setArrival(logsRow)
-      if (!logsRow) setBlocked('BLOCKED_BY_CONTRACT: FindX Agent 数据到达契约未返回日志通道。')
-      if (logsRow && logsRow.status !== 'reported') setBlocked(logsRow.blocker || LOG_BLOCKERS.agentLinkage)
-    } catch (err) {
-      setArrival(null)
-      setBlocked(formatAgentError(err))
-    } finally {
-      setArrivalLoading(false)
-    }
-  }
-
-  const openAgent = () => {
-    const scope = control.query || firstRowScope(data.rows)
-    window.location.href = `/agents?section=hosts&package=logs&q=${encodeURIComponent(scope || '')}`
-  }
-
-  const clearLogs = () => setData(emptyData())
-
-  const stopFollow = () => {
-    clearTimer()
-    setControlValue({ state: LIVE_STATES.stopped })
-  }
-
-  const startFollow = () => {
-    clearTimer()
-    setBlocked('')
-    if (control.source !== 'findx_audit') {
-      setControlValue({ state: LIVE_STATES.stopped })
-      setBlocked(LOG_BLOCKERS.live)
-      return
-    }
-    setControlValue({ state: LIVE_STATES.playing })
-    fetchRows()
-    timerRef.current = setInterval(fetchRows, control.intervalSeconds * 1000)
-  }
-
-  const pauseFollow = () => {
-    clearTimer()
-    setControlValue({ state: data.rows.length ? LIVE_STATES.paused : LIVE_STATES.stopped })
-  }
-
-  const changeSource = source => {
-    clearTimer()
-    setControlValue({ source, state: LIVE_STATES.stopped })
-    setData(emptyData())
-    setBlocked('')
-  }
-
-  useEffect(() => () => clearTimer(), [])
-  useEffect(() => {
-    if (control.state === LIVE_STATES.playing) startFollow()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [control.intervalSeconds])
-
-  return {
-    ...control,
-    ...data,
-    arrival,
-    blocked,
-    loading,
-    arrivalLoading,
-    startFollow,
-    pauseFollow,
-    stopFollow,
-    clearLogs,
-    changeSource,
-    setControlValue,
-    loadArrival,
-    openAgent,
-  }
-}
-
-async function fetchLiveRows({ control, setData, setBlocked, setLoading, clearTimer, setControlValue }) {
-  if (control.source !== 'findx_audit') {
-    setBlocked(LOG_BLOCKERS.live)
-    return
-  }
-  setLoading(true)
-  try {
-    const resp = await logsApi.query({
-      source: control.source,
-      query: control.query,
-      severity: control.severityFilter || undefined,
-      service: control.serviceFilter || undefined,
-      host: control.hostFilter || undefined,
-      limit: 100,
-    })
-    const newItems = Array.isArray(resp?.items) ? resp.items : []
-    setData(current => {
-      const existingIds = new Set(current.rows.map(r => r.id))
-      const fresh = newItems.filter(r => r.id && !existingIds.has(r.id))
-      const merged = [...current.rows, ...fresh].slice(-500)
-      return {
-        rows: merged.length > 0 ? merged : newItems,
-        meta: resp || null,
-        updatedAt: new Date().toLocaleString(),
-        pollCount: current.pollCount + 1,
-      }
-    })
-    setBlocked('')
-  } catch (err) {
-    setBlocked(formatLogError(err))
-    clearTimer()
-    setControlValue({ state: LIVE_STATES.stopped })
-  } finally {
-    setLoading(false)
-  }
-}
-
-function findLogsArrival(rows) {
-  return Array.isArray(rows) ? rows.find(r => r?.kind === 'logs') || null : null
-}
-
-function firstRowScope(rows) {
-  const row = Array.isArray(rows) ? rows[0] : null
-  return row?.service_name || row?.source_name || row?.trace_id || row?.scope || ''
-}
-
-function emptyData() {
-  return { rows: [], meta: null, updatedAt: '', pollCount: 0 }
-}
-
-function closeTimer(timerRef) {
-  if (!timerRef.current) return
-  clearInterval(timerRef.current)
-  timerRef.current = null
 }
