@@ -377,6 +377,19 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 			),
 		),
 		monitoringContractSeed(
+			"FX-CONTRACT-N9E-ALERT-RULE-LIFECYCLE",
+			"Alert rule lifecycle aggregate",
+			model.ContractStatusBlocked,
+			alertRuleLifecycleSourceRefs(),
+			"Alert rule lifecycle aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=rules",
+				"alert_rule_lifecycle_aggregate",
+				"alert-rule-lifecycle-aggregate",
+				"owns detail,pure,create,update,delete,import,prom-import,clone,bulk-fields,enable,validate,tryrun,timezones,callbacks; excludes groups,shield,subscribe,notification,dashboard,template,metric,event",
+			),
+		),
+		monitoringContractSeed(
 			"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
 			"Notification FindX adapter",
 			model.ContractStatusMissingExecutor,
@@ -394,6 +407,7 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 		),
 	}
 	entries = append(entries, monitoringAlertRuleGroupGapSeeds()...)
+	entries = append(entries, monitoringAlertRuleLifecycleGapSeeds()...)
 	return entries
 }
 
@@ -423,8 +437,59 @@ func monitoringAlertRuleGroupGapSeed(id, capability string, sourceRefs []string,
 	)
 }
 
+func monitoringAlertRuleLifecycleGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-DETAIL", "Alert rule detail", model.ContractStatusMissingBackend, "alert_rule_detail", "GET /api/n9e/alert-rule/{id}"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-PURE-DETAIL", "Alert rule pure detail", model.ContractStatusMissingBackend, "alert_rule_pure_detail", "GET /api/n9e/alert-rule/{id}/pure"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-CREATE", "Alert rule create", model.ContractStatusMissingBackend, "alert_rule_create", "POST /api/n9e/busi-group/{busiId}/alert-rules"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-UPDATE", "Alert rule update", model.ContractStatusMissingBackend, "alert_rule_update", "PUT /api/n9e/busi-group/{busiId}/alert-rule/{strategyId}"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-DELETE-BY-BUSI-GROUP", "Alert rule delete by business group", model.ContractStatusMissingBackend, "alert_rule_delete_by_busi_group", "DELETE /api/n9e/busi-group/{busiId}/alert-rules"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-DELETE-BY-RULE-GROUP", "Alert rule delete by rule group", model.ContractStatusMissingBackend, "alert_rule_delete_by_rule_group", "DELETE /api/n9e/alert-rule-group/{ruleGroupId}/alert-rules"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-IMPORT-JSON", "Alert rule import JSON", model.ContractStatusMissingBackend, "alert_rule_import_json", "POST /api/n9e/busi-group/{busiId}/alert-rules/import"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-IMPORT-PROM-RULE", "Alert rule import Prometheus rule", model.ContractStatusMissingBackend, "alert_rule_import_prom_rule", "POST /api/n9e/busi-group/{busiId}/alert-rules/import-prom-rule"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-BULK-FIELDS-UPDATE", "Alert rule bulk fields update", model.ContractStatusMissingBackend, "alert_rule_bulk_fields_update", "PUT /api/n9e/busi-group/{busiId}/alert-rules/fields"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-ENABLE-DISABLE", "Alert rule enable disable", model.ContractStatusMissingBackend, "alert_rule_enable_disable", "PUT /api/n9e/busi-group/{busiId}/alert-rules/fields"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-STATUS-BATCH", "Alert rule status batch", model.ContractStatusMissingBackend, "alert_rule_status_batch", "PUT /api/n9e/alert-rules/status"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-CLONE-TO-HOSTS", "Alert rule clone to hosts", model.ContractStatusMissingBackend, "alert_rule_clone_to_hosts", "POST /api/n9e/busi-group/{gid}/alert-rules/clone"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-CLONE-TO-BUSI-GROUPS", "Alert rule clone to business groups", model.ContractStatusMissingBackend, "alert_rule_clone_to_busi_groups", "POST /api/n9e/busi-groups/alert-rules/clones"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-VALIDATE", "Alert rule validate", model.ContractStatusMissingBackend, "alert_rule_validate", "PUT /api/n9e/busi-group/alert-rule/validate"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-ENABLE-TRYRUN", "Alert rule enable tryrun", model.ContractStatusMissingDatasource, "alert_rule_enable_tryrun", "POST /api/n9e/busi-group/alert-rules/enable-tryrun"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-CALLBACKS-LIST", "Alert rule callbacks list", model.ContractStatusMissingBackend, "alert_rule_callbacks_list", "GET /api/n9e/alert-rules/callbacks"),
+		monitoringAlertRuleLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-RULE-TIMEZONES", "Alert rule timezones", model.ContractStatusMissingBackend, "alert_rule_timezones", "GET /api/n9e/timezones"),
+	}
+}
+
+func monitoringAlertRuleLifecycleGapSeed(id, capability, status, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		alertRuleLifecycleSourceRefs(),
+		"Alert rule lifecycle backend contract is missing",
+		monitoringContractMetadata("/alerts?section=rules", gapType, upstreamRef),
+	)
+}
+
 func warningSourceRefs() []string {
 	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`}
+}
+
+func alertRuleLifecycleSourceRefs() []string {
+	return []string{
+		`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\services.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Edit.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Form\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\ListNG.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\MoreOperations.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\Import\ImportBase.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\Import\ImportPrometheus.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\CloneToHosts\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\CloneToBgids\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Form\Notify\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Form\Effective\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\EditModal.tsx`,
+	}
 }
 
 func warningAndRuleModalSourceRefs() []string {
