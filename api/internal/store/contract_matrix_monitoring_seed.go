@@ -101,7 +101,7 @@ func monitoringDatasourceProxyGapSeed(id, capability string, sourceRefs []string
 }
 
 func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequest {
-	return []model.ContractMatrixRegisterRequest{
+	entries := []model.ContractMatrixRegisterRequest{
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-SYSTEM-INTEGRATION-CATALOG",
 			"System integration catalog",
@@ -113,17 +113,80 @@ func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequ
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT",
 			"Template center dashboard import",
-			model.ContractStatusMissingBackend,
+			model.ContractStatusBlocked,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`},
-			"Dashboard template import contract is missing",
+			"Template center dashboard import aggregate is represented by child contract gaps",
 			monitoringContractScopeMetadata(
 				"/integrations?section=templates",
 				"dashboard_template_import_aggregate",
 				"dashboard-template-import-aggregate",
-				"Template center import flow depends on dry-run, conflict handling, rollback, migrate, and follow-up child contracts",
+				"Child gaps own builtin detail, batch result, conflict rollback, and docs drawer; excludes CRUD/public/export/migrate/annotations",
 			),
 		),
 	}
+	entries = append(entries, monitoringTemplateCenterDashboardImportGapSeeds()...)
+	return entries
+}
+
+func monitoringTemplateCenterDashboardImportGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringTemplateCenterDashboardImportGapSeed(
+			"FX-CONTRACT-N9E-TEMPLATE-CENTER-BUILTIN-BOARD-DETAIL",
+			"Template center builtin dashboard detail",
+			[]string{
+				`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`,
+				`D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\Dashboards\Detail.tsx`,
+				`D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Detail\Detail.tsx`,
+			},
+			"template_center_builtin_board_detail",
+			"POST /api/n9e/builtin-boards-detail",
+			"Template center builtin dashboard detail backend contract is missing",
+		),
+		monitoringTemplateCenterDashboardImportGapSeed(
+			"FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT-BATCH-RESULT",
+			"Template center dashboard import batch result",
+			[]string{
+				`D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\Dashboards\Import.tsx`,
+				`D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\Dashboards\services.ts`,
+			},
+			"dashboard_template_import_batch_result",
+			"template-import-batch-result",
+			"Dashboard template import batch result contract is missing",
+		),
+		monitoringTemplateCenterDashboardImportGapSeed(
+			"FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT-CONFLICT-ROLLBACK",
+			"Template center dashboard import conflict rollback",
+			[]string{
+				`D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\Dashboards\Import.tsx`,
+				`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`,
+			},
+			"dashboard_template_import_conflict_rollback",
+			"template-import-conflict-rollback",
+			"Dashboard template import conflict and rollback contract is missing",
+		),
+		monitoringTemplateCenterDashboardImportGapSeed(
+			"FX-CONTRACT-N9E-TEMPLATE-CENTER-DOCUMENT-DRAWER",
+			"Template center document drawer",
+			[]string{
+				`D:\项目迁移文件\平台源码\fe-main\src\components\DocumentDrawer\index.tsx`,
+				`D:\项目迁移文件\平台源码\fe-main\src\components\DocumentDrawer\Document.tsx`,
+			},
+			"template_center_document_drawer",
+			"/n9e-docs/{path}/{language}.md",
+			"Template center document drawer content contract is missing",
+		),
+	}
+}
+
+func monitoringTemplateCenterDashboardImportGapSeed(id, capability string, sourceRefs []string, gapType, upstreamRef, blockedReason string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		model.ContractStatusMissingBackend,
+		sourceRefs,
+		blockedReason,
+		monitoringContractMetadata("/integrations?section=templates", gapType, upstreamRef),
+	)
 }
 
 func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterRequest {
