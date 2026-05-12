@@ -391,11 +391,16 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
-			"Notification FindX adapter",
-			model.ContractStatusMissingExecutor,
-			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\manage.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\subscribe.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\shield.ts`},
-			"Notification adapter executor contract is missing",
-			monitoringContractAdapterMetadata("/notifications?section=rules", "findx_notification_adapter", "/api/n9e/notify-channels"),
+			"Notification adapter aggregate",
+			model.ContractStatusBlocked,
+			notificationAdapterSourceRefs(),
+			"Notification adapter aggregate represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/notifications?section=rules",
+				"notification_adapter_aggregate",
+				"notification-adapter-aggregate",
+				"owns rules,channel configs,templates,contacts,manage lookup,test,statistics; excludes alert rule groups,lifecycle,mute,shield,subscribe,event,action,share,ack,pipeline,query,dashboard,dashboard template center,metric",
+			),
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-ALERT-MUTE-SHIELD",
@@ -434,10 +439,69 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 	}
 	entries = append(entries, monitoringAlertRuleGroupGapSeeds()...)
 	entries = append(entries, monitoringAlertRuleLifecycleGapSeeds()...)
+	entries = append(entries, monitoringNotificationAdapterGapSeeds()...)
 	entries = append(entries, monitoringAlertMuteShieldGapSeeds()...)
 	entries = append(entries, monitoringAlertSubscribeGapSeeds()...)
 	entries = append(entries, monitoringAlertEventLifecycleGapSeeds()...)
 	return entries
+}
+
+func monitoringNotificationAdapterGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULES-LIST", "Notification rules list", model.ContractStatusMissingBackend, "notification_rules_list", "GET /api/n9e/notify-rules"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULE-DETAIL", "Notification rule detail", model.ContractStatusMissingBackend, "notification_rule_detail", "GET /api/n9e/notify-rule/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULES-CREATE", "Notification rules create", model.ContractStatusMissingBackend, "notification_rules_create", "POST /api/n9e/notify-rules"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULE-UPDATE", "Notification rule update", model.ContractStatusMissingBackend, "notification_rule_update", "PUT /api/n9e/notify-rule/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULES-DELETE", "Notification rules delete", model.ContractStatusMissingBackend, "notification_rules_delete", "DELETE /api/n9e/notify-rules"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULE-CUSTOM-PARAMS", "Notification rule custom params", model.ContractStatusMissingBackend, "notification_rule_custom_params", "GET /api/n9e/notify-rule/custom-params"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-RULE-TEST", "Notification rule test", model.ContractStatusMissingExecutor, "notification_rule_test", "POST /api/n9e/notify-rule/test"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-STATISTICS", "Notification statistics", model.ContractStatusMissingDatasource, "notification_statistics", "GET /api/n9e-plus/notify/{id}/statistics"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-EVENTS", "Notification events", model.ContractStatusMissingDatasource, "notification_events", "GET /api/n9e-plus/notify/{id}/alert-cur-events"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-ALERT-RULES", "Notification linked alert rules", model.ContractStatusMissingBackend, "notification_alert_rules", "GET /api/n9e-plus/notify/{id}/alert-rules"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-SUBSCRIBE-RULES", "Notification linked subscribe rules", model.ContractStatusMissingBackend, "notification_subscribe_rules", "GET /api/n9e-plus/notify/{id}/sub-alert-rules"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-EVENT-TAGKEYS", "Notification event tag keys", model.ContractStatusMissingDatasource, "notification_event_tagkeys", "GET /api/n9e/event-tagkeys"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-FEISHU-GROUPS", "Notification Feishu groups lookup", model.ContractStatusMissingExecutor, "notification_feishu_groups", "GET /api/n9e/feishu-visible-chats/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-FLASHDUTY-CHANNELS", "Notification FlashDuty channels lookup", model.ContractStatusMissingExecutor, "notification_flashduty_channels", "GET /api/n9e/flashduty-channel-list/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-PAGERDUTY-SERVICES", "Notification PagerDuty services lookup", model.ContractStatusMissingExecutor, "notification_pagerduty_services", "pagerduty-services-lookup"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-PAGERDUTY-CONNECTOR-LOOKUP", "Notification PagerDuty connector lookup", model.ContractStatusMissingExecutor, "notification_pagerduty_connector_lookup", "pagerduty-connector-lookup"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIGS-LIST", "Notification channel configs list", model.ContractStatusMissingBackend, "notification_channel_configs_list", "GET /api/n9e/notify-channel-configs"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIGS-SIMPLIFIED", "Notification channel configs simplified", model.ContractStatusMissingBackend, "notification_channel_configs_simplified", "GET /api/n9e/simplified-notify-channel-configs"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIGS-CREATE", "Notification channel configs create", model.ContractStatusMissingBackend, "notification_channel_configs_create", "POST /api/n9e/notify-channel-configs"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIG-UPDATE", "Notification channel config update", model.ContractStatusMissingBackend, "notification_channel_config_update", "PUT /api/n9e/notify-channel-config/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIG-DETAIL", "Notification channel config detail", model.ContractStatusMissingBackend, "notification_channel_config_detail", "GET /api/n9e/notify-channel-config/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIG-BY-IDENT", "Notification channel config by ident", model.ContractStatusMissingBackend, "notification_channel_config_by_ident", "GET /api/n9e/notify-channel-config?ident={ident}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIGS-DELETE", "Notification channel configs delete", model.ContractStatusMissingBackend, "notification_channel_configs_delete", "DELETE /api/n9e/notify-channel-configs"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CHANNEL-CONFIG-IDENTS", "Notification channel config idents", model.ContractStatusMissingBackend, "notification_channel_config_idents", "GET /api/n9e/notify-channel-config/idents"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATES-LIST", "Message templates list", model.ContractStatusMissingBackend, "message_templates_list", "GET /api/n9e/message-templates"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATE-DETAIL", "Message template detail", model.ContractStatusMissingBackend, "message_template_detail", "GET /api/n9e/message-template/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATES-CREATE", "Message templates create", model.ContractStatusMissingBackend, "message_templates_create", "POST /api/n9e/message-templates"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATE-UPDATE", "Message template update", model.ContractStatusMissingBackend, "message_template_update", "PUT /api/n9e/message-template/{id}"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATES-DELETE", "Message templates delete", model.ContractStatusMissingBackend, "message_templates_delete", "DELETE /api/n9e/message-templates"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MESSAGE-TEMPLATE-PREVIEW", "Message template preview", model.ContractStatusMissingDatasource, "message_template_preview", "POST /api/n9e/events-message"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CONTACTS-LIST", "Notification contacts list", model.ContractStatusMissingBackend, "notification_contacts_list", "GET /api/n9e/notify-contact"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-NOTIFY-CONTACTS-UPDATE", "Notification contacts update", model.ContractStatusMissingBackend, "notification_contacts_update", "PUT /api/n9e/notify-contact"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MANAGE-NOTIFY-CHANNELS", "Manage notify channels lookup", model.ContractStatusMissingBackend, "manage_notify_channels", "GET /api/n9e/notify-channels"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MANAGE-CONTACT-CHANNELS", "Manage contact channels lookup", model.ContractStatusMissingBackend, "manage_contact_channels", "GET /api/n9e/contact-channels"),
+		monitoringNotificationAdapterGapSeed("FX-CONTRACT-N9E-MANAGE-CONTACT-KEYS", "Manage contact keys lookup", model.ContractStatusMissingBackend, "manage_contact_keys", "GET /api/n9e/contact-keys"),
+	}
+}
+
+func monitoringNotificationAdapterGapSeed(id, capability, status, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	reason := "Notification adapter backend contract is missing"
+	if status == model.ContractStatusMissingDatasource {
+		reason = "Notification adapter datasource contract is missing"
+	}
+	if status == model.ContractStatusMissingExecutor {
+		reason = "Notification adapter executor contract is missing"
+	}
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		notificationAdapterSourceRefs(),
+		reason,
+		monitoringContractMetadata("/notifications?section=rules", gapType, upstreamRef),
+	)
 }
 
 func monitoringAlertRuleGroupGapSeeds() []model.ContractMatrixRegisterRequest {
@@ -501,6 +565,34 @@ func monitoringAlertRuleLifecycleGapSeed(id, capability, status, gapType, upstre
 
 func warningSourceRefs() []string {
 	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`}
+}
+
+func notificationAdapterSourceRefs() []string {
+	return notificationAdapterMatureSourceRefs(
+		`fe-main\src\pages\notificationRules\services.ts`,
+		`fe-main\src\pages\notificationRules\pages\List.tsx`,
+		`fe-main\src\pages\notificationRules\pages\Form\TestButton.tsx`,
+		`fe-main\src\pages\notificationRules\pages\Detail\index.tsx`,
+		`fe-main\src\pages\notificationRules\pages\Detail\Events.tsx`,
+		`fe-main\src\pages\notificationRules\pages\Detail\AlertRules.tsx`,
+		`fe-main\src\pages\notificationRules\pages\Detail\SubscribeRules.tsx`,
+		`fe-main\src\pages\notificationChannels\services.ts`,
+		`fe-main\src\pages\notificationChannels\pages\ListNG\index.tsx`,
+		`fe-main\src\pages\notificationChannels\pages\Form\index.tsx`,
+		`fe-main\src\pages\notificationTemplates\services.ts`,
+		`fe-main\src\pages\notificationTemplates\pages\List\index.tsx`,
+		`fe-main\src\pages\contacts\services.ts`,
+		`fe-main\src\pages\contacts\pages\List.tsx`,
+		`fe-main\src\services\manage.ts`,
+	)
+}
+
+func notificationAdapterMatureSourceRefs(relativePaths ...string) []string {
+	refs := make([]string, 0, len(relativePaths))
+	for _, relativePath := range relativePaths {
+		refs = append(refs, `D:\项目迁移文件\平台源码\`+relativePath)
+	}
+	return refs
 }
 
 func monitoringAlertEventLifecycleGapSeeds() []model.ContractMatrixRegisterRequest {
