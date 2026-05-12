@@ -184,6 +184,19 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 	entries = append(entries, monitoringMetricQueryGapSeeds()...)
 	entries = append(entries,
 		monitoringContractSeed(
+			"FX-CONTRACT-N9E-DASHBOARD-CRUD",
+			"Dashboard CRUD aggregate",
+			model.ContractStatusBlocked,
+			dashboardV2SourceRefs(),
+			"Dashboard CRUD aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/dashboards?section=list",
+				"dashboard_crud_aggregate",
+				"dashboard-crud-aggregate",
+				"dashboard CRUD child gaps own list, create, detail, update, clone, delete, pure, and names; excludes public/export/migrate/annotations",
+			),
+		),
+		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS",
 			"Dashboard annotations aggregate",
 			model.ContractStatusBlocked,
@@ -202,7 +215,18 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 }
 
 func monitoringDashboardActionGapSeeds() []model.ContractMatrixRegisterRequest {
-	return []model.ContractMatrixRegisterRequest{
+	entries := []model.ContractMatrixRegisterRequest{
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-LIST-BY-BUSI-GROUP", "Dashboard list by business group", "dashboard_list_by_busi_group", "GET /api/n9e/busi-group/{id}/boards"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-LIST-BY-BUSI-GROUPS", "Dashboard list by business groups", "dashboard_list_by_busi_groups", "GET /api/n9e/busi-groups/boards"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-CREATE", "Dashboard create", "dashboard_create", "POST /api/n9e/busi-group/{id}/boards"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-DETAIL", "Dashboard detail", "dashboard_detail", "GET /api/n9e/board/{id}"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-UPDATE-METADATA", "Dashboard metadata update", "dashboard_update_metadata", "PUT /api/n9e/board/{id}"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-UPDATE-CONFIGS", "Dashboard configs update", "dashboard_update_configs", "PUT /api/n9e/board/{id}/configs"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-CLONE", "Dashboard clone", "dashboard_clone", "POST /api/n9e/busi-group/{busiId}/board/{id}/clone"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-CLONES", "Dashboard batch clone", "dashboard_clones", "POST /api/n9e/busi-groups/boards/clones"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-DELETE", "Dashboard delete", "dashboard_delete", "DELETE /api/n9e/boards"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-PURE-DETAIL", "Dashboard pure detail", "dashboard_pure_detail", "GET /api/n9e/board/{id}/pure"),
+		monitoringDashboardCRUDGapSeed("FX-CONTRACT-N9E-DASHBOARD-NAMES", "Dashboard names lookup", "dashboard_names", "GET /api/n9e/boards?bids={ids}"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-LIST", "Dashboard annotations list", "/dashboards?section=list", "dashboard_annotation_list", "GET /api/n9e/dashboard-annotations"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-CREATE", "Dashboard annotations create", "/dashboards?section=list", "dashboard_annotation_create", "POST /api/n9e/dashboard-annotations"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-UPDATE", "Dashboard annotations update", "/dashboards?section=list", "dashboard_annotation_update", "PUT /api/n9e/dashboard-annotation/{id}"),
@@ -212,6 +236,11 @@ func monitoringDashboardActionGapSeeds() []model.ContractMatrixRegisterRequest {
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-EXPORT", "Dashboard export", "/dashboards?section=list", "dashboard_export", "POST /api/n9e/busi-group/{busiId}/dashboards/export"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-MIGRATE", "Dashboard migrate", "/dashboards?section=list", "dashboard_migrate", "PUT /api/n9e/dashboard/{id}/migrate"),
 	}
+	return entries
+}
+
+func monitoringDashboardCRUDGapSeed(id, capability, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringDashboardActionGapSeed(id, capability, "/dashboards?section=list", gapType, upstreamRef)
 }
 
 func monitoringDashboardActionGapSeed(id, capability, findxRoute, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
