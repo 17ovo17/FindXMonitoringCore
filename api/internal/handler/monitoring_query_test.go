@@ -91,6 +91,26 @@ func TestSanitizeDatasourceURLRedactsUserinfoAndSecrets(t *testing.T) {
 	}
 }
 
+func TestListMonitorDatasourcesReturnsSanitizedPrometheusBriefs(t *testing.T) {
+	configureMonitorPrometheus(t, "http://login-user:login-value@example.test:9090/prom?token=%3CTOKEN%3E&x=1")
+
+	w := performMonitorRequest(http.MethodGet, "/", ListMonitorDatasources, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("datasource brief list should be 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	for _, want := range []string{`"id":"prometheus-default"`, `"type":"prometheus"`, "%3CREDACTED%3E", "x=1"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("datasource brief missing %s: %s", want, body)
+		}
+	}
+	for _, forbidden := range []string{"login-value", "<TOKEN>", "password", "cookie", "Bearer"} {
+		if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+			t.Fatalf("datasource brief leaked sensitive fragment %q: %s", forbidden, body)
+		}
+	}
+}
+
 func TestMonitorQueryUsesTimeoutMS(t *testing.T) {
 	req := monitoringPromRequest{Query: "up", TimeoutMS: 2500, TimeoutSeconds: 9}
 	path, params, timeout := monitorPromRequestTarget(req, false)
@@ -110,6 +130,17 @@ func TestMonitorQueryRangeUsesTimeoutMS(t *testing.T) {
 	}
 	if timeout != 1500*time.Millisecond {
 		t.Fatalf("timeout_ms should be used, got %s", timeout)
+	}
+}
+
+func TestMonitorQueryMissingDatasourceIsNotReady(t *testing.T) {
+	configureMonitorPrometheus(t, "")
+	w := performMonitorRequest(http.MethodPost, "/", MonitorQuery, map[string]any{"datasource_id": "missing-ds", "query": "up"})
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("missing datasource should stay not found, got %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "prometheus datasource not found") {
+		t.Fatalf("missing datasource response should be explicit: %s", w.Body.String())
 	}
 }
 

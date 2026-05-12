@@ -133,6 +133,26 @@ func TestContractMatrixSeededMonitoringGapDetailIsBlocked(t *testing.T) {
 	assertContractMatrixBlockedShape(t, w.Body.String())
 }
 
+func TestContractMatrixSeededDatasourceBriefListIsReady(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("datasource brief list should be ready, got %d body=%s", w.Code, w.Body.String())
+	}
+	var item model.ContractMatrixEntry
+	decodeContractMatrixResponse(t, w, &item)
+	if item.Status != model.ContractStatusReady ||
+		item.Handler == "" || item.Backend == "" || item.Datasource == "" || item.Executor == "" ||
+		len(item.EvidenceRefs) == 0 {
+		t.Fatalf("ready contract missing executable evidence: %#v", item)
+	}
+	if item.Metadata["upstream_ref"] != "/monitor/datasources" {
+		t.Fatalf("ready contract must use FindX datasource adapter, got %#v", item.Metadata)
+	}
+	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+}
+
 func TestContractMatrixDropsSensitiveInput(t *testing.T) {
 	store.ResetContractMatrixForTest()
 	r := contractMatrixTestRouter()

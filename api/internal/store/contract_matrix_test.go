@@ -126,11 +126,15 @@ func TestContractMatrixMetadataDropsSensitiveAndFakeSuccessText(t *testing.T) {
 
 func assertMonitoringContractSeedEntry(t *testing.T, item model.ContractMatrixEntry) {
 	t.Helper()
-	if item.Status == model.ContractStatusReady {
-		t.Fatalf("monitoring seed must not claim ready without evidence: %#v", item)
+	if item.ID == "FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST" {
+		assertReadyMonitoringContractSeedEntry(t, item)
+		return
 	}
 	if !model.IsContractMatrixStatus(item.Status) {
 		t.Fatalf("monitoring seed used invalid status: %#v", item)
+	}
+	if item.Status == model.ContractStatusReady {
+		t.Fatalf("unexpected ready monitoring seed: %#v", item)
 	}
 	if len(item.SourceRefs) == 0 {
 		t.Fatalf("monitoring seed missing source refs: %#v", item)
@@ -146,5 +150,28 @@ func assertMonitoringContractSeedEntry(t *testing.T, item model.ContractMatrixEn
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("monitoring seed exposed fake success state %q: %#v", forbidden, item)
 		}
+	}
+}
+
+func assertReadyMonitoringContractSeedEntry(t *testing.T, item model.ContractMatrixEntry) {
+	t.Helper()
+	if item.Status != model.ContractStatusReady || !item.SafeToRetry {
+		t.Fatalf("brief list contract should be ready and retryable: %#v", item)
+	}
+	for name, value := range map[string]string{
+		"handler":    item.Handler,
+		"backend":    item.Backend,
+		"datasource": item.Datasource,
+		"executor":   item.Executor,
+	} {
+		if strings.TrimSpace(value) == "" {
+			t.Fatalf("ready contract missing %s: %#v", name, item)
+		}
+	}
+	if len(item.EvidenceRefs) == 0 {
+		t.Fatalf("ready contract missing evidence refs: %#v", item)
+	}
+	if item.Metadata["upstream_ref"] != "/monitor/datasources" {
+		t.Fatalf("ready datasource brief must point to FindX adapter, got %#v", item.Metadata)
 	}
 }

@@ -35,13 +35,20 @@ func monitoringContractMatrixSeedEntries() []model.ContractMatrixRegisterRequest
 
 func monitoringDatasourceContractSeeds() []model.ContractMatrixRegisterRequest {
 	return []model.ContractMatrixRegisterRequest{
-		monitoringContractSeed(
+		monitoringReadyContractSeed(
 			"FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST",
 			"Datasource brief list",
-			model.ContractStatusMissingBackend,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\common.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`},
-			"Datasource brief list backend contract is not wired",
-			monitoringContractMetadata("/integrations?section=datasources", "datasource_contract", "/api/n9e/datasource/brief"),
+			"ListMonitorDatasources",
+			"handler.monitoring_query.ListMonitorDatasources",
+			"monitoring.PrometheusDatasourcesFromConfig",
+			"/api/v1/monitor/datasources",
+			[]string{
+				"api/internal/handler/monitoring_query.go ListMonitorDatasources reads configured prometheus datasources",
+				"api/internal/monitoring/datasources.go PrometheusDatasourcesFromConfig resolves configured prometheus sources",
+				"api/routes_monitor.go GET /monitor/datasources is registered behind monitor datasource read permission",
+			},
+			monitoringContractMetadata("/integrations?section=datasources", "datasource_contract", "/monitor/datasources"),
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID",
@@ -150,6 +157,23 @@ func monitoringContractSeed(id, capability, status string, sourceRefs []string, 
 		SourceRefs:    sourceRefs,
 		BlockedReason: blockedReason,
 		Metadata:      metadata,
+	}
+}
+
+func monitoringReadyContractSeed(id, capability string, sourceRefs []string, handler, backend, datasource, executor string, evidenceRefs []string, metadata map[string]string) model.ContractMatrixRegisterRequest {
+	return model.ContractMatrixRegisterRequest{
+		ID:           id,
+		Capability:   capability,
+		Domain:       "monitoring",
+		Status:       model.ContractStatusReady,
+		Handler:      handler,
+		Backend:      backend,
+		Datasource:   datasource,
+		Executor:     executor,
+		SourceRefs:   sourceRefs,
+		EvidenceRefs: evidenceRefs,
+		SafeToRetry:  true,
+		Metadata:     metadata,
 	}
 }
 
