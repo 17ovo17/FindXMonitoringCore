@@ -398,6 +398,19 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 			monitoringContractAdapterMetadata("/notifications?section=rules", "findx_notification_adapter", "/api/n9e/notify-channels"),
 		),
 		monitoringContractSeed(
+			"FX-CONTRACT-N9E-ALERT-MUTE-SHIELD",
+			"Alert mute shield aggregate",
+			model.ContractStatusBlocked,
+			alertMuteShieldSourceRefs(),
+			"Alert mute shield aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=mutes",
+				"alert_mute_shield_aggregate",
+				"alert-mute-shield-aggregate",
+				"owns only mute list,detail,create,update,delete,bulk-fields,preview,tryrun; excludes alert rule groups,lifecycle,subscribe,notification,dashboard,template,metric,event",
+			),
+		),
+		monitoringContractSeed(
 			"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 			"Business group resource group map",
 			model.ContractStatusMissingBackend,
@@ -408,6 +421,7 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 	}
 	entries = append(entries, monitoringAlertRuleGroupGapSeeds()...)
 	entries = append(entries, monitoringAlertRuleLifecycleGapSeeds()...)
+	entries = append(entries, monitoringAlertMuteShieldGapSeeds()...)
 	return entries
 }
 
@@ -474,6 +488,31 @@ func warningSourceRefs() []string {
 	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`}
 }
 
+func monitoringAlertMuteShieldGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-LIST-BY-BUSI-GROUP", "Alert mute list by business group", model.ContractStatusMissingBackend, "alert_mute_list_by_busi_group", "GET /api/n9e/busi-group/{id}/alert-mutes", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-LIST-BY-BUSI-GROUPS", "Alert mute list by business groups", model.ContractStatusMissingBackend, "alert_mute_list_by_busi_groups", "GET /api/n9e/busi-groups/alert-mutes", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-DETAIL", "Alert mute detail", model.ContractStatusMissingBackend, "alert_mute_detail", "GET /api/n9e/busi-group/{busiId}/alert-mute/{id}", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-CREATE", "Alert mute create", model.ContractStatusMissingBackend, "alert_mute_create", "POST /api/n9e/busi-group/{busiId}/alert-mutes", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-UPDATE", "Alert mute update", model.ContractStatusMissingBackend, "alert_mute_update", "PUT /api/n9e/busi-group/{busiId}/alert-mute/{muteId}", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-DELETE", "Alert mute delete", model.ContractStatusMissingBackend, "alert_mute_delete", "DELETE /api/n9e/busi-group/{busiId}/alert-mutes", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-BULK-FIELDS-UPDATE", "Alert mute bulk fields update", model.ContractStatusMissingBackend, "alert_mute_bulk_fields_update", "PUT /api/n9e/busi-group/{busiId}/alert-mutes/fields", "Alert mute shield backend contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-PREVIEW-EVENTS", "Alert mute preview events", model.ContractStatusMissingDatasource, "alert_mute_preview_events", "POST /api/n9e/busi-group/{busiId}/alert-mutes/preview", "Alert mute shield datasource contract is missing"),
+		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-TRYRUN", "Alert mute tryrun", model.ContractStatusMissingDatasource, "alert_mute_tryrun", "POST /api/n9e/alert-mute-tryrun", "Alert mute shield datasource contract is missing"),
+	}
+}
+
+func monitoringAlertMuteShieldGapSeed(id, capability, status, gapType, upstreamRef, blockedReason string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		alertMuteShieldSourceRefs(),
+		blockedReason,
+		monitoringContractMetadata("/alerts?section=mutes", gapType, upstreamRef),
+	)
+}
+
 func alertRuleLifecycleSourceRefs() []string {
 	return []string{
 		`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`,
@@ -489,6 +528,19 @@ func alertRuleLifecycleSourceRefs() []string {
 		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Form\Notify\index.tsx`,
 		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\Form\Effective\index.tsx`,
 		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\EditModal.tsx`,
+	}
+}
+
+func alertMuteShieldSourceRefs() []string {
+	return []string{
+		`D:\项目迁移文件\平台源码\fe-main\src\services\shield.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\add.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\edit.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\operateForm.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\PreviewMutedEvents.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\utils.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\CateSelect\index.tsx`,
 	}
 }
 

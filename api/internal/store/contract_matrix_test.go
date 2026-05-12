@@ -93,6 +93,16 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-ALERT-RULE-CALLBACKS-LIST",
 	"FX-CONTRACT-N9E-ALERT-RULE-TIMEZONES",
 	"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
+	"FX-CONTRACT-N9E-ALERT-MUTE-SHIELD",
+	"FX-CONTRACT-N9E-ALERT-MUTE-LIST-BY-BUSI-GROUP",
+	"FX-CONTRACT-N9E-ALERT-MUTE-LIST-BY-BUSI-GROUPS",
+	"FX-CONTRACT-N9E-ALERT-MUTE-DETAIL",
+	"FX-CONTRACT-N9E-ALERT-MUTE-CREATE",
+	"FX-CONTRACT-N9E-ALERT-MUTE-UPDATE",
+	"FX-CONTRACT-N9E-ALERT-MUTE-DELETE",
+	"FX-CONTRACT-N9E-ALERT-MUTE-BULK-FIELDS-UPDATE",
+	"FX-CONTRACT-N9E-ALERT-MUTE-PREVIEW-EVENTS",
+	"FX-CONTRACT-N9E-ALERT-MUTE-TRYRUN",
 	"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 }
 
@@ -168,6 +178,28 @@ func TestMonitoringContractMatrixSeedDoesNotOverwriteUserEntry(t *testing.T) {
 	}
 	if item.BlockedReason != customReason || item.Metadata["findx_route"] != "/custom-monitoring" {
 		t.Fatalf("seed overwrote user entry: %#v", item)
+	}
+}
+
+func TestMonitoringContractMatrixAlertMuteShieldSourceRefs(t *testing.T) {
+	got := alertMuteShieldSourceRefs()
+	want := []string{
+		`D:\项目迁移文件\平台源码\fe-main\src\services\shield.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\add.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\edit.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\operateForm.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\PreviewMutedEvents.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\utils.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\CateSelect\index.tsx`,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("alert mute shield source refs count = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for _, ref := range want {
+		if !contractListContains(got, ref) {
+			t.Fatalf("alert mute shield source refs missing %q: %#v", ref, got)
+		}
 	}
 }
 
