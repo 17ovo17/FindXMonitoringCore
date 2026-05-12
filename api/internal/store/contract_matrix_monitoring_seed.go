@@ -429,6 +429,19 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 			),
 		),
 		monitoringContractSeed(
+			"FX-CONTRACT-N9E-ALERT-EVENT-ACTION-PIPELINE-QUERY",
+			"Alert event action pipeline query aggregate",
+			model.ContractStatusBlocked,
+			alertEventActionPipelineQuerySourceRefs(),
+			"Alert event action, acknowledgement, sharing, pipeline, and query aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=events",
+				"alert_event_action_pipeline_query_aggregate",
+				"alert-event-action-pipeline-query-aggregate",
+				"owns ack,unack,share credential,shared detail,event pipeline crud,tryrun,tag lookup,enrich preview,executions,execution detail,event query/test selector; excludes 119B15/119B16",
+			),
+		),
+		monitoringContractSeed(
 			"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 			"Business group resource group map",
 			model.ContractStatusMissingBackend,
@@ -443,6 +456,7 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 	entries = append(entries, monitoringAlertMuteShieldGapSeeds()...)
 	entries = append(entries, monitoringAlertSubscribeGapSeeds()...)
 	entries = append(entries, monitoringAlertEventLifecycleGapSeeds()...)
+	entries = append(entries, monitoringAlertEventActionPipelineQueryGapSeeds()...)
 	return entries
 }
 
@@ -621,6 +635,39 @@ func monitoringAlertEventLifecycleGapSeed(id, capability, status, gapType, upstr
 	)
 }
 
+func monitoringAlertEventActionPipelineQueryGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-ACK", "Alert current event acknowledge", model.ContractStatusMissingBackend, "alert_event_ack", "POST /api/n9e-plus/alert-cur-events/{action}", "Alert event acknowledgement backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-SHARE-CREDENTIAL", "Alert event share credential issue", model.ContractStatusMissingBackend, "alert_event_share_credential", "share-credential-issue", "Alert event share credential backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-SHARED-DETAIL", "Alert event shared detail", model.ContractStatusMissingBackend, "alert_event_shared_detail", "GET /api/n9e/alert-his-event/{eventId}; GET /api/n9e-plus/alert-his-event/{eventId}", "Alert event shared detail backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-CRUD", "Event pipeline CRUD aggregate", model.ContractStatusBlocked, "event_pipeline_crud_aggregate", "event-pipeline-crud-aggregate", "Event pipeline CRUD aggregate is represented by child contract gaps"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-LIST", "Event pipeline list", model.ContractStatusMissingBackend, "event_pipeline_list", "GET /api/n9e/event-pipelines", "Event pipeline list backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-DETAIL", "Event pipeline detail", model.ContractStatusMissingBackend, "event_pipeline_detail", "GET /api/n9e/event-pipeline/{id}", "Event pipeline detail backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-CREATE", "Event pipeline create", model.ContractStatusMissingBackend, "event_pipeline_create", "POST /api/n9e/event-pipeline", "Event pipeline create backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-UPDATE", "Event pipeline update", model.ContractStatusMissingBackend, "event_pipeline_update", "PUT /api/n9e/event-pipeline", "Event pipeline update backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-DELETE", "Event pipeline delete", model.ContractStatusMissingBackend, "event_pipeline_delete", "DELETE /api/n9e/event-pipelines", "Event pipeline delete backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PROCESSOR-TRYRUN", "Event processor tryrun", model.ContractStatusMissingExecutor, "event_processor_tryrun", "POST /api/n9e/event-processor-tryrun", "Event processor tryrun executor contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-TRYRUN", "Event pipeline tryrun", model.ContractStatusMissingExecutor, "event_pipeline_tryrun", "POST /api/n9e/event-pipeline-tryrun", "Event pipeline tryrun executor contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-TAGKEYS", "Event tag keys", model.ContractStatusMissingDatasource, "event_tagkeys", "GET /api/n9e/event-tagkeys", "Event tag keys datasource contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-TAGVALUES", "Event tag values", model.ContractStatusMissingDatasource, "event_tagvalues", "GET /api/n9e/event-tagvalues?key={key}", "Event tag values datasource contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-ENRICH-DATA-PREVIEW", "Event enrich data preview", model.ContractStatusMissingDatasource, "event_enrich_data_preview", "POST /api/n9e-plus/event-enrich-data-preview", "Event enrich data preview datasource contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-EXECUTIONS-LIST", "Event pipeline executions list", model.ContractStatusMissingBackend, "event_pipeline_executions_list", "GET /api/n9e/event-pipeline-executions", "Event pipeline executions list backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-EVENT-PIPELINE-EXECUTION-DETAIL", "Event pipeline execution detail", model.ContractStatusMissingBackend, "event_pipeline_execution_detail", "GET /api/n9e/event-pipeline-execution/{id}", "Event pipeline execution detail backend contract is missing"),
+		monitoringAlertEventActionPipelineQueryGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-RULE-TESTER", "Alert event rule tester", model.ContractStatusBlocked, "alert_event_rule_tester", "AlertEventRuleTesterWithButton onClick/onTest event selector", "Alert event rule tester selector contract is blocked"),
+	}
+}
+
+func monitoringAlertEventActionPipelineQueryGapSeed(id, capability, status, gapType, upstreamRef, blockedReason string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		alertEventActionPipelineQuerySourceRefs(),
+		blockedReason,
+		monitoringContractMetadata("/alerts?section=events", gapType, upstreamRef),
+	)
+}
+
 func monitoringAlertMuteShieldGapSeeds() []model.ContractMatrixRegisterRequest {
 	return []model.ContractMatrixRegisterRequest{
 		monitoringAlertMuteShieldGapSeed("FX-CONTRACT-N9E-ALERT-MUTE-LIST-BY-BUSI-GROUP", "Alert mute list by business group", model.ContractStatusMissingBackend, "alert_mute_list_by_busi_group", "GET /api/n9e/busi-group/{id}/alert-mutes", "Alert mute shield backend contract is missing"),
@@ -770,6 +817,34 @@ func alertEventLifecycleMatureSourceRefs(relativePaths ...string) []string {
 
 func warningAndRuleModalSourceRefs() []string {
 	return append(warningSourceRefs(), `D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\components\ruleModal.tsx`)
+}
+
+func alertEventActionPipelineQuerySourceRefs() []string {
+	return alertEventActionPipelineQueryMatureSourceRefs(
+		`fe-main\src\pages\event\services.ts`,
+		`fe-main\src\pages\event\DetailNG\Actions.tsx`,
+		`fe-main\src\pages\event\DetailNG\SharingLinkModal.tsx`,
+		`fe-main\src\pages\event\DetailNG\SharedDetail.tsx`,
+		`fe-main\src\pages\eventPipeline\services.ts`,
+		`fe-main\src\pages\eventPipeline\pages\Form\index.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\Form\Processor\index.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\Form\TestModal\index.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\Form\TestModal\EventsTable.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\List\index.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\Executions\index.tsx`,
+		`fe-main\src\pages\eventPipeline\pages\Executions\Detail.tsx`,
+		`fe-main\src\components\AlertEventRuleTesterWithButton\index.tsx`,
+		`fe-main\src\pages\alertCurEvent\services.ts`,
+		`fe-main\src\services\warning.ts`,
+	)
+}
+
+func alertEventActionPipelineQueryMatureSourceRefs(relativePaths ...string) []string {
+	refs := make([]string, 0, len(relativePaths))
+	for _, relativePath := range relativePaths {
+		refs = append(refs, `D:\项目迁移文件\平台源码\`+relativePath)
+	}
+	return refs
 }
 
 func monitoringContractSeed(id, capability, status string, sourceRefs []string, blockedReason string, metadata map[string]string) model.ContractMatrixRegisterRequest {
