@@ -31,6 +31,18 @@ func registerFindXAgentRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/findx-agents/:id/verify-heartbeat", mw.monitorRequired("findx_agent", "read"), handler.VerifyAgentHeartbeat)
 	v1.POST("/findx-agents/batch-verify", mw.monitorRequired("findx_agent", "read"), handler.BatchVerifyAgentHeartbeat)
 
+	// 插件配置管理
+	v1.GET("/findx-agents/plugins", mw.monitorRequired("findx_agent", "read"), handler.ListFindXAgentPlugins)
+	v1.GET("/findx-agents/:id/config", mw.monitorRequired("findx_agent", "read"), handler.GetFindXAgentConfig)
+	v1.PUT("/findx-agents/:id/config", mw.monitorRequired("findx_agent", "write"), handler.UpdateFindXAgentConfig)
+	v1.PATCH("/findx-agents/:id/plugins/:pluginId", mw.monitorRequired("findx_agent", "write"), handler.PatchFindXAgentPlugin)
+	v1.POST("/findx-agents/:id/plugins/:pluginId/config", mw.monitorRequired("findx_agent", "write"), handler.UpdateFindXAgentPluginConfig)
+	v1.POST("/findx-agents/config-push", mw.monitorRequired("findx_agent", "write"), handler.FindXAgentConfigPushBatch)
+	v1.GET("/findx-agents/:id/environment", mw.monitorRequired("findx_agent", "read"), handler.GetFindXAgentEnvironment)
+	v1.POST("/findx-agents/:id/auto-adapt", mw.monitorRequired("findx_agent", "write"), handler.FindXAgentAutoAdapt)
+	v1.POST("/findx-agents/:id/plugins/:pluginId/start", mw.monitorRequired("findx_agent", "write"), handler.StartFindXAgentPlugin)
+	v1.POST("/findx-agents/:id/plugins/:pluginId/stop", mw.monitorRequired("findx_agent", "write"), handler.StopFindXAgentPlugin)
+
 	// P5: Agent complete lifecycle endpoints
 	v1.GET("/agent-packages", mw.monitorRequired("findx_agent", "read"), handler.ListAgentPackagesV2)
 	v1.POST("/agent-packages", mw.monitorRequired("findx_agent", "write"), handler.RegisterAgentPackage)

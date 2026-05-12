@@ -104,6 +104,8 @@ func Init() {
 	seedPlatformTopology()
 	loadFallbackSnapshot()
 	SeedOrgDefaults()
+	InitAgentPackageStore()
+	InitPluginConfigStore()
 }
 
 // Health returns the health status of storage backends.

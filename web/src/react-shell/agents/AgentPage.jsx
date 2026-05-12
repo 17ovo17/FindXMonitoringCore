@@ -4,6 +4,10 @@ import { assetsApi, formatAssetError } from '../api/assets.js'
 import { HostsSection } from './HostsSection.jsx'
 import { OverviewSection } from './OverviewSection.jsx'
 import { PackagesSection } from './PackagesSection.jsx'
+import { PluginCatalogSection } from './PluginCatalogSection.jsx'
+import { PluginConfigEditor } from './PluginConfigEditor.jsx'
+import { ConfigPushWizard } from './ConfigPushWizard.jsx'
+import { EnvironmentAdaptSection } from './EnvironmentAdaptSection.jsx'
 import { hostMergedSections, sectionSet, sections } from './agentModel.js'
 import { ErrorBox, Field, SectionTabs } from './AgentShared.jsx'
 import './agent.css'
@@ -24,6 +28,7 @@ export function AgentPage({ query, onNavigate }) {
   const [loading, setLoading] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
   const [search, setSearch] = useState(query.q || '')
+  const [editingPlugin, setEditingPlugin] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -75,6 +80,10 @@ export function AgentPage({ query, onNavigate }) {
       {section === 'overview' && <OverviewSection agents={rows} packages={packages} lifecycle={lifecycle} onNavigate={navigate} />}
       {section === 'hosts' && <HostsSection rows={rows} hosts={hosts} packages={packages} dataArrival={dataArrival} dataArrivalEvidence={dataArrivalEvidence} focus={query.legacySection || rawSection} error={error || hostError || dataArrivalError} q={search} onRefresh={refresh} />}
       {section === 'packages' && <PackagesSection packages={packages} />}
+      {section === 'plugin-catalog' && !editingPlugin && <PluginCatalogSection agentId={rows[0]?.ident || rows[0]?.id} onEditPlugin={setEditingPlugin} />}
+      {section === 'plugin-catalog' && editingPlugin && <PluginConfigEditor plugin={editingPlugin} agentId={rows[0]?.ident || rows[0]?.id} onBack={() => setEditingPlugin(null)} />}
+      {section === 'config-push' && <ConfigPushWizard onClose={() => navigate({ section: 'overview' })} />}
+      {section === 'environment' && <EnvironmentAdaptSection agentId={rows[0]?.ident || rows[0]?.id} />}
     </main>
   )
 }
