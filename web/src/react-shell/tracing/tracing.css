@@ -1,0 +1,112 @@
+.fx-tracing-page { min-height: calc(100vh - 88px); padding: 18px; color: var(--fx-ink, #25324a); background: var(--fx-bg, #f5f7fb); }
+.fx-tracing-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; padding: 16px; border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); }
+.fx-tracing-head p, .fx-tracing-head h1 { margin: 0; }
+.fx-tracing-head p { color: var(--fx-blue, #1769ff); font-size: 12px; font-weight: 800; }
+.fx-tracing-head h1 { margin-top: 4px; color: var(--fx-ink, #17233c); font-size: 22px; }
+.fx-tracing-head span { display: block; margin-top: 8px; color: var(--fx-muted, #66758d); font-size: 13px; line-height: 1.6; }
+.fx-tracing-tabs, .fx-tracing-toolbar, .fx-tracing-filter, .fx-tracing-agent-links { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.fx-tracing-tabs { justify-content: flex-end; }
+.fx-tracing-tabs button, .fx-tracing-toolbar button, .fx-tracing-actions button, .fx-tracing-modal button, .fx-tracing-filter button, .fx-tracing-agent-links button { min-height: 32px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 8px; background: var(--fx-panel, #fff); color: var(--fx-ink, #25324a); padding: 0 12px; cursor: pointer; }
+.fx-tracing-tabs button.is-active, .fx-tracing-toolbar button:first-child, .fx-tracing-filter button.is-primary { border-color: var(--fx-blue, #1769ff); background: var(--fx-blue, #1769ff); color: #fff; }
+.fx-tracing-work, .fx-tracing-banner { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); padding: 16px; margin-bottom: 12px; }
+.fx-tracing-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fx-tracing-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.fx-tracing-card { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-blue-soft, #f8fbff); padding: 14px; }
+.fx-tracing-card strong { display: block; color: var(--fx-danger, #c45656); font-size: 22px; }
+.fx-tracing-card span { display: block; margin-top: 6px; color: var(--fx-muted, #66758d); font-size: 12px; }
+.fx-tracing-filter { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); margin-bottom: 12px; }
+.fx-tracing-filter.is-wide { grid-template-columns: repeat(5, minmax(150px, 1fr)); }
+.fx-tracing-field { display: flex; flex-direction: column; gap: 6px; color: var(--fx-muted, #66758d); font-size: 12px; font-weight: 700; }
+.fx-tracing-field input, .fx-tracing-field select, .fx-tracing-field textarea { min-height: 34px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 8px; padding: 6px 10px; color: var(--fx-ink, #25324a); background: var(--fx-panel, #fff); font: inherit; }
+.fx-tracing-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.fx-tracing-table { overflow: auto; margin-top: 12px; }
+.fx-tracing-table h3 { margin: 0 0 8px; color: var(--fx-ink, #17233c); font-size: 15px; }
+.fx-tracing-table table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.fx-tracing-table th, .fx-tracing-table td { border-bottom: 1px solid var(--fx-border, #e8edf5); padding: 10px; text-align: left; font-size: 13px; vertical-align: top; }
+.fx-tracing-table th { color: var(--fx-muted, #66758d); background: var(--fx-blue-soft, #f8fbff); font-weight: 800; }
+.fx-tracing-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fx-tracing-status { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 0 8px; background: #fff3df; color: #a35a00; font-size: 12px; font-weight: 700; }
+.fx-tracing-status.is-ok { background: #e8f8ef; color: #167346; }
+.fx-tracing-blocked, .fx-tracing-error, .fx-tracing-empty { border: 1px solid #f3d2d2; border-radius: 8px; background: #fff7f7; color: #9f3a38; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.fx-tracing-agent-evidence { display: grid; gap: 4px; margin: 10px 0; border: 1px solid #d8e7ff; border-radius: 8px; background: var(--fx-blue-soft, #f7fbff); color: #536783; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.fx-tracing-agent-evidence strong { color: var(--fx-blue, #1769ff); }
+.fx-tracing-agent-links { margin: 4px 0; }
+.fx-tracing-agent-links button { color: var(--fx-blue, #1769ff); background: var(--fx-blue-soft, #f8fbff); border-color: #bad3ff; }
+.fx-tracing-error { margin-bottom: 10px; }
+.fx-tracing-empty { margin-top: 8px; text-align: center; }
+.fx-tracing-json { max-height: 240px; overflow: auto; border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-blue-soft, #f8fbff); padding: 12px; color: var(--fx-ink, #25324a); font-size: 12px; }
+.fx-tracing-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(19, 32, 52, .38); }
+.fx-tracing-modal__body { width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; border-radius: 8px; background: var(--fx-panel, #fff); padding: 16px; box-shadow: 0 18px 48px rgba(23, 35, 60, .22); }
+.fx-tracing-modal__body header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.fx-tracing-modal__body h2 { margin: 0; font-size: 18px; color: var(--fx-ink, #17233c); }
+.fx-tracing-modal__body pre { white-space: pre-wrap; word-break: break-word; }
+
+/* SkyWalking-style condition bar: single horizontal row inline layout */
+.fx-tracing-condition-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-blue-soft, #f8fbff); }
+.fx-tracing-condition-bar .fx-tracing-field { min-width: 130px; flex: 0 0 auto; }
+.fx-tracing-condition-bar .fx-tracing-field.is-flex { flex: 1 1 180px; }
+.fx-tracing-condition-bar .fx-tracing-condition-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.fx-tracing-condition-bar .fx-tracing-condition-actions button { min-height: 32px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 8px; background: var(--fx-panel, #fff); color: var(--fx-ink, #25324a); padding: 0 14px; cursor: pointer; font: inherit; }
+.fx-tracing-condition-bar .fx-tracing-condition-actions button.is-primary { border-color: var(--fx-blue, #1769ff); background: var(--fx-blue, #1769ff); color: #fff; }
+
+/* Three-column layout for traces: list (left) + detail (right) below condition bar */
+.fx-tracing-trace-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px; align-items: start; }
+.fx-tracing-trace-layout.is-single { grid-template-columns: 1fr; }
+.fx-tracing-trace-list { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); overflow: hidden; }
+.fx-tracing-trace-list__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--fx-border, #e3e8f1); background: var(--fx-blue-soft, #f8fbff); font-size: 12px; color: var(--fx-muted, #66758d); }
+.fx-tracing-trace-list__head strong { color: var(--fx-ink, #17233c); font-size: 13px; margin-right: 6px; }
+.fx-tracing-trace-list__body { max-height: 560px; overflow: auto; }
+.fx-tracing-trace-list__item { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--fx-border, #eef2f8); background: transparent; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; }
+.fx-tracing-trace-list__item:hover { background: var(--fx-blue-soft, #f5faff); }
+.fx-tracing-trace-list__item.is-active { background: var(--fx-blue-soft, #e8f1ff); border-left: 3px solid var(--fx-blue, #1769ff); padding-left: 9px; }
+.fx-tracing-trace-list__item .fx-endpoint { display: block; font-size: 13px; font-weight: 700; color: var(--fx-blue, #1769ff); margin-bottom: 4px; word-break: break-all; }
+.fx-tracing-trace-list__item.is-error .fx-endpoint { color: var(--fx-danger, #c45656); }
+.fx-tracing-trace-list__item .fx-tag { display: inline-block; min-width: 54px; text-align: center; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #eef3fb; color: var(--fx-muted, #66758d); margin-right: 6px; }
+.fx-tracing-trace-list__item .fx-meta { font-size: 11px; color: var(--fx-muted, #66758d); }
+.fx-tracing-trace-list__pager { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px; border-top: 1px solid var(--fx-border, #eef2f8); font-size: 12px; color: var(--fx-muted, #66758d); }
+.fx-tracing-trace-list__pager button { min-height: 28px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 6px; background: var(--fx-panel, #fff); padding: 0 10px; cursor: pointer; }
+.fx-tracing-trace-list__pager button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Trace detail panel with waterfall */
+.fx-tracing-trace-detail { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); padding: 12px 14px; }
+.fx-tracing-trace-detail__head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--fx-border, #eef2f8); margin-bottom: 10px; }
+.fx-tracing-trace-detail__head h3 { margin: 0 0 6px; font-size: 15px; color: var(--fx-ink, #17233c); word-break: break-all; }
+.fx-tracing-trace-detail__head .fx-meta { font-size: 12px; color: var(--fx-muted, #66758d); line-height: 1.8; }
+.fx-tracing-trace-detail__head .fx-meta b { color: var(--fx-ink, #17233c); margin-right: 12px; }
+
+/* Waterfall rows */
+.fx-tracing-waterfall { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.fx-tracing-waterfall__header { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr) 70px 60px minmax(240px, 3fr); gap: 8px; font-size: 11px; font-weight: 800; color: var(--fx-muted, #66758d); padding: 6px 8px; border-bottom: 1px solid var(--fx-border, #e3e8f1); background: var(--fx-blue-soft, #f8fbff); }
+.fx-tracing-waterfall__row { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr) 70px 60px minmax(240px, 3fr); gap: 8px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--fx-border, #eef2f8); font-size: 12px; }
+.fx-tracing-waterfall__row:hover { background: var(--fx-blue-soft, #f5faff); }
+.fx-tracing-waterfall__row.is-error { background: #fff7f7; }
+.fx-tracing-waterfall__row.is-error:hover { background: #fff0f0; }
+.fx-tracing-waterfall__name { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--fx-ink, #17233c); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-tracing-waterfall__name button { border: 0; background: transparent; color: var(--fx-muted, #66758d); cursor: pointer; padding: 0 2px; font: inherit; width: 16px; text-align: center; }
+.fx-tracing-waterfall__name button:disabled { cursor: default; opacity: .3; }
+.fx-tracing-waterfall__name .fx-span-type { display: inline-block; min-width: 38px; padding: 0 5px; border-radius: 4px; background: #eef3fb; color: var(--fx-muted, #66758d); font-size: 10px; font-weight: 700; text-align: center; }
+.fx-tracing-waterfall__name .fx-span-type.is-entry { background: #e8f1ff; color: var(--fx-blue, #1769ff); }
+.fx-tracing-waterfall__name .fx-span-type.is-exit { background: #f5e6ff; color: #7b3aa5; }
+.fx-tracing-waterfall__service { color: var(--fx-muted, #66758d); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-tracing-waterfall__duration { text-align: right; color: var(--fx-ink, #25324a); font-variant-numeric: tabular-nums; }
+.fx-tracing-waterfall__status { text-align: center; }
+.fx-tracing-waterfall__bar { position: relative; height: 14px; background: #f3f5fa; border-radius: 3px; overflow: hidden; }
+.fx-tracing-waterfall__bar-fill { position: absolute; top: 0; bottom: 0; background: var(--fx-blue, #1769ff); border-radius: 3px; min-width: 1px; }
+.fx-tracing-waterfall__bar.is-error .fx-tracing-waterfall__bar-fill { background: var(--fx-danger, #c45656); }
+
+/* Service detail modal wider with metrics grid */
+.fx-tracing-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.fx-tracing-metric-grid .fx-metric { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-blue-soft, #f8fbff); padding: 10px 12px; }
+.fx-tracing-metric-grid .fx-metric .fx-label { display: block; font-size: 11px; color: var(--fx-muted, #66758d); font-weight: 700; margin-bottom: 6px; }
+.fx-tracing-metric-grid .fx-metric .fx-value { display: block; font-size: 20px; font-weight: 800; color: var(--fx-ink, #17233c); font-variant-numeric: tabular-nums; }
+
+/* Topology canvas */
+.fx-tracing-topology-canvas { position: relative; width: 100%; height: 560px; border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); overflow: hidden; }
+.fx-tracing-topology-canvas svg { width: 100%; height: 100%; display: block; }
+.fx-tracing-topology-legend { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 4px; background: rgba(255,255,255,.88); border: 1px solid var(--fx-border, #e3e8f1); border-radius: 6px; padding: 8px 10px; font-size: 11px; color: var(--fx-muted, #66758d); }
+.fx-tracing-topology-legend .fx-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.fx-tracing-topology-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--fx-muted, #66758d); font-size: 13px; }
+
+@media (max-width: 1200px) { .fx-tracing-trace-layout { grid-template-columns: 1fr; } .fx-tracing-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .fx-tracing-grid, .fx-tracing-split { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fx-tracing-filter, .fx-tracing-filter.is-wide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .fx-tracing-head, .fx-tracing-banner { flex-direction: column; align-items: stretch; } .fx-tracing-tabs { justify-content: flex-start; } .fx-tracing-grid, .fx-tracing-split, .fx-tracing-filter, .fx-tracing-filter.is-wide, .fx-tracing-form, .fx-tracing-metric-grid { grid-template-columns: 1fr; } .fx-tracing-waterfall__header, .fx-tracing-waterfall__row { grid-template-columns: minmax(120px, 2fr) 60px minmax(140px, 3fr); } .fx-tracing-waterfall__service, .fx-tracing-waterfall__status { display: none; } }
