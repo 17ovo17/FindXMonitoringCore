@@ -362,14 +362,19 @@ func dashboardV2AndMetricViewsSourceRefs() []string {
 }
 
 func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRequest {
-	return []model.ContractMatrixRegisterRequest{
+	entries := []model.ContractMatrixRegisterRequest{
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-ALERT-RULE-GROUPS",
 			"Alert rule groups",
-			model.ContractStatusMissingBackend,
-			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`},
-			"Alert rule group backend contract is missing",
-			monitoringContractMetadata("/alerts?section=rules", "alert_rule_group", "/api/n9e/alert-rule-groups"),
+			model.ContractStatusBlocked,
+			warningSourceRefs(),
+			"Alert rule groups aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=rules",
+				"alert_rule_group_aggregate",
+				"alert-rule-groups-aggregate",
+				"Child gaps own list/detail/create/update/delete/favorite/group rules; excludes alert rule CRUD/import/export/clone/status, alert mute/shield, alert subscribe, notification rules/templates/channels/contacts",
+			),
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
@@ -388,6 +393,42 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 			monitoringContractMetadata("/assets?section=resource-groups", "resource_group_mapping", "/api/n9e/busi-groups"),
 		),
 	}
+	entries = append(entries, monitoringAlertRuleGroupGapSeeds()...)
+	return entries
+}
+
+func monitoringAlertRuleGroupGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-LIST", "Alert rule group list", warningSourceRefs(), "alert_rule_group_list", "GET /api/n9e/alert-rule-groups"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-CREATE", "Alert rule group create", warningSourceRefs(), "alert_rule_group_create", "POST /api/n9e/alert-rule-groups"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-DETAIL", "Alert rule group detail", warningSourceRefs(), "alert_rule_group_detail", "GET /api/n9e/alert-rule-group/{id}"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-UPDATE", "Alert rule group update", warningSourceRefs(), "alert_rule_group_update", "PUT /api/n9e/alert-rule-group/{id}"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-DELETE", "Alert rule group delete", warningSourceRefs(), "alert_rule_group_delete", "DELETE /api/n9e/alert-rule-group/{id}"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-RULES-LIST", "Alert rule group rules list", warningAndRuleModalSourceRefs(), "alert_rule_group_rules_list", "GET /api/n9e/busi-group/{id}/alert-rules"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUPS-MULTI-RULES-LIST", "Alert rule groups multi rules list", warningSourceRefs(), "alert_rule_group_multi_rules_list", "GET /api/n9e/busi-groups/alert-rules"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-FAVORITES-LIST", "Alert rule group favorites list", warningSourceRefs(), "alert_rule_group_favorites_list", "GET /api/n9e/alert-rule-groups/favorites"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-FAVORITE-ADD", "Alert rule group favorite add", warningSourceRefs(), "alert_rule_group_favorite_add", "POST /api/n9e/alert-rule-group/{id}/favorites"),
+		monitoringAlertRuleGroupGapSeed("FX-CONTRACT-N9E-ALERT-RULE-GROUP-FAVORITE-DELETE", "Alert rule group favorite delete", warningSourceRefs(), "alert_rule_group_favorite_delete", "DELETE /api/n9e/alert-rule-group/{id}/favorites"),
+	}
+}
+
+func monitoringAlertRuleGroupGapSeed(id, capability string, sourceRefs []string, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		model.ContractStatusMissingBackend,
+		sourceRefs,
+		"Alert rule group backend contract is missing",
+		monitoringContractMetadata("/alerts?section=rules", gapType, upstreamRef),
+	)
+}
+
+func warningSourceRefs() []string {
+	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`}
+}
+
+func warningAndRuleModalSourceRefs() []string {
+	return append(warningSourceRefs(), `D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\components\ruleModal.tsx`)
 }
 
 func monitoringContractSeed(id, capability, status string, sourceRefs []string, blockedReason string, metadata map[string]string) model.ContractMatrixRegisterRequest {
