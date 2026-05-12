@@ -14,9 +14,12 @@ import {
   normalizeVariables,
   toTags,
 } from './dashboardModel.js'
+import ConfirmModal from './ConfirmModal.jsx'
+import DashboardList from './DashboardList.jsx'
 import { ImportJsonModal, ShareConfirmModal } from './DashboardModals.jsx'
 import DetailView from './DetailView.jsx'
 import TemplatesView from './TemplatesView.jsx'
+import { PermissionProvider, usePermission } from './usePermission.jsx'
 import './dashboards.css'
 
 /** D12: debounce hook */
@@ -115,52 +118,6 @@ function Sidebar({ groups, scope, setScope }) {
   )
 }
 
-function DashboardList({ rows, selected, setSelected, onOpen, onRowAction, visibleCols }) {
-  const show = (key) => visibleCols.includes(key)
-  return (
-    <div className='fx-dash-table'>
-      <table>
-        <thead>
-          <tr>
-            <th><input type='checkbox' checked={rows.length > 0 && selected.length === rows.length} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.id) : [])} /></th>
-            {show('title') && <th>名称</th>}
-            {show('tags') && <th>标签</th>}
-            {show('description') && <th>说明</th>}
-            {show('updatedAt') && <th>更新时间</th>}
-            {show('updatedBy') && <th>更新人</th>}
-            {show('shared') && <th>共享</th>}
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td><input type='checkbox' checked={selected.includes(row.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))} /></td>
-              {show('title') && <td><button type='button' className='is-link' onClick={() => onOpen(row.id)}>{row.title}</button>{row.shared && <svg width="12" height="12" viewBox="0 0 24 24" fill="#1769ff" style={{marginLeft:4}}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>}</td>}
-              {show('tags') && <td>{row.tags.length ? row.tags.map((tag) => <span className='fx-dash-tag' key={tag}>{tag}</span>) : <span className='muted'>无</span>}</td>}
-              {show('description') && <td>{row.description || <span className='muted'>无</span>}</td>}
-              {show('updatedAt') && <td>{row.updatedAt || <span className='muted'>-</span>}</td>}
-              {show('updatedBy') && <td>{row.updatedBy || <span className='muted'>-</span>}</td>}
-              {show('shared') && <td><span className={row.shared ? 'fx-dash-state is-on' : 'fx-dash-state'}>{row.shareText}</span></td>}
-              <td>
-                <select onChange={(event) => { if (event.target.value) onRowAction(event.target.value, row); event.target.value = '' }}>
-                  <option value=''>更多</option>
-                  <option value='edit'>编辑</option>
-                  <option value='clone'>克隆</option>
-                  <option value='share'>公开</option>
-                  <option value='export'>导出</option>
-                  <option value='delete'>删除</option>
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length === 0 && <div className='fx-dash-empty'>暂无仪表盘数据</div>}
-    </div>
-  )
-}
-
 function Modal({ title, children, onClose }) {
   return <div className='fx-dash-modal'><div className='fx-dash-modal__body'><header><h2>{title}</h2><button type='button' onClick={onClose}>×</button></header>{children}</div></div>
 }
@@ -205,6 +162,10 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   const [showImportJson, setShowImportJson] = useState(false)
   const [shareTarget, setShareTarget] = useState(null)
   const [visibleCols, setVisibleCols] = useState(loadColumnSettings)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState(false)
   const section = query.section === 'detail' || query.section === 'templates' ? query.section : 'list'
   const active = useMemo(() => dashboards.find((row) => row.id === String(query.id)) || dashboards[0], [dashboards, query.id])
   const groups = useMemo(() => Object.values(dashboards.reduce((acc, row) => {
@@ -240,19 +201,26 @@ export function DashboardsPage({ query = {}, onNavigate }) {
         setDashboards((rows) => [cloned, ...rows])
       }
       if (action === 'share') { setShareTarget(row); return }
-      if (action === 'delete') { if (!confirm(`确定删除仪表盘「${row.title}」？`)) return; await dashboardsApi.remove(row.id) }
+      if (action === 'delete') { setDeleteConfirm(row); return }
       if (action === 'export') downloadJson(`${row.title || row.id}.json`, dashboardExportPayload(row))
-      if (['delete'].includes(action)) await loadDashboards()
     } catch (err) { setModal({ title: '操作失败', body: makeError(err) }) }
+  }
+  const confirmDeleteRow = async () => {
+    if (!deleteConfirm) return
+    try { await dashboardsApi.remove(deleteConfirm.id); setDeleteConfirm(null); await loadDashboards() } catch (err) { setModal({ title: '删除失败', body: makeError(err) }); setDeleteConfirm(null) }
   }
   const confirmShare = async () => {
     if (!shareTarget) return
     try { await dashboardsApi.share(shareTarget.id); setShareTarget(null); await loadDashboards() } catch (err) { setModal({ title: '公开失败', body: makeError(err) }); setShareTarget(null) }
   }
   const batchAction = async (action) => {
-    if (action === 'delete' && !confirm(`确定删除选中的 ${selected.length} 个仪表盘？`)) return
-    for (const id of selected) { const row = dashboards.find((item) => item.id === id); if (row) { try { if (action === 'clone') await dashboardsApi.clone(id); else if (action === 'share') await dashboardsApi.share(id); else if (action === 'delete') await dashboardsApi.remove(id); else if (action === 'export') downloadJson(`${row.title || row.id}.json`, dashboardExportPayload(row)) } catch { /* continue */ } } }
+    if (action === 'delete') { setBatchDeleteConfirm(true); return }
+    for (const id of selected) { const row = dashboards.find((item) => item.id === id); if (row) { try { if (action === 'clone') await dashboardsApi.clone(id); else if (action === 'share') await dashboardsApi.share(id); else if (action === 'export') downloadJson(`${row.title || row.id}.json`, dashboardExportPayload(row)) } catch { /* continue */ } } }
     setSelected([]); await loadDashboards()
+  }
+  const confirmBatchDelete = async () => {
+    for (const id of selected) { try { await dashboardsApi.remove(id) } catch { /* continue */ } }
+    setBatchDeleteConfirm(false); setSelected([]); await loadDashboards()
   }
   const importJsonData = async (data) => {
     try {
@@ -279,20 +247,36 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   return (
     <main className='fx-dash-page'>
       {section === 'detail' && active ? (
-        <DetailView dashboard={active} variables={variables} panels={panels} detailError={detailError} onBack={() => onNavigate?.({ section: 'list' })} onRefresh={() => openDetail(active.id)} onExport={() => rowAction('export', active)} onShare={() => rowAction('share', active)} onFullscreen={() => document.documentElement.requestFullscreen?.()} onBlocked={blocked} onUpdateDashboard={async (updates) => { try { const body = dashboardPayload({ ...active, ...updates }); const saved = normalizeDashboard(await dashboardsApi.update(active.id, body)); setDashboards((rows) => [saved, ...rows.filter((row) => row.id !== saved.id)]) } catch (err) { setDetailError(makeError(err, '保存失败')) } }} />
+        <DetailView dashboard={active} variables={variables} panels={panels} detailError={detailError} loading={loading && !active} onBack={() => onNavigate?.({ section: 'list' })} onRefresh={() => openDetail(active.id)} onExport={() => rowAction('export', active)} onShare={() => rowAction('share', active)} onFullscreen={() => document.documentElement.requestFullscreen?.()} onBlocked={blocked} onUpdateDashboard={async (updates) => { try { const body = dashboardPayload({ ...active, ...updates }); const saved = normalizeDashboard(await dashboardsApi.update(active.id, body)); setDashboards((rows) => [saved, ...rows.filter((row) => row.id !== saved.id)]) } catch (err) { setDetailError(makeError(err, '保存失败')) } }} />
       ) : (
         <div className='fx-dash-layout'>
           <Sidebar groups={groups} scope={scope} setScope={setScope} />
           <section className='fx-dash-main'>
             <Toolbar keyword={keyword} setKeyword={setKeyword} loading={loading} selectedCount={selected.length} visibleCols={visibleCols} setVisibleCols={setVisibleCols} onRefresh={loadDashboards} onCreate={() => openForm(null)} onTemplates={() => onNavigate?.({ section: 'templates' })} onImportJson={() => setShowImportJson(true)} onBatch={batchAction} />
             {error && <div className='fx-dash-alert is-error'>{error}</div>}
-            <DashboardList rows={filtered} selected={selected} setSelected={setSelected} onOpen={openDetail} onRowAction={rowAction} visibleCols={visibleCols} />
+            <DashboardList rows={filtered} selected={selected} setSelected={setSelected} onOpen={openDetail} onRowAction={rowAction} visibleCols={visibleCols} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1) }} />
           </section>
         </div>
       )}
       <DashboardOverlays draft={draft} setDraft={setDraft} saving={saving} error={error} onSubmit={saveDraft} onCloseDraft={() => setDraft(null)} modal={modal} onCloseModal={() => setModal(null)} />
       {showImportJson && <ImportJsonModal onClose={() => setShowImportJson(false)} onImport={importJsonData} />}
       {shareTarget && <ShareConfirmModal row={shareTarget} onClose={() => setShareTarget(null)} onConfirm={confirmShare} />}
+      {/* DEGRADE-019: 删除确认 Modal */}
+      {deleteConfirm && <ConfirmModal title="删除仪表盘" message={`确定删除仪表盘「${deleteConfirm.title}」？此操作不可撤销。`} confirmText="删除" danger onConfirm={confirmDeleteRow} onCancel={() => setDeleteConfirm(null)} />}
+      {batchDeleteConfirm && <ConfirmModal title="批量删除" message={`确定删除选中的 ${selected.length} 个仪表盘？此操作不可撤销。`} confirmText="删除" danger onConfirm={confirmBatchDelete} onCancel={() => setBatchDeleteConfirm(false)} />}
+      {/* DEGRADE-004: 全局 Loading */}
+      {loading && dashboards.length === 0 && (
+        <div className="fx-dash-global-loading"><div className="fx-dash-global-loading__spinner" /><span>加载中...</span></div>
+      )}
     </main>
+  )
+}
+
+/** 包装 PermissionProvider (DEGRADE-003) */
+export function DashboardsPageWithPermission(props) {
+  return (
+    <PermissionProvider>
+      <DashboardsPage {...props} />
+    </PermissionProvider>
   )
 }

@@ -30,6 +30,8 @@ export default function DashboardSettingsModal({ dashboard, onClose, onSaved }) 
   const [zoomBehavior, setZoomBehavior] = useState(
     dashboard.raw?.graphZoom || 'default'
   )
+  const [note, setNote] = useState(dashboard.raw?.note || dashboard.raw?.description || '')
+  const [isPublic, setIsPublic] = useState(dashboard.shared || dashboard.raw?.public || false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -61,6 +63,8 @@ export default function DashboardSettingsModal({ dashboard, onClose, onSaved }) 
         title: title.trim(),
         ident,
         tags,
+        note,
+        public: isPublic,
         graphTooltip: tooltipMode,
         graphZoom: zoomBehavior,
       }
@@ -128,6 +132,23 @@ export default function DashboardSettingsModal({ dashboard, onClose, onSaved }) 
                 </div>
               </div>
             </div>
+            <label className="fx-pe-field">
+              <span>备注 (Note)</span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="仪表盘备注信息"
+                rows={3}
+              />
+            </label>
+            <label className="fx-pe-field fx-settings-var-multi">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+              />
+              <span>公开仪表盘</span>
+            </label>
             <div className="fx-pe-field">
               <span>提示信息 (Tooltip)</span>
               <div className="fx-btn-group">

@@ -4,8 +4,48 @@ import VariableDropdown from './VariableDropdown.jsx'
 import VariableListModal from './VariableListModal.jsx'
 
 /**
+ * DEGRADE-016: 解析变量定义中的 $变量名 引用，构建依赖链
+ */
+function buildDependencyOrder(variables) {
+  const nameSet = new Set(variables.map((v) => v.name))
+  const deps = new Map()
+  for (const v of variables) {
+    const query = v.query || v.definition || ''
+    const found = []
+    const re = /\$(\w+)/g
+    let match
+    while ((match = re.exec(query)) !== null) {
+      if (nameSet.has(match[1]) && match[1] !== v.name) found.push(match[1])
+    }
+    deps.set(v.name, found)
+  }
+  // 拓扑排序
+  const sorted = []
+  const visited = new Set()
+  const visit = (name) => {
+    if (visited.has(name)) return
+    visited.add(name)
+    for (const dep of (deps.get(name) || [])) visit(dep)
+    sorted.push(name)
+  }
+  for (const v of variables) visit(v.name)
+  return { sorted, deps }
+}
+
+/**
+ * DEGRADE-017: 应用正则过滤
+ */
+function applyRegexFilter(options, regex) {
+  if (!regex) return options
+  try {
+    const re = new RegExp(regex)
+    return options.filter((opt) => re.test(opt.value || opt.label || ''))
+  } catch { return options }
+}
+
+/**
  * 模板变量栏（对齐夜莺）
- * 右侧有编辑图标，点击弹出变量列表 Modal
+ * 支持依赖链（DEGRADE-016）和正则过滤（DEGRADE-017）
  */
 export default function TemplateVariablesBar({ variables, onVariablesChange, onVariablesUpdate }) {
   const [optionsMap, setOptionsMap] = useState({})
@@ -17,6 +57,8 @@ export default function TemplateVariablesBar({ variables, onVariablesChange, onV
     }
     return initial
   })
+
+  const { sorted, deps } = useMemo(() => buildDependencyOrder(variables), [variables])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -34,33 +76,41 @@ export default function TemplateVariablesBar({ variables, onVariablesChange, onV
     }
   }, [variables])
 
-  useEffect(() => {
-    let cancelled = false
-    const loadQueryOptions = async () => {
-      const newOptions = {}
-      for (const v of variables) {
-        if (v.type === 'query' && v.query) {
-          try {
-            const values = await metricQueryApi.labelValues({ label: v.query })
-            if (!cancelled) {
-              newOptions[v.name] = (Array.isArray(values) ? values : []).map(
-                (val) => ({ label: val, value: val })
-              )
-            }
-          } catch {
-            newOptions[v.name] = []
+  /* DEGRADE-016: 按依赖顺序加载变量选项 */
+  const loadVariableOptions = useCallback(async (currentValues) => {
+    const newOptions = {}
+    for (const name of sorted) {
+      const v = variables.find((vv) => vv.name === name)
+      if (!v) continue
+      if (v.type === 'query' && (v.query || v.definition)) {
+        try {
+          let queryExpr = v.query || v.definition
+          // 替换依赖变量的值
+          for (const dep of (deps.get(name) || [])) {
+            const depVal = currentValues[dep] || ''
+            const replacement = Array.isArray(depVal) ? depVal.join('|') : depVal
+            queryExpr = queryExpr.replace(new RegExp(`\\$${dep}\\b`, 'g'), replacement)
+            queryExpr = queryExpr.replace(new RegExp(`\\$\\{${dep}\\}`, 'g'), replacement)
           }
-        } else if (v.type === 'custom' && Array.isArray(v.options)) {
-          newOptions[v.name] = v.options.map((opt) =>
-            typeof opt === 'string' ? { label: opt, value: opt } : opt
-          )
+          const values = await metricQueryApi.labelValues({ label: queryExpr })
+          let opts = (Array.isArray(values) ? values : []).map((val) => ({ label: val, value: val }))
+          opts = applyRegexFilter(opts, v.regex)
+          newOptions[name] = opts
+        } catch {
+          newOptions[name] = []
         }
+      } else if (v.type === 'custom' && Array.isArray(v.options)) {
+        let opts = v.options.map((opt) => typeof opt === 'string' ? { label: opt, value: opt } : opt)
+        opts = applyRegexFilter(opts, v.regex)
+        newOptions[name] = opts
       }
-      if (!cancelled) setOptionsMap(newOptions)
     }
-    if (variables.length > 0) loadQueryOptions()
-    return () => { cancelled = true }
-  }, [variables])
+    setOptionsMap(newOptions)
+  }, [variables, sorted, deps])
+
+  useEffect(() => {
+    if (variables.length > 0) loadVariableOptions(valuesMap)
+  }, [variables, loadVariableOptions])
 
   const syncToUrl = useCallback((values) => {
     const url = new URL(window.location.href)
@@ -75,14 +125,23 @@ export default function TemplateVariablesBar({ variables, onVariablesChange, onV
     window.history.replaceState(null, '', url.toString())
   }, [variables])
 
+  /* DEGRADE-016: 当被依赖的变量值变化时，自动重新加载依赖它的变量选项 */
   const handleChange = useCallback((name, value) => {
     setValuesMap((prev) => {
       const next = { ...prev, [name]: value }
       syncToUrl(next)
       onVariablesChange?.(next)
+      // 重新加载依赖此变量的其他变量
+      const dependents = variables.filter((v) => {
+        const varDeps = deps.get(v.name) || []
+        return varDeps.includes(name)
+      })
+      if (dependents.length > 0) {
+        loadVariableOptions(next)
+      }
       return next
     })
-  }, [syncToUrl, onVariablesChange])
+  }, [syncToUrl, onVariablesChange, variables, deps, loadVariableOptions])
 
   const handleVariablesUpdate = (updatedVars) => {
     onVariablesUpdate?.(updatedVars)

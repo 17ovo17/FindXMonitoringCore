@@ -10,60 +10,111 @@ const VARIABLE_TYPES = [
   { key: 'datasourceIdentifier', label: '数据源标识 (DatasourceIdentifier)' },
 ]
 
+/**
+ * DEGRADE-015: 变量编辑表单（类型专属字段）
+ * DEGRADE-017: 变量正则过滤
+ */
 function VariableEditForm({ variable, onSave, onCancel }) {
   const [name, setName] = useState(variable?.name || '')
   const [type, setType] = useState(variable?.type || 'query')
-  const [definition, setDefinition] = useState(variable?.query || '')
+  const [definition, setDefinition] = useState(variable?.query || variable?.definition || '')
+  const [options, setOptions] = useState(variable?.options ? (Array.isArray(variable.options) ? variable.options.join(',') : variable.options) : '')
+  const [defaultValue, setDefaultValue] = useState(variable?.defaultValue || variable?.current || '')
+  const [datasourceType, setDatasourceType] = useState(variable?.datasourceType || 'prometheus')
   const [multi, setMulti] = useState(variable?.multi || false)
   const [hide, setHide] = useState(variable?.hide || false)
+  const [regex, setRegex] = useState(variable?.regex || '')
+  const [previewValues, setPreviewValues] = useState(null)
+
+  const handlePreview = async () => {
+    try {
+      const resp = await fetch(`/api/v1/monitor/label-values?query=${encodeURIComponent(definition)}`)
+      const data = await resp.json()
+      let values = data?.dat || data?.data || data || []
+      if (!Array.isArray(values)) values = []
+      if (regex) {
+        try {
+          const re = new RegExp(regex)
+          values = values.filter((v) => re.test(v))
+        } catch { /* invalid regex, skip filter */ }
+      }
+      setPreviewValues(values.slice(0, 20))
+    } catch {
+      setPreviewValues(['(加载失败)'])
+    }
+  }
 
   const handleSubmit = () => {
-    onSave({ ...variable, name, type, query: definition, multi, hide })
+    const result = { ...variable, name, type, multi, hide, regex }
+    if (type === 'query') { result.query = definition; result.definition = definition }
+    else if (type === 'custom') { result.options = options.split(',').map((s) => s.trim()).filter(Boolean) }
+    else if (type === 'textbox') { result.defaultValue = defaultValue; result.current = defaultValue }
+    else if (type === 'constant') { result.defaultValue = defaultValue; result.current = defaultValue }
+    else if (type === 'datasource') { result.datasourceType = datasourceType }
+    else if (type === 'hostIdent') { result.query = definition }
+    onSave(result)
   }
 
   return (
     <div className="fx-varlist-edit">
-      <label className="fx-pe-field">
-        <span>变量名称</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
-      <label className="fx-pe-field">
-        <span>变量类型</span>
+      <label className="fx-pe-field"><span>变量名称</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
+      <label className="fx-pe-field"><span>变量类型</span>
         <select value={type} onChange={(e) => setType(e.target.value)}>
-          {VARIABLE_TYPES.map((t) => (
-            <option key={t.key} value={t.key}>{t.label}</option>
-          ))}
+          {VARIABLE_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
       </label>
-      <label className="fx-pe-field">
-        <span>变量定义</span>
-        <input
-          value={definition}
-          onChange={(e) => setDefinition(e.target.value)}
-          placeholder="如 label_values(metric, label)"
-        />
+      {/* DEGRADE-015: 类型专属字段 */}
+      {type === 'query' && (
+        <>
+          <label className="fx-pe-field"><span>变量定义 (label_values 表达式)</span>
+            <input value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="如 label_values(metric, label)" />
+          </label>
+          <button type="button" className="fx-pe-add-query" onClick={handlePreview}>Preview 预览</button>
+          {previewValues && (
+            <div className="fx-varlist-preview">
+              {previewValues.map((v, i) => <span key={i} className="fx-dash-tag">{v}</span>)}
+            </div>
+          )}
+        </>
+      )}
+      {type === 'custom' && (
+        <label className="fx-pe-field"><span>选项 (逗号分隔)</span>
+          <input value={options} onChange={(e) => setOptions(e.target.value)} placeholder="value1, value2, value3" />
+        </label>
+      )}
+      {type === 'datasource' && (
+        <label className="fx-pe-field"><span>数据源类型</span>
+          <select value={datasourceType} onChange={(e) => setDatasourceType(e.target.value)}>
+            <option value="prometheus">Prometheus</option>
+            <option value="elasticsearch">Elasticsearch</option>
+            <option value="mysql">MySQL</option>
+          </select>
+        </label>
+      )}
+      {type === 'textbox' && (
+        <label className="fx-pe-field"><span>默认值</span>
+          <input value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} placeholder="默认文本值" />
+        </label>
+      )}
+      {type === 'constant' && (
+        <label className="fx-pe-field"><span>常量值</span>
+          <input value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} placeholder="常量值" />
+        </label>
+      )}
+      {type === 'hostIdent' && (
+        <label className="fx-pe-field"><span>主机标识查询</span>
+          <input value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="主机标识选择表达式" />
+        </label>
+      )}
+      {/* DEGRADE-017: 正则过滤 */}
+      <label className="fx-pe-field"><span>正则过滤 (Regex)</span>
+        <input value={regex} onChange={(e) => setRegex(e.target.value)} placeholder="如 ^prod-.* (可选)" />
       </label>
-      <label className="fx-pe-field fx-settings-var-multi">
-        <input
-          type="checkbox"
-          checked={multi}
-          onChange={(e) => setMulti(e.target.checked)}
-        />
-        <span>支持多选</span>
-      </label>
-      <label className="fx-pe-field fx-settings-var-multi">
-        <input
-          type="checkbox"
-          checked={hide}
-          onChange={(e) => setHide(e.target.checked)}
-        />
-        <span>隐藏变量</span>
-      </label>
+      <label className="fx-pe-field fx-settings-var-multi"><input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} /><span>支持多选</span></label>
+      <label className="fx-pe-field fx-settings-var-multi"><input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} /><span>隐藏变量</span></label>
       <div className="fx-dash-actions" style={{ marginTop: 12 }}>
         <button type="button" onClick={onCancel}>取消</button>
-        <button type="button" className="is-primary" onClick={handleSubmit}>
-          确定
-        </button>
+        <button type="button" className="is-primary" onClick={handleSubmit}>确定</button>
       </div>
     </div>
   )
