@@ -29,6 +29,106 @@ func ListMonitorAlertEvents(current bool) []model.MonitorAlertEvent {
 	return listMonitorEventsMemory(current)
 }
 
+// ListMonitorAlertEventsPaged 分页查询告警事件，支持状态过滤和搜索。
+func ListMonitorAlertEventsPaged(current bool, page, pageSize int, status, severity, search string) ([]model.MonitorAlertEvent, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	if mysqlOK {
+		return listMonitorAlertEventsPagedMySQL(current, offset, pageSize, status, severity, search)
+	}
+	return listMonitorAlertEventsPagedMemory(current, offset, pageSize, status, severity, search)
+}
+
+func listMonitorAlertEventsPagedMySQL(current bool, offset, limit int, status, severity, search string) ([]model.MonitorAlertEvent, int64, error) {
+	table := "monitor_alert_events_history"
+	if current {
+		table = "monitor_alert_events_current"
+	}
+
+	where, args := buildMonitorEventWhereClause(status, severity, search)
+
+	countSQL := `SELECT COUNT(*) FROM ` + table + where
+	var total int64
+	if err := db.QueryRow(countSQL, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count alert events: %w", err)
+	}
+
+	querySQL := monitorEventSelectSQL(table) + where + ` ORDER BY last_seen DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
+	rows, err := db.Query(querySQL, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query alert events: %w", err)
+	}
+	defer rows.Close()
+	events := scanMonitorAlertEvents(rows)
+	return events, total, nil
+}
+
+func buildMonitorEventWhereClause(status, severity, search string) (string, []any) {
+	conditions := []string{}
+	args := []any{}
+
+	if status != "" {
+		conditions = append(conditions, "status=?")
+		args = append(args, status)
+	}
+	if severity != "" {
+		conditions = append(conditions, "severity=?")
+		args = append(args, severity)
+	}
+	if search != "" {
+		conditions = append(conditions, "(name LIKE ? OR event_key LIKE ?)")
+		like := "%" + search + "%"
+		args = append(args, like, like)
+	}
+
+	if len(conditions) == 0 {
+		return "", args
+	}
+	return " WHERE " + strings.Join(conditions, " AND "), args
+}
+
+func listMonitorAlertEventsPagedMemory(current bool, offset, limit int, status, severity, search string) ([]model.MonitorAlertEvent, int64, error) {
+	all := listMonitorEventsMemory(current)
+	filtered := filterMonitorEventsInMemory(all, status, severity, search)
+	total := int64(len(filtered))
+
+	if offset >= len(filtered) {
+		return []model.MonitorAlertEvent{}, total, nil
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], total, nil
+}
+
+func filterMonitorEventsInMemory(events []model.MonitorAlertEvent, status, severity, search string) []model.MonitorAlertEvent {
+	if status == "" && severity == "" && search == "" {
+		return events
+	}
+	out := []model.MonitorAlertEvent{}
+	for _, event := range events {
+		if status != "" && event.Status != status {
+			continue
+		}
+		if severity != "" && event.Severity != severity {
+			continue
+		}
+		if search != "" && !strings.Contains(event.Name, search) && !strings.Contains(event.EventKey, search) {
+			continue
+		}
+		out = append(out, event)
+	}
+	return out
+}
+
 func GetMonitorAlertEvent(id string) (*model.MonitorAlertEvent, bool) {
 	if mysqlOK {
 		for _, table := range []string{"monitor_alert_events_current", "monitor_alert_events_history"} {

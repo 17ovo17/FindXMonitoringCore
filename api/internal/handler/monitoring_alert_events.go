@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"ai-workbench-api/internal/model"
@@ -12,11 +13,53 @@ import (
 )
 
 func ListMonitorEventsCurrent(c *gin.Context) {
-	c.JSON(http.StatusOK, filterMonitorEvents(store.ListMonitorAlertEvents(true), c))
+	listMonitorEventsPaged(c, true)
 }
 
 func ListMonitorEventsHistory(c *gin.Context) {
-	c.JSON(http.StatusOK, filterMonitorEvents(store.ListMonitorAlertEvents(false), c))
+	listMonitorEventsPaged(c, false)
+}
+
+func listMonitorEventsPaged(c *gin.Context, current bool) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	status := strings.TrimSpace(c.Query("status"))
+	severity := strings.TrimSpace(c.Query("severity"))
+	search := strings.TrimSpace(c.Query("search"))
+
+	events, total, err := store.ListMonitorAlertEventsPaged(current, page, pageSize, status, severity, search)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query alert events failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"items": events,
+		"total": total,
+		"page":  page,
+		"size":  pageSize,
+	})
+}
+
+// CreateMonitorEvent 手动创建告警事件（用于测试和外部集成）。
+func CreateMonitorEvent(c *gin.Context) {
+	var req model.MonitorAlertEvent
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+	if req.Severity == "" {
+		req.Severity = model.MonitorAlertSeverityWarning
+	}
+	event, err := store.UpsertMonitorAlertEvent(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create alert event failed"})
+		return
+	}
+	c.JSON(http.StatusCreated, event)
 }
 
 func GetMonitorEvent(c *gin.Context) {
@@ -82,21 +125,3 @@ func applyMonitorEventAction(c *gin.Context, actionName string) {
 	c.JSON(http.StatusOK, event)
 }
 
-func filterMonitorEvents(events []model.MonitorAlertEvent, c *gin.Context) []model.MonitorAlertEvent {
-	status := strings.TrimSpace(c.Query("status"))
-	severity := strings.TrimSpace(c.Query("severity"))
-	if status == "" && severity == "" {
-		return events
-	}
-	out := []model.MonitorAlertEvent{}
-	for _, event := range events {
-		if status != "" && event.Status != status {
-			continue
-		}
-		if severity != "" && event.Severity != severity {
-			continue
-		}
-		out = append(out, event)
-	}
-	return out
-}

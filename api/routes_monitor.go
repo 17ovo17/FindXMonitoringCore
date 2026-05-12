@@ -83,6 +83,7 @@ func registerMonitorAlertRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/monitor/alert-rules/:id/rollback", mw.monitorRequired("monitor.alert_rule", "rollback"), handler.RollbackMonitorAlertRule)
 	v1.GET("/monitor/events/current", mw.monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsCurrent)
 	v1.GET("/monitor/events/history", mw.monitorRequired("monitor.alert_event", "read"), handler.ListMonitorEventsHistory)
+	v1.POST("/monitor/events", mw.monitorRequired("monitor.alert_event", "create"), handler.CreateMonitorEvent)
 	v1.GET("/monitor/events/:id", mw.monitorRequired("monitor.alert_event", "read"), handler.GetMonitorEvent)
 	v1.POST("/monitor/events/:id/ack", mw.monitorRequired("monitor.alert_event", "ack"), handler.AckMonitorEvent)
 	v1.POST("/monitor/events/:id/assign", mw.monitorRequired("monitor.alert_event", "assign"), handler.AssignMonitorEvent)
