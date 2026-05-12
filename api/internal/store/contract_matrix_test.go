@@ -111,6 +111,17 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-UPDATE",
 	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-DELETE",
 	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-TRYRUN",
+	"FX-CONTRACT-N9E-ALERT-EVENT-LIFECYCLE",
+	"FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-LIST",
+	"FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-DATASOURCES",
+	"FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-CARD-LIST",
+	"FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-CARD-DETAILS",
+	"FX-CONTRACT-N9E-ALERT-EVENT-DETAIL",
+	"FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-DELETE",
+	"FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-LIST",
+	"FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-BY-IDS",
+	"FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-CLEANUP",
+	"FX-CONTRACT-N9E-ALERT-EVENT-NOTIFY-RECORDS",
 	"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 }
 
@@ -229,6 +240,38 @@ func TestMonitoringContractMatrixAlertSubscribeSourceRefs(t *testing.T) {
 	for _, ref := range want {
 		if !contractListContains(got, ref) {
 			t.Fatalf("alert subscribe source refs missing %q: %#v", ref, got)
+		}
+	}
+}
+
+func TestMonitoringContractMatrixAlertEventLifecycleSourceRefs(t *testing.T) {
+	got := alertEventLifecycleSourceRefs()
+	want := []string{
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\services.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\Table.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\card.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\DetailNG\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\DetailNG\Actions.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\DetailNG\SharingLinkModal.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\event\EventNotifyRecords\services.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertCurEvent\services.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertCurEvent\pages\List\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertCurEvent\pages\List\AlertTable.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertCurEvent\utils\deleteAlertEventsModal.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\historyEvents\services.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\historyEvents\ListNG\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\historyEvents\ListNG\DeleteEventsModal.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\historyEvents\exportEvents.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules\List\EventsDrawer\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("alert event lifecycle source refs count = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for _, ref := range want {
+		if !contractListContains(got, ref) {
+			t.Fatalf("alert event lifecycle source refs missing %q: %#v", ref, got)
 		}
 	}
 }

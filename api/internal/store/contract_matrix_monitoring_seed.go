@@ -411,6 +411,19 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 			),
 		),
 		monitoringContractSeed(
+			"FX-CONTRACT-N9E-ALERT-EVENT-LIFECYCLE",
+			"Alert event lifecycle aggregate",
+			model.ContractStatusBlocked,
+			alertEventLifecycleSourceRefs(),
+			"Alert event lifecycle aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=events",
+				"alert_event_lifecycle_aggregate",
+				"alert-event-lifecycle-aggregate",
+				"owns:current,history,list,detail,delete,notify,card,ds,csv,share-read; excludes:rule,mute,shield,subscribe,notif,pipeline,query,dashboard,template,metric,ack,share-cred",
+			),
+		),
+		monitoringContractSeed(
 			"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 			"Business group resource group map",
 			model.ContractStatusMissingBackend,
@@ -423,6 +436,7 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 	entries = append(entries, monitoringAlertRuleLifecycleGapSeeds()...)
 	entries = append(entries, monitoringAlertMuteShieldGapSeeds()...)
 	entries = append(entries, monitoringAlertSubscribeGapSeeds()...)
+	entries = append(entries, monitoringAlertEventLifecycleGapSeeds()...)
 	return entries
 }
 
@@ -487,6 +501,32 @@ func monitoringAlertRuleLifecycleGapSeed(id, capability, status, gapType, upstre
 
 func warningSourceRefs() []string {
 	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`}
+}
+
+func monitoringAlertEventLifecycleGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-LIST", "Alert current event list", model.ContractStatusMissingBackend, "alert_event_current_list", "GET /api/n9e/alert-cur-events/list; GET /api/n9e-plus/alert-cur-events/list", "Alert current event list backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-DATASOURCES", "Alert current event datasources", model.ContractStatusMissingBackend, "alert_event_current_datasources", "GET /api/n9e/alert-cur-events-datasources", "Alert current event datasource list backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-CARD-LIST", "Alert current event card list", model.ContractStatusMissingDatasource, "alert_event_current_card_list", "GET /api/n9e/alert-cur-events/card", "Alert current event card datasource contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-CARD-DETAILS", "Alert current event card details", model.ContractStatusMissingDatasource, "alert_event_current_card_details", "POST /api/n9e/alert-cur-events/card/details; POST /api/n9e-plus/alert-cur-events/card/details", "Alert current event card details datasource contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-DETAIL", "Alert event detail", model.ContractStatusMissingBackend, "alert_event_detail", "GET /api/n9e/alert-his-event/{eventId}; GET /api/n9e-plus/alert-his-event/{eventId}", "Alert event detail backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-CURRENT-DELETE", "Alert current event delete", model.ContractStatusMissingBackend, "alert_event_current_delete", "DELETE /api/n9e/alert-cur-events", "Alert current event delete backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-LIST", "Alert history event list", model.ContractStatusMissingBackend, "alert_event_history_list", "GET /api/n9e/alert-his-events/list", "Alert history event list backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-BY-IDS", "Alert history events by IDs", model.ContractStatusMissingBackend, "alert_event_history_by_ids", "GET /api/n9e-plus/alert-his-events/{ids}", "Alert history events by IDs backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-HISTORY-CLEANUP", "Alert history event cleanup", model.ContractStatusMissingBackend, "alert_event_history_cleanup", "DELETE /api/n9e/alert-his-events", "Alert history event cleanup backend contract is missing"),
+		monitoringAlertEventLifecycleGapSeed("FX-CONTRACT-N9E-ALERT-EVENT-NOTIFY-RECORDS", "Alert event notify records", model.ContractStatusMissingBackend, "alert_event_notify_records", "GET /api/n9e/event-notify-records/{eventId}", "Alert event notify records backend contract is missing"),
+	}
+}
+
+func monitoringAlertEventLifecycleGapSeed(id, capability, status, gapType, upstreamRef, blockedReason string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		alertEventLifecycleSourceRefs(),
+		blockedReason,
+		monitoringContractMetadata("/alerts?section=events", gapType, upstreamRef),
+	)
 }
 
 func monitoringAlertMuteShieldGapSeeds() []model.ContractMatrixRegisterRequest {
@@ -598,6 +638,37 @@ func alertSubscribeSourceRefs() []string {
 }
 
 func alertSubscribeMatureSourceRefs(relativePaths ...string) []string {
+	refs := make([]string, 0, len(relativePaths))
+	for _, relativePath := range relativePaths {
+		refs = append(refs, `D:\项目迁移文件\平台源码\`+relativePath)
+	}
+	return refs
+}
+
+func alertEventLifecycleSourceRefs() []string {
+	return alertEventLifecycleMatureSourceRefs(
+		`fe-main\src\pages\event\services.ts`,
+		`fe-main\src\pages\event\index.tsx`,
+		`fe-main\src\pages\event\Table.tsx`,
+		`fe-main\src\pages\event\card.tsx`,
+		`fe-main\src\pages\event\DetailNG\index.tsx`,
+		`fe-main\src\pages\event\DetailNG\Actions.tsx`,
+		`fe-main\src\pages\event\DetailNG\SharingLinkModal.tsx`,
+		`fe-main\src\pages\event\EventNotifyRecords\services.ts`,
+		`fe-main\src\pages\alertCurEvent\services.ts`,
+		`fe-main\src\pages\alertCurEvent\pages\List\index.tsx`,
+		`fe-main\src\pages\alertCurEvent\pages\List\AlertTable.tsx`,
+		`fe-main\src\pages\alertCurEvent\utils\deleteAlertEventsModal.tsx`,
+		`fe-main\src\pages\historyEvents\services.ts`,
+		`fe-main\src\pages\historyEvents\ListNG\index.tsx`,
+		`fe-main\src\pages\historyEvents\ListNG\DeleteEventsModal.tsx`,
+		`fe-main\src\pages\historyEvents\exportEvents.ts`,
+		`fe-main\src\pages\alertRules\List\EventsDrawer\index.tsx`,
+		`fe-main\src\services\warning.ts`,
+	)
+}
+
+func alertEventLifecycleMatureSourceRefs(relativePaths ...string) []string {
 	refs := make([]string, 0, len(relativePaths))
 	for _, relativePath := range relativePaths {
 		refs = append(refs, `D:\项目迁移文件\平台源码\`+relativePath)
