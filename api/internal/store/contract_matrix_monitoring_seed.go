@@ -34,7 +34,7 @@ func monitoringContractMatrixSeedEntries() []model.ContractMatrixRegisterRequest
 }
 
 func monitoringDatasourceContractSeeds() []model.ContractMatrixRegisterRequest {
-	return []model.ContractMatrixRegisterRequest{
+	entries := []model.ContractMatrixRegisterRequest{
 		monitoringReadyContractSeed(
 			"FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST",
 			"Datasource brief list",
@@ -52,11 +52,16 @@ func monitoringDatasourceContractSeeds() []model.ContractMatrixRegisterRequest {
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID",
-			"Datasource proxy by id",
-			model.ContractStatusMissingDatasource,
+			"Datasource proxy aggregate",
+			model.ContractStatusBlocked,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`},
-			"Datasource proxy adapter is not available",
-			monitoringContractMetadata("/query?section=metrics", "datasource_proxy", "/api/n9e/proxy/{datasource_id}"),
+			"Datasource proxy aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/query?section=metrics",
+				"datasource_proxy_aggregate",
+				"datasource-proxy-aggregate",
+				"Child gaps own labels,label-values,metric-names,series,buildinfo,query,query_range,es_search endpoint refs",
+			),
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DATASOURCE-TEST-CONNECTION",
@@ -67,6 +72,32 @@ func monitoringDatasourceContractSeeds() []model.ContractMatrixRegisterRequest {
 			monitoringContractMetadata("/integrations?section=datasources", "datasource_contract", "connection-test"),
 		),
 	}
+	entries = append(entries, monitoringDatasourceProxyGapSeeds()...)
+	return entries
+}
+
+func monitoringDatasourceProxyGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-LABELS", "Datasource proxy labels", dashboardV2AndMetricViewsSourceRefs(), "/query?section=metrics", "datasource_proxy_labels", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/labels"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-LABEL-VALUES", "Datasource proxy label values", dashboardV2AndMetricViewsSourceRefs(), "/query?section=metrics", "datasource_proxy_label_values", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/label/{label}/values"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-METRIC-NAMES", "Datasource proxy metric names", dashboardV2AndMetricViewsSourceRefs(), "/query?section=metrics", "datasource_proxy_metric_names", "GET /api/{N9E_PATHNAME}/proxy/{datasource_id}/api/v1/label/__name__/values"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-SERIES", "Datasource proxy series", dashboardV2SourceRefs(), "/query?section=metrics", "datasource_proxy_series", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/series"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-BUILDINFO", "Datasource proxy build info", dashboardV2SourceRefs(), "/query?section=metrics", "datasource_proxy_buildinfo", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/status/buildinfo"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY", "Datasource proxy instant query", dashboardV2SourceRefs(), "/query?section=metrics", "datasource_proxy_query", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/query"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY-RANGE", "Datasource proxy range query", metricViewsSourceRefs(), "/query?section=metric-views", "datasource_proxy_query_range", "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/query_range"),
+		monitoringDatasourceProxyGapSeed("FX-CONTRACT-N9E-DATASOURCE-PROXY-ES-SEARCH", "Datasource proxy ES search", dashboardV2SourceRefs(), "/query?section=metrics", "datasource_proxy_es_search", "POST /api/{N9E_PATHNAME}/proxy/{datasourceValue}/{index}/_search"),
+	}
+}
+
+func monitoringDatasourceProxyGapSeed(id, capability string, sourceRefs []string, findxRoute, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		model.ContractStatusMissingDatasource,
+		sourceRefs,
+		"Datasource proxy datasource contract is missing",
+		monitoringContractMetadata(findxRoute, gapType, upstreamRef),
+	)
 }
 
 func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequest {
@@ -197,6 +228,10 @@ func metricSourceRefs() []string {
 
 func metricViewsSourceRefs() []string {
 	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`}
+}
+
+func dashboardV2AndMetricViewsSourceRefs() []string {
+	return append(dashboardV2SourceRefs(), metricViewsSourceRefs()...)
 }
 
 func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRequest {

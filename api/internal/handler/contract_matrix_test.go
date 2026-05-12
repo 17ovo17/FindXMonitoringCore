@@ -122,7 +122,7 @@ func TestContractMatrixSeededMonitoringGapDetailIsBlocked(t *testing.T) {
 	var payload model.ContractMatrixBlockedResponse
 	decodeContractMatrixResponse(t, w, &payload)
 	if payload.ContractGapID != "FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID" ||
-		payload.Status != model.ContractStatusMissingDatasource ||
+		payload.Status != model.ContractStatusBlocked ||
 		payload.Code != model.ContractBlockedByContractCode ||
 		payload.SafeToRetry {
 		t.Fatalf("seeded monitoring blocked response mismatch: %#v", payload)
@@ -133,6 +133,39 @@ func TestContractMatrixSeededMonitoringGapDetailIsBlocked(t *testing.T) {
 	assertContractMatrixNoMojibake(t, payload.Message)
 	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 	assertContractMatrixBlockedShape(t, w.Body.String())
+}
+
+func TestContractMatrixSeededDatasourceProxySplitGapsAreBlocked(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	for _, id := range []string{
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-LABELS",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-LABEL-VALUES",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-METRIC-NAMES",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-SERIES",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-BUILDINFO",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY-RANGE",
+		"FX-CONTRACT-N9E-DATASOURCE-PROXY-ES-SEARCH",
+	} {
+		t.Run(id, func(t *testing.T) {
+			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+id, nil)
+			if w.Code != http.StatusConflict {
+				t.Fatalf("%s should return BLOCKED_BY_CONTRACT 409, got %d body=%s", id, w.Code, w.Body.String())
+			}
+			var payload model.ContractMatrixBlockedResponse
+			decodeContractMatrixResponse(t, w, &payload)
+			if payload.Code != model.ContractBlockedByContractCode ||
+				payload.ContractGapID != id ||
+				payload.Status != model.ContractStatusMissingDatasource ||
+				payload.SafeToRetry {
+				t.Fatalf("datasource proxy split gap response mismatch for %s: %#v", id, payload)
+			}
+			assertContractMatrixNoMojibake(t, payload.Message)
+			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+			assertContractMatrixBlockedShape(t, w.Body.String())
+		})
+	}
 }
 
 func TestContractMatrixSeededDatasourceBriefListIsReady(t *testing.T) {

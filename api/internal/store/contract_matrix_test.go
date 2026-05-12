@@ -10,6 +10,14 @@ import (
 var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST",
 	"FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-LABELS",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-LABEL-VALUES",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-METRIC-NAMES",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-SERIES",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-BUILDINFO",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY-RANGE",
+	"FX-CONTRACT-N9E-DATASOURCE-PROXY-ES-SEARCH",
 	"FX-CONTRACT-N9E-DATASOURCE-TEST-CONNECTION",
 	"FX-CONTRACT-N9E-SYSTEM-INTEGRATION-CATALOG",
 	"FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT",
@@ -227,6 +235,57 @@ func TestMonitoringContractMatrixMetricViewsCrudIsSplitIntoPreciseGaps(t *testin
 	assertMonitoringMetricViewsSplitGap(t, "FX-CONTRACT-N9E-METRIC-VIEWS-DELETE", "DELETE /api/n9e/metric-views")
 }
 
+func TestMonitoringContractMatrixDatasourceProxyIsSplitIntoPreciseGaps(t *testing.T) {
+	ResetContractMatrixForTest()
+
+	aggregate, ok, err := GetContractMatrixEntry("FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID")
+	if err != nil {
+		t.Fatalf("get datasource proxy aggregate: %v", err)
+	}
+	if !ok {
+		t.Fatal("datasource proxy aggregate seed missing")
+	}
+	if aggregate.Status != model.ContractStatusBlocked {
+		t.Fatalf("datasource proxy aggregate status = %s, want blocked", aggregate.Status)
+	}
+	if aggregate.Metadata["upstream_ref"] != "datasource-proxy-aggregate" {
+		t.Fatalf("aggregate must not own datasource proxy endpoint directly: %#v", aggregate.Metadata)
+	}
+	if strings.Contains(aggregate.Metadata["upstream_ref"], "/api/n9e/proxy/{datasource_id}") {
+		t.Fatalf("aggregate must point to child gaps, not direct endpoint ownership: %#v", aggregate.Metadata)
+	}
+	if !strings.Contains(aggregate.Metadata["upstream_scope"], "labels") ||
+		!strings.Contains(aggregate.Metadata["upstream_scope"], "es_search") {
+		t.Fatalf("aggregate scope must enumerate datasource proxy child gaps: %#v", aggregate.Metadata)
+	}
+
+	tests := []struct {
+		id          string
+		route       string
+		upstreamRef string
+		sourceRefs  []string
+	}{
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-LABELS", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/labels", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`, `fe-main\src\services\metricViews.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-LABEL-VALUES", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/label/{label}/values", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`, `fe-main\src\services\metricViews.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-METRIC-NAMES", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasource_id}/api/v1/label/__name__/values", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`, `fe-main\src\services\metricViews.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-SERIES", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/series", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-BUILDINFO", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/status/buildinfo", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY", route: "/query?section=metrics", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/query", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-QUERY-RANGE", route: "/query?section=metric-views", upstreamRef: "GET /api/{N9E_PATHNAME}/proxy/{datasourceValue}/api/v1/query_range", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\metricViews.ts`)},
+		{id: "FX-CONTRACT-N9E-DATASOURCE-PROXY-ES-SEARCH", route: "/query?section=metrics", upstreamRef: "POST /api/{N9E_PATHNAME}/proxy/{datasourceValue}/{index}/_search", sourceRefs: monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			item := assertMonitoringDatasourceProxySplitGap(t, tt.id, tt.route, tt.upstreamRef)
+			for _, want := range tt.sourceRefs {
+				if !contractListContains(item.SourceRefs, want) {
+					t.Fatalf("%s source_refs missing mature source %s: %#v", tt.id, want, item.SourceRefs)
+				}
+			}
+		})
+	}
+}
+
 func assertMonitoringMetricViewsSplitGap(t *testing.T, id, upstreamRef string) {
 	t.Helper()
 	item, ok, err := GetContractMatrixEntry(id)
@@ -240,6 +299,33 @@ func assertMonitoringMetricViewsSplitGap(t *testing.T, id, upstreamRef string) {
 		t.Fatalf("%s should remain non-ready without executable evidence: %#v", id, item)
 	}
 	assertMonitoringN9eGapMetadata(t, item, upstreamRef)
+}
+
+func assertMonitoringDatasourceProxySplitGap(t *testing.T, id, findxRoute, upstreamRef string) model.ContractMatrixEntry {
+	t.Helper()
+	item, ok, err := GetContractMatrixEntry(id)
+	if err != nil {
+		t.Fatalf("get %s: %v", id, err)
+	}
+	if !ok {
+		t.Fatalf("%s seed missing", id)
+	}
+	if item.Status != model.ContractStatusMissingDatasource {
+		t.Fatalf("%s status = %s, want missing_datasource", id, item.Status)
+	}
+	if item.SafeToRetry || item.Handler != "" || item.Backend != "" || item.Datasource != "" || item.Executor != "" || len(item.EvidenceRefs) != 0 {
+		t.Fatalf("%s should remain non-ready without executable evidence: %#v", id, item)
+	}
+	if item.Metadata["findx_route"] != findxRoute {
+		t.Fatalf("%s findx_route = %q, want %q", id, item.Metadata["findx_route"], findxRoute)
+	}
+	if strings.Contains(item.Metadata["upstream_ref"], "query-range-batch") ||
+		strings.Contains(item.Metadata["upstream_ref"], "query-instant-batch") ||
+		strings.Contains(item.Metadata["upstream_ref"], "/api/n9e-plus/query-batch") {
+		t.Fatalf("%s must not duplicate batch/query compatibility gaps: %#v", id, item.Metadata)
+	}
+	assertMonitoringN9eGapMetadata(t, item, upstreamRef)
+	return item
 }
 
 func assertMonitoringN9eGapMetadata(t *testing.T, item model.ContractMatrixEntry, upstreamRef string) {
