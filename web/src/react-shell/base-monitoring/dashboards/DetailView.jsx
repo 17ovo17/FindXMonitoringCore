@@ -10,7 +10,7 @@ import ShareLinkModal from './ShareLinkModal.jsx'
 import TemplateVariablesBar, { replaceVariables } from './TemplateVariablesBar.jsx'
 import TimeRangePicker, { QUICK_RANGES, REFRESH_OPTIONS, parseTimeRangeFromURL, syncTimeRangeToURL } from './TimeRangePicker.jsx'
 
-/** D09: 根据折叠状态过滤可见面板 */
+/** 根据折叠状态过滤可见面板 */
 function getVisiblePanels(panelList, collapsedRows) {
   const visible = []
   let currentRowId = null
@@ -25,8 +25,8 @@ function getVisiblePanels(panelList, collapsedRows) {
   return visible
 }
 
-/** D17: 根据变量值重复 Panel */
-function expandRepeatedPanels(panelList, variableValues, dashboardVariables) {
+/** 根据变量值重复 Panel */
+function expandRepeatedPanels(panelList, variableValues) {
   const expanded = []
   for (const panel of panelList) {
     const repeatVar = panel.repeat || panel.raw?.repeat
@@ -39,7 +39,12 @@ function expandRepeatedPanels(panelList, variableValues, dashboardVariables) {
       : [variableValues[repeatVar]]
     if (values.length === 0) { expanded.push(panel); continue }
     for (const val of values) {
-      const cloned = { ...panel, id: `${panel.id}_repeat_${val}`, title: `${panel.title} [${val}]`, _repeatValue: { [repeatVar]: val } }
+      const cloned = {
+        ...panel,
+        id: `${panel.id}_repeat_${val}`,
+        title: `${panel.title} [${val}]`,
+        _repeatValue: { [repeatVar]: val },
+      }
       expanded.push(cloned)
     }
   }
@@ -48,6 +53,7 @@ function expandRepeatedPanels(panelList, variableValues, dashboardVariables) {
 
 export default function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked, onExport, onShare, onFullscreen, detailError, onUpdateDashboard }) {
   const [timeRangeKey, setTimeRangeKey] = useState(() => parseTimeRangeFromURL() || '1h')
+  const [customTimeRange, setCustomTimeRange] = useState(null)
   const [refreshKey, setRefreshKey] = useState('off')
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(dashboard.title)
@@ -67,7 +73,6 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
   const [containerWidth, setContainerWidth] = useState(1200)
   const refreshTimerRef = useRef(null)
   const datasourceId = 'prometheus-default'
-/* PLACEHOLDER_DETAIL_VIEW_BODY */
 
   const dashboardVariables = useMemo(() => {
     const raw = dashboard.raw?.variables || dashboard.variables || {}
@@ -104,22 +109,19 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
   }, [refreshKey, onRefresh])
 
   const timeRange = useMemo(() => {
+    if (customTimeRange) {
+      const step = Math.max(15, Math.floor((customTimeRange.end - customTimeRange.start) / 240))
+      return { ...customTimeRange, step }
+    }
     const now = Math.floor(Date.now() / 1000)
     const range = QUICK_RANGES.find((r) => r.key === timeRangeKey) || QUICK_RANGES[3]
     const step = Math.max(15, Math.floor(range.seconds / 240))
     return { start: now - range.seconds, end: now, step }
-  }, [timeRangeKey])
+  }, [timeRangeKey, customTimeRange])
 
   const handleLayoutChange = useCallback((newLayout) => { setLayout(newLayout) }, [])
   const handleTitleSave = () => { setEditingTitle(false); if (titleValue !== dashboard.title) onUpdateDashboard?.({ title: titleValue }) }
-
-  const toggleFullscreen = () => {
-    setIsFullscreen((prev) => {
-      const next = !prev
-      document.body.classList.toggle('fx-fullscreen', next)
-      return next
-    })
-  }
+  const toggleFullscreen = () => { setIsFullscreen((prev) => { const next = !prev; document.body.classList.toggle('fx-fullscreen', next); return next }) }
 
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === 'Escape' && isFullscreen) { setIsFullscreen(false); document.body.classList.remove('fx-fullscreen') } }
@@ -128,6 +130,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
   }, [isFullscreen])
 
   const toggleRow = (rowId) => { setCollapsedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] })) }
+  const handleBrushEnd = useCallback((range) => { setCustomTimeRange(range) }, [])
 
   const handlePanelAction = (action, panel) => {
     if (action === 'edit') setEditorPanel(panel)
@@ -135,25 +138,44 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
       const cloned = { ...panel, id: 'panel_' + Date.now(), title: panel.title + ' (副本)' }
       setPanelList((prev) => [...prev, cloned])
       setLayout((prev) => [...prev, { i: cloned.id, x: 0, y: Infinity, w: 12, h: 8 }])
-    } else if (action === 'delete') { if (confirm('确定删除此面板？')) { setPanelList((prev) => prev.filter((p) => p.id !== panel.id)); setLayout((prev) => prev.filter((l) => l.i !== panel.id)) } }
-    else if (action === 'inspect') setInspectPanel(panel)
+    } else if (action === 'delete') {
+      if (confirm('确定删除此面板？')) {
+        setPanelList((prev) => prev.filter((p) => p.id !== panel.id))
+        setLayout((prev) => prev.filter((l) => l.i !== panel.id))
+      }
+    } else if (action === 'inspect') setInspectPanel(panel)
     else if (action === 'fullscreen') setFullscreenPanel(panel)
   }
 
   const handleEditorSave = (updatedPanel) => {
     const exists = panelList.some((p) => p.id === updatedPanel.id)
-    if (exists) setPanelList((prev) => prev.map((p) => p.id === updatedPanel.id ? { ...p, ...updatedPanel, raw: updatedPanel } : p))
-    else { setPanelList((prev) => [...prev, { ...updatedPanel, raw: updatedPanel }]); setLayout((prev) => [...prev, { i: updatedPanel.id, x: 0, y: Infinity, w: 12, h: 8 }]) }
+    if (exists) {
+      setPanelList((prev) => prev.map((p) => p.id === updatedPanel.id ? { ...p, ...updatedPanel, raw: updatedPanel } : p))
+    } else {
+      setPanelList((prev) => [...prev, { ...updatedPanel, raw: updatedPanel }])
+      setLayout((prev) => [...prev, { i: updatedPanel.id, x: 0, y: Infinity, w: 12, h: 8 }])
+    }
     setEditorPanel(null)
   }
 
   const handleSave = () => { onUpdateDashboard?.({ title: titleValue, panels: panelList, layout }) }
   const handleAddPanel = (type) => {
+    if (type === 'row') {
+      const id = 'row_' + Date.now()
+      setPanelList((prev) => [...prev, { id, title: '新分组', type: 'row' }])
+      return
+    }
     const id = 'panel_' + Date.now()
-    setEditorPanel({ id, title: '新面板', type, targets: [{ expr: '', legendFormat: '' }], raw: { id, title: '新面板', type, targets: [{ expr: '', legendFormat: '' }] } })
+    setEditorPanel({
+      id, title: '新面板', type,
+      targets: [{ expr: '', legendFormat: '' }],
+      raw: { id, title: '新面板', type, targets: [{ expr: '', legendFormat: '' }] },
+    })
   }
+
   const handleVariablesChange = useCallback((values) => { setVariableValues(values) }, [])
-/* PLACEHOLDER_DETAIL_VIEW_RENDER */
+  const handleVariablesUpdate = (updatedVars) => { onUpdateDashboard?.({ variables: updatedVars }) }
+  const handleTimeRangeChange = (key) => { setTimeRangeKey(key); setCustomTimeRange(null) }
 
   return (
     <main className="fx-dash-detail" ref={containerRef}>
@@ -168,11 +190,13 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
           ) : (
             <h1 className="fx-dash-detail__title" onClick={() => setEditingTitle(true)}>{titleValue}</h1>
           )}
-          <div className="fx-dash-detail__tags">{dashboard.tags.map((tag) => <span className="fx-dash-tag" key={tag}>{tag}</span>)}</div>
+          <div className="fx-dash-detail__tags">
+            {dashboard.tags.map((tag) => <span className="fx-dash-tag" key={tag}>{tag}</span>)}
+          </div>
         </div>
         <div className="fx-dash-detail__head-right">
+          <TimeRangePicker rangeKey={timeRangeKey} refreshKey={refreshKey} onRangeChange={handleTimeRangeChange} onRefreshChange={setRefreshKey} />
           <AutoRefreshPicker onRefresh={onRefresh} />
-          <TimeRangePicker rangeKey={timeRangeKey} refreshKey={refreshKey} onRangeChange={setTimeRangeKey} onRefreshChange={setRefreshKey} />
           <AddPanelMenu onSelect={handleAddPanel} />
           <button type="button" className="fx-dash-icon-btn" title="全屏" onClick={toggleFullscreen}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
@@ -187,7 +211,11 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         </div>
       </header>
       {detailError && <div className="fx-dash-alert is-warning">{detailError}</div>}
-      <TemplateVariablesBar variables={dashboardVariables} onVariablesChange={handleVariablesChange} />
+      <TemplateVariablesBar
+        variables={dashboardVariables}
+        onVariablesChange={handleVariablesChange}
+        onVariablesUpdate={handleVariablesUpdate}
+      />
       <section className="fx-dash-grid-container">
         {panelList.some((p) => p.type === 'row') && (
           <div className="fx-dash-rows">
@@ -199,23 +227,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
             ))}
           </div>
         )}
-        {(() => {
-          const visiblePanels = getVisiblePanels(panelList, collapsedRows)
-          const expandedPanels = expandRepeatedPanels(visiblePanels, variableValues, dashboardVariables)
-          const annotations = dashboard.raw?.annotations || dashboard.annotations || []
-          const expandedLayout = expandedPanels.map((p, i) => layout.find((l) => l.i === p.id) || { i: p.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 8, w: 12, h: 8 })
-          if (expandedPanels.length === 0) return <div className="fx-dash-empty">暂无面板</div>
-          return (
-            <GridLayout className="fx-dash-rgl" layout={expandedLayout} cols={24} rowHeight={40} width={containerWidth - 32} draggableHandle=".fx-panel-drag" onLayoutChange={handleLayoutChange} isResizable isDraggable margin={[12, 12]}>
-              {expandedPanels.map((panel) => (
-                <div key={panel.id} className="fx-dash-panel">
-                  <header className="fx-panel-drag"><strong>{panel.title}</strong><PanelMenu panel={panel} onAction={handlePanelAction} /></header>
-                  <div className="fx-dash-panel__body"><PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} annotations={annotations} /></div>
-                </div>
-              ))}
-            </GridLayout>
-          )
-        })()}
+        {renderGrid()}
       </section>
       {editorPanel && <PanelEditor panel={editorPanel.raw || editorPanel} timeRange={timeRange} datasourceId={datasourceId} dashboardVariables={dashboardVariables} onSave={handleEditorSave} onClose={() => setEditorPanel(null)} />}
       {showSettings && <DashboardSettingsModal dashboard={dashboard} onClose={() => setShowSettings(false)} onSaved={() => onRefresh()} />}
@@ -229,9 +241,38 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
       {fullscreenPanel && (
         <div className="fx-panel-fullscreen">
           <header><strong>{fullscreenPanel.title}</strong><button type="button" onClick={() => setFullscreenPanel(null)}>x</button></header>
-          <div className="fx-panel-fullscreen__body"><PanelChart panel={fullscreenPanel} timeRange={timeRange} datasourceId={datasourceId} /></div>
+          <div className="fx-panel-fullscreen__body">
+            <PanelChart panel={fullscreenPanel} timeRange={timeRange} datasourceId={datasourceId} onBrushEnd={handleBrushEnd} />
+          </div>
         </div>
       )}
     </main>
   )
+
+  function renderGrid() {
+    const visiblePanels = getVisiblePanels(panelList, collapsedRows)
+    const expandedPanels = expandRepeatedPanels(visiblePanels, variableValues)
+    const annotations = dashboard.raw?.annotations || dashboard.annotations || []
+    const expandedLayout = expandedPanels.map((p, i) =>
+      layout.find((l) => l.i === p.id) || { i: p.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 8, w: 12, h: 8 }
+    )
+    if (expandedPanels.length === 0) return <div className="fx-dash-empty">暂无面板</div>
+    return (
+      <GridLayout className="fx-dash-rgl" layout={expandedLayout} cols={24} rowHeight={40} width={containerWidth - 32} draggableHandle=".fx-panel-drag-handle" onLayoutChange={handleLayoutChange} isResizable isDraggable margin={[12, 12]}>
+        {expandedPanels.map((panel) => (
+          <div key={panel.id} className="fx-dash-panel">
+            <header className="fx-dash-panel__header">
+              <span className="fx-panel-drag-handle" title="拖拽移动">&#x2807;&#x2807;</span>
+              <strong>{panel.title}</strong>
+              <PanelMenu panel={panel} onAction={handlePanelAction} />
+            </header>
+            <div className="fx-dash-panel__body">
+              <PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} annotations={annotations} onBrushEnd={handleBrushEnd} />
+            </div>
+          </div>
+        ))}
+      </GridLayout>
+    )
+  }
 }
+

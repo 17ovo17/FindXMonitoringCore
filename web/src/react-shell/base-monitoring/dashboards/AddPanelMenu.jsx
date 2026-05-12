@@ -1,17 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 const PANEL_TYPE_OPTIONS = [
+  { key: 'row', label: '分组', icon: '📁' },
+  { key: '_divider', label: '', icon: '' },
   { key: 'timeseries', label: '时序图', icon: '📈' },
-  { key: 'stat', label: '单值面板', icon: '🔢' },
-  { key: 'table', label: '表格', icon: '📋' },
+  { key: 'barchart', label: '柱状图', icon: '📊' },
+  { key: 'stat', label: '指标值', icon: '🔢' },
+  { key: 'tableNG', label: '表格 NG (Beta)', icon: '📋' },
+  { key: 'table', label: '表格', icon: '📄' },
   { key: 'pie', label: '饼图', icon: '🥧' },
-  { key: 'bar', label: '柱状图', icon: '📊' },
-  { key: 'text', label: '文本', icon: '📝' },
+  { key: 'hexbin', label: '蜂窝图', icon: '⬡' },
+  { key: 'barGauge', label: '排行榜', icon: '📶' },
+  { key: 'text', label: '文本卡片', icon: '📝' },
+  { key: 'gauge', label: '仪表图', icon: '⏱' },
+  { key: 'heatmap', label: '色块图', icon: '🟧' },
+  { key: 'iframe', label: '内嵌文档 (iframe)', icon: '🌐' },
 ]
 
 /**
- * 添加图表按钮 + 类型菜单 (D03)
- * 点击后弹出下拉菜单，选择图表类型后回调 onSelect(type)
+ * 添加图表按钮 + 类型菜单
+ * 对齐夜莺：分组 + 分隔线 + 12 种图表类型 = 13 项
  */
 export default function AddPanelMenu({ onSelect }) {
   const [open, setOpen] = useState(false)
@@ -45,17 +53,22 @@ export default function AddPanelMenu({ onSelect }) {
       </button>
       {open && (
         <div className="fx-add-panel-menu__dropdown">
-          {PANEL_TYPE_OPTIONS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className="fx-add-panel-menu__item"
-              onClick={() => handleSelect(item.key)}
-            >
-              <span className="fx-add-panel-menu__icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {PANEL_TYPE_OPTIONS.map((item) => {
+            if (item.key === '_divider') {
+              return <div key="_divider" className="fx-add-panel-menu__divider" />
+            }
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className="fx-add-panel-menu__item"
+                onClick={() => handleSelect(item.key)}
+              >
+                <span className="fx-add-panel-menu__icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

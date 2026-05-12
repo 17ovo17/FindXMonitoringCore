@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { metricQueryApi } from '../../api/metrics.js'
 import VariableDropdown from './VariableDropdown.jsx'
+import VariableListModal from './VariableListModal.jsx'
 
 /**
- * 模板变量栏 (D01)
- * 从仪表盘 JSON 的 variables 字段读取变量定义，渲染变量下拉选择器。
- * 变量值变化时同步到 URL query params 并通知外部刷新 Panel。
+ * 模板变量栏（对齐夜莺）
+ * 右侧有编辑图标，点击弹出变量列表 Modal
  */
-export default function TemplateVariablesBar({ variables, onVariablesChange }) {
+export default function TemplateVariablesBar({ variables, onVariablesChange, onVariablesUpdate }) {
   const [optionsMap, setOptionsMap] = useState({})
+  const [showVarList, setShowVarList] = useState(false)
   const [valuesMap, setValuesMap] = useState(() => {
     const initial = {}
     for (const v of variables) {
@@ -17,7 +18,6 @@ export default function TemplateVariablesBar({ variables, onVariablesChange }) {
     return initial
   })
 
-  // 从 URL 初始化变量值
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const fromUrl = {}
@@ -34,7 +34,6 @@ export default function TemplateVariablesBar({ variables, onVariablesChange }) {
     }
   }, [variables])
 
-  // 加载 query 类型变量的选项
   useEffect(() => {
     let cancelled = false
     const loadQueryOptions = async () => {
@@ -63,7 +62,6 @@ export default function TemplateVariablesBar({ variables, onVariablesChange }) {
     return () => { cancelled = true }
   }, [variables])
 
-  // 同步变量值到 URL
   const syncToUrl = useCallback((values) => {
     const url = new URL(window.location.href)
     for (const v of variables) {
@@ -86,11 +84,15 @@ export default function TemplateVariablesBar({ variables, onVariablesChange }) {
     })
   }, [syncToUrl, onVariablesChange])
 
-  if (variables.length === 0) return null
+  const handleVariablesUpdate = (updatedVars) => {
+    onVariablesUpdate?.(updatedVars)
+  }
+
+  if (variables.length === 0 && !onVariablesUpdate) return null
 
   return (
     <section className="fx-dash-vars-bar">
-      {variables.map((v) => (
+      {variables.filter((v) => !v.hide).map((v) => (
         <VariableDropdown
           key={v.name}
           name={v.name}
@@ -101,6 +103,24 @@ export default function TemplateVariablesBar({ variables, onVariablesChange }) {
           onChange={handleChange}
         />
       ))}
+      <button
+        type="button"
+        className="fx-dash-icon-btn fx-vars-edit-btn"
+        title="编辑变量"
+        onClick={() => setShowVarList(true)}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+      </button>
+      {showVarList && (
+        <VariableListModal
+          variables={variables}
+          onChange={handleVariablesUpdate}
+          onClose={() => setShowVarList(false)}
+        />
+      )}
     </section>
   )
 }

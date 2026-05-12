@@ -32,7 +32,10 @@ function formatMetricLabel(series) {
   return labels ? `${name}{${labels}}` : name || 'series'
 }
 
-function TimeSeriesChart({ series, annotations }) {
+/**
+ * 时序图（支持 brush 框选时间范围）
+ */
+function TimeSeriesChart({ series, annotations, onBrushEnd }) {
   const containerRef = useRef(null)
   const svgRef = useRef(null)
 
@@ -50,33 +53,39 @@ function TimeSeriesChart({ series, annotations }) {
     const allValues = series.flatMap((s) => s.values)
     const xExtent = d3.extent(allValues, (d) => d[0] * 1000)
     const yExtent = d3.extent(allValues, (d) => d[1])
-    if (!xExtent[0] || !yExtent[0] === undefined) return
+    if (!xExtent[0] || yExtent[0] === undefined) return
 
     const yPad = (yExtent[1] - yExtent[0]) * 0.1 || 1
     const xScale = d3.scaleTime().domain(xExtent).range([0, innerW])
-    const yScale = d3.scaleLinear().domain([yExtent[0] - yPad, yExtent[1] + yPad]).range([innerH, 0])
+    const yScale = d3.scaleLinear()
+      .domain([yExtent[0] - yPad, yExtent[1] + yPad])
+      .range([innerH, 0])
 
     const sel = d3.select(svg)
     sel.selectAll('*').remove()
     sel.attr('width', width).attr('height', height)
 
-    const g = sel.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+    const g = sel.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`)
 
     // Grid lines
     g.append('g')
       .attr('transform', `translate(0,${innerH})`)
-      .call(d3.axisBottom(xScale).ticks(5).tickSize(-innerH).tickFormat(d3.timeFormat('%H:%M')))
+      .call(d3.axisBottom(xScale).ticks(5).tickSize(-innerH)
+        .tickFormat(d3.timeFormat('%H:%M')))
       .selectAll('line').attr('stroke', 'var(--fx-border)')
     g.append('g')
       .call(d3.axisLeft(yScale).ticks(5).tickSize(-innerW))
       .selectAll('line').attr('stroke', 'var(--fx-border)')
 
-    // Style axis text
     sel.selectAll('.domain').attr('stroke', 'var(--fx-border)')
     sel.selectAll('text').attr('fill', 'var(--fx-ink)').style('font-size', '10px')
 
     // Lines
-    const line = d3.line().x((d) => xScale(d[0] * 1000)).y((d) => yScale(d[1])).curve(d3.curveMonotoneX)
+    const line = d3.line()
+      .x((d) => xScale(d[0] * 1000))
+      .y((d) => yScale(d[1]))
+      .curve(d3.curveMonotoneX)
     series.forEach((s, i) => {
       g.append('path')
         .datum(s.values)
@@ -86,7 +95,7 @@ function TimeSeriesChart({ series, annotations }) {
         .attr('d', line)
     })
 
-    // D16: Annotations - 事件标注线
+    // Annotations
     if (annotations && annotations.length > 0) {
       const ag = g.append('g').attr('class', 'fx-annotations')
       annotations.forEach((ann) => {
@@ -100,7 +109,6 @@ function TimeSeriesChart({ series, annotations }) {
           .attr('stroke', color)
           .attr('stroke-width', 1.5)
           .attr('stroke-dasharray', '4,2')
-        ag.append('title').text(ann.text || '')
         ag.append('circle')
           .attr('cx', x).attr('cy', 0)
           .attr('r', 4).attr('fill', color)
@@ -111,7 +119,31 @@ function TimeSeriesChart({ series, annotations }) {
           .text(ann.text || '')
       })
     }
-  }, [series, annotations])
+
+    // Brush selection for time range zoom
+    if (onBrushEnd) {
+      const brush = d3.brushX()
+        .extent([[0, 0], [innerW, innerH]])
+        .on('end', (event) => {
+          if (!event.selection) return
+          const [x0, x1] = event.selection
+          const t0 = xScale.invert(x0)
+          const t1 = xScale.invert(x1)
+          // Clear brush visual
+          g.select('.fx-brush').call(brush.move, null)
+          onBrushEnd({
+            start: Math.floor(t0.getTime() / 1000),
+            end: Math.floor(t1.getTime() / 1000),
+          })
+        })
+
+      g.append('g')
+        .attr('class', 'fx-brush')
+        .call(brush)
+        .selectAll('rect')
+        .attr('height', innerH)
+    }
+  }, [series, annotations, onBrushEnd])
 
   useEffect(() => {
     draw()
@@ -121,7 +153,11 @@ function TimeSeriesChart({ series, annotations }) {
   }, [draw])
 
   if (series.length === 0) {
-    return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
+    return (
+      <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>
+        无数据
+      </div>
+    )
   }
 
   return (
@@ -140,10 +176,14 @@ function TimeSeriesChart({ series, annotations }) {
 }
 
 function StatPanel({ series }) {
-  if (series.length === 0) return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
+  if (series.length === 0) {
+    return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
+  }
   const lastValues = series[0].values
   const value = lastValues.length > 0 ? lastValues[lastValues.length - 1][1] : 0
-  const formatted = Number.isFinite(value) ? (value % 1 === 0 ? value.toString() : value.toFixed(2)) : '-'
+  const formatted = Number.isFinite(value)
+    ? (value % 1 === 0 ? value.toString() : value.toFixed(2))
+    : '-'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '160px' }}>
       <span style={{ fontSize: '42px', fontWeight: 700, color: 'var(--fx-blue)' }}>{formatted}</span>
@@ -153,7 +193,9 @@ function StatPanel({ series }) {
 }
 
 function TablePanel({ series }) {
-  if (series.length === 0) return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
+  if (series.length === 0) {
+    return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
+  }
   return (
     <div style={{ overflow: 'auto', maxHeight: '200px', fontSize: '12px' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -179,13 +221,13 @@ function TablePanel({ series }) {
     </div>
   )
 }
-export default function PanelChart({ panel, timeRange, datasourceId, annotations }) {
+
+export default function PanelChart({ panel, timeRange, datasourceId, annotations, onBrushEnd }) {
   const [series, setSeries] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    // panel.raw holds the original panel data with targets
     const rawPanel = panel.raw || panel
     const hasTargets = (Array.isArray(rawPanel.targets) && rawPanel.targets.some((t) => t.expr || t.expression || t.query))
       || rawPanel.expr || rawPanel.query || rawPanel.expression || rawPanel.metric
@@ -211,7 +253,6 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
     return () => { cancelled = true }
   }, [panel, timeRange, datasourceId])
 
-  // No query configured
   const rawPanel = panel.raw || panel
   const hasTargets = (Array.isArray(rawPanel.targets) && rawPanel.targets.some((t) => t.expr || t.expression || t.query))
     || rawPanel.expr || rawPanel.query || rawPanel.expression || rawPanel.metric
@@ -232,11 +273,11 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
   if (type === 'stat' || type === 'singlestat') {
     return <StatPanel series={series} />
   }
-  if (type === 'table' || type === 'table-old') {
+  if (type === 'table' || type === 'table-old' || type === 'tableng') {
     return <TablePanel series={series} />
   }
   if (type === 'timeseries' || type === 'graph' || type === '') {
-    return <TimeSeriesChart series={series} annotations={annotations} />
+    return <TimeSeriesChart series={series} annotations={annotations} onBrushEnd={onBrushEnd} />
   }
 
   return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>{panel.type} 暂不支持</div>

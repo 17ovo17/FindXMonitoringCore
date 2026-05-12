@@ -371,10 +371,10 @@
   gap: 8px;
 }
 
-.fx-dash-panel header {
+.fx-dash-panel {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .fx-dash-panel pre,
@@ -585,15 +585,6 @@
   flex: 1;
   overflow: hidden;
   min-height: 0;
-}
-
-.fx-panel-drag {
-  cursor: grab;
-  user-select: none;
-}
-
-.fx-panel-drag:active {
-  cursor: grabbing;
 }
 
 /* TimeRangePicker */
@@ -1055,7 +1046,7 @@
   top: calc(100% + 4px);
   right: 0;
   z-index: 100;
-  min-width: 160px;
+  min-width: 180px;
   border: 1px solid #e1e7f0;
   border-radius: 8px;
   padding: 6px 0;
@@ -1084,6 +1075,12 @@
 
 .fx-add-panel-menu__icon {
   font-size: 16px;
+}
+
+.fx-add-panel-menu__divider {
+  height: 1px;
+  margin: 4px 12px;
+  background: #e1e7f0;
 }
 
 /* AutoRefreshPicker (D04) */
@@ -1462,4 +1459,213 @@ body.fx-fullscreen .fx-dash-detail {
   gap: 6px;
   font-size: 13px;
   cursor: pointer;
+}
+
+/* Panel drag handle */
+.fx-dash-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fx-panel-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 24px;
+  color: #8a96aa;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.fx-panel-drag-handle:hover {
+  color: #1769ff;
+  background: #f0f5ff;
+}
+
+.fx-panel-drag-handle:active {
+  cursor: grabbing;
+}
+
+.fx-dash-panel__header strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Button group (Tooltip / Zoom behavior) */
+.fx-btn-group {
+  display: inline-flex;
+  border: 1px solid #d8e1ee;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.fx-btn-group button {
+  border: none;
+  border-right: 1px solid #d8e1ee;
+  border-radius: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fx-btn-group button:last-child {
+  border-right: none;
+}
+
+.fx-btn-group button.is-active {
+  background: #1769ff;
+  color: #fff;
+}
+
+.fx-btn-group button:hover:not(.is-active) {
+  background: #f0f5ff;
+}
+
+/* Tag input */
+.fx-tag-input-wrap {
+  border: 1px solid #d8e1ee;
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-height: 36px;
+}
+
+.fx-tag-input-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fx-tag-input-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #d8e4f2;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  background: #eef5ff;
+  color: #1769ff;
+}
+
+.fx-tag-input-tag__close {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: #8a96aa !important;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.fx-tag-input-tag__close:hover {
+  color: #b42318 !important;
+}
+
+.fx-tag-input-field {
+  border: none !important;
+  padding: 4px !important;
+  font-size: 13px;
+  outline: none;
+  flex: 1;
+  min-width: 80px;
+}
+
+/* Required field marker */
+.fx-field-required {
+  color: #b42318;
+  margin-right: 2px;
+}
+
+/* Variable list modal */
+.fx-varlist-table-wrap {
+  overflow: auto;
+}
+
+.fx-varlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fx-varlist-table th,
+.fx-varlist-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f7;
+  text-align: left;
+}
+
+.fx-varlist-table th {
+  color: #65758d;
+  background: #f8fbff;
+  font-weight: 600;
+}
+
+.fx-varlist-def {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #526984;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.fx-varlist-ops {
+  display: flex;
+  gap: 4px;
+}
+
+.fx-varlist-ops button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  padding: 0;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.fx-varlist-ops button:hover:not(:disabled) {
+  border-color: #1769ff;
+  color: #1769ff;
+}
+
+.fx-varlist-ops button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fx-varlist-edit {
+  display: grid;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+/* Variables bar edit button */
+.fx-vars-edit-btn {
+  margin-left: auto;
+}
+
+/* Brush selection overlay */
+.fx-brush .selection {
+  fill: rgba(23, 105, 255, 0.15);
+  stroke: #1769ff;
+  stroke-width: 1;
+}
+
+.fx-brush .handle {
+  fill: #1769ff;
 }

@@ -2,12 +2,18 @@ import React, { useState, useMemo } from 'react'
 import PanelChart from './PanelChart.jsx'
 
 const PANEL_TYPES = [
-  { key: 'timeseries', label: '时间序列' },
-  { key: 'stat', label: '单值' },
+  { key: 'timeseries', label: '时序图' },
+  { key: 'barchart', label: '柱状图' },
+  { key: 'stat', label: '指标值' },
+  { key: 'tableNG', label: '表格 NG' },
   { key: 'table', label: '表格' },
-  { key: 'gauge', label: '仪表盘' },
   { key: 'pie', label: '饼图' },
-  { key: 'text', label: '文本' },
+  { key: 'hexbin', label: '蜂窝图' },
+  { key: 'barGauge', label: '排行榜' },
+  { key: 'text', label: '文本卡片' },
+  { key: 'gauge', label: '仪表图' },
+  { key: 'heatmap', label: '色块图' },
+  { key: 'iframe', label: '内嵌文档' },
 ]
 
 const STACK_MODES = [

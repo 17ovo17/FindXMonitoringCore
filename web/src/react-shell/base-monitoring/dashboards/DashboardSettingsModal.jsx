@@ -1,71 +1,68 @@
 import React, { useState } from 'react'
 import { dashboardsApi } from '../../api/dashboards.js'
-import { displayJson } from './dashboardModel.js'
 
-function VariableEditor({ variables, onChange }) {
-  const addVariable = () => {
-    onChange([...variables, { name: '', label: '', type: 'custom', query: '', options: [], multi: false }])
-  }
-  const updateVariable = (index, field, value) => {
-    const next = variables.map((v, i) => i === index ? { ...v, [field]: value } : v)
-    onChange(next)
-  }
-  const removeVariable = (index) => {
-    onChange(variables.filter((_, i) => i !== index))
-  }
+const TOOLTIP_OPTIONS = [
+  { key: 'default', label: '默认' },
+  { key: 'sharedCrosshair', label: '共享十字线' },
+  { key: 'sharedTooltip', label: '共享提示信息 (Tooltip)' },
+]
 
-  return (
-    <div className="fx-settings-section">
-      <strong>变量配置</strong>
-      {variables.map((v, i) => (
-        <div key={i} className="fx-settings-var-row">
-          <input value={v.name} onChange={(e) => updateVariable(i, 'name', e.target.value)} placeholder="name" />
-          <input value={v.label} onChange={(e) => updateVariable(i, 'label', e.target.value)} placeholder="label" />
-          <select value={v.type} onChange={(e) => updateVariable(i, 'type', e.target.value)}>
-            <option value="custom">custom</option>
-            <option value="query">query</option>
-            <option value="textbox">textbox</option>
-            <option value="constant">constant</option>
-          </select>
-          <input value={v.query || ''} onChange={(e) => updateVariable(i, 'query', e.target.value)} placeholder="query" />
-          <label className="fx-settings-var-multi">
-            <input type="checkbox" checked={v.multi || false} onChange={(e) => updateVariable(i, 'multi', e.target.checked)} />
-            <span>多选</span>
-          </label>
-          <button type="button" onClick={() => removeVariable(i)}>x</button>
-        </div>
-      ))}
-      <button type="button" className="fx-settings-add-btn" onClick={addVariable}>+ 添加变量</button>
-    </div>
-  )
-}
+const ZOOM_OPTIONS = [
+  { key: 'default', label: '默认' },
+  { key: 'updateTimeRange', label: '更新时间范围' },
+]
 
+/**
+ * 编辑仪表盘 Modal（对齐夜莺 FormModal）
+ * 字段：仪表盘名称 / 英文标识 / 分类标签 / 提示信息 / 缩放行为
+ */
 export default function DashboardSettingsModal({ dashboard, onClose, onSaved }) {
-  const [tab, setTab] = useState('basic')
   const [title, setTitle] = useState(dashboard.title || '')
-  const [tags, setTags] = useState((dashboard.tags || []).join(', '))
-  const [variables, setVariables] = useState(() => {
-    const raw = dashboard.raw?.variables || dashboard.variables || {}
-    if (Array.isArray(raw)) return raw
-    return Object.entries(raw).map(([key, val]) => {
-      if (typeof val === 'object' && val !== null) return { name: key, ...val }
-      return { name: key, type: 'custom', query: '', options: [], multi: false, label: key }
-    })
+  const [ident, setIdent] = useState(dashboard.raw?.ident || '')
+  const [tagInput, setTagInput] = useState('')
+  const [tags, setTags] = useState(() => {
+    const raw = dashboard.tags || []
+    return Array.isArray(raw) ? raw : []
   })
-  const [jsonText, setJsonText] = useState(() => displayJson(dashboard.raw || dashboard))
+  const [tooltipMode, setTooltipMode] = useState(
+    dashboard.raw?.graphTooltip || 'default'
+  )
+  const [zoomBehavior, setZoomBehavior] = useState(
+    dashboard.raw?.graphZoom || 'default'
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const handleTagKeyDown = (e) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault()
+      const newTag = tagInput.trim()
+      if (!tags.includes(newTag)) {
+        setTags([...tags, newTag])
+      }
+      setTagInput('')
+    }
+  }
+
+  const removeTag = (tagToRemove) => {
+    setTags(tags.filter((t) => t !== tagToRemove))
+  }
+
   const handleSave = async () => {
+    if (!title.trim()) {
+      setError('仪表盘名称不能为空')
+      return
+    }
     setSaving(true)
     setError('')
     try {
-      let body = {}
-      if (tab === 'json') {
-        body = JSON.parse(jsonText)
-      } else {
-        const tagList = tags.split(/[,，]/).map((t) => t.trim()).filter(Boolean)
-        body = { ...dashboard.raw, title, tags: tagList, variables }
+      const body = {
+        ...dashboard.raw,
+        title: title.trim(),
+        ident,
+        tags,
+        graphTooltip: tooltipMode,
+        graphZoom: zoomBehavior,
       }
       await dashboardsApi.update(dashboard.id, body)
       onSaved?.()
@@ -81,32 +78,99 @@ export default function DashboardSettingsModal({ dashboard, onClose, onSaved }) 
     <div className="fx-dash-modal">
       <div className="fx-dash-modal__body fx-settings-modal">
         <header>
-          <h2>仪表盘设置</h2>
+          <h2>编辑仪表盘</h2>
           <button type="button" onClick={onClose}>x</button>
         </header>
-        <nav className="fx-settings-tabs">
-          <button type="button" className={tab === 'basic' ? 'is-active' : ''} onClick={() => setTab('basic')}>基本</button>
-          <button type="button" className={tab === 'variables' ? 'is-active' : ''} onClick={() => setTab('variables')}>变量</button>
-          <button type="button" className={tab === 'json' ? 'is-active' : ''} onClick={() => setTab('json')}>JSON</button>
-        </nav>
         <div className="fx-settings-body">
-          {tab === 'basic' && (
-            <div className="fx-settings-section">
-              <label className="fx-pe-field"><span>名称</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-              <label className="fx-pe-field"><span>标签（逗号分隔）</span><input value={tags} onChange={(e) => setTags(e.target.value)} /></label>
+          <div className="fx-settings-section">
+            <label className="fx-pe-field">
+              <span>
+                <span className="fx-field-required">*</span>
+                仪表盘名称
+              </span>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="请输入仪表盘名称"
+              />
+            </label>
+            <label className="fx-pe-field">
+              <span>英文标识</span>
+              <input
+                value={ident}
+                onChange={(e) => setIdent(e.target.value)}
+                placeholder="请输入英文标识 (ident)"
+              />
+            </label>
+            <div className="fx-pe-field">
+              <span>分类标签</span>
+              <div className="fx-tag-input-wrap">
+                <div className="fx-tag-input-tags">
+                  {tags.map((tag) => (
+                    <span key={tag} className="fx-tag-input-tag">
+                      {tag}
+                      <button
+                        type="button"
+                        className="fx-tag-input-tag__close"
+                        onClick={() => removeTag(tag)}
+                      >
+                        x
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    className="fx-tag-input-field"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    placeholder={tags.length === 0 ? '输入后回车添加标签' : ''}
+                  />
+                </div>
+              </div>
             </div>
-          )}
-          {tab === 'variables' && <VariableEditor variables={variables} onChange={setVariables} />}
-          {tab === 'json' && (
-            <div className="fx-settings-section">
-              <textarea className="fx-settings-json" value={jsonText} onChange={(e) => setJsonText(e.target.value)} rows={16} />
+            <div className="fx-pe-field">
+              <span>提示信息 (Tooltip)</span>
+              <div className="fx-btn-group">
+                {TOOLTIP_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={tooltipMode === opt.key ? 'is-active' : ''}
+                    onClick={() => setTooltipMode(opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+            <div className="fx-pe-field">
+              <span>缩放行为</span>
+              <div className="fx-btn-group">
+                {ZOOM_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={zoomBehavior === opt.key ? 'is-active' : ''}
+                    onClick={() => setZoomBehavior(opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
         {error && <div className="fx-dash-alert is-error">{error}</div>}
         <footer className="fx-settings-footer">
           <button type="button" onClick={onClose}>取消</button>
-          <button type="button" className="is-primary" disabled={saving} onClick={handleSave}>{saving ? '保存中...' : '保存'}</button>
+          <button
+            type="button"
+            className="is-primary"
+            disabled={saving}
+            onClick={handleSave}
+          >
+            {saving ? '保存中...' : '确定'}
+          </button>
         </footer>
       </div>
     </div>
