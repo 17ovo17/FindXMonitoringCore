@@ -1,4 +1,5 @@
 import React from 'react'
+import Editor from '@monaco-editor/react'
 import { MetricGraph } from './MetricGraph.jsx'
 import {
   displayJson,
@@ -113,9 +114,25 @@ export function QueryPanel({
       {!panel.collapsed && (
         <>
           <div className='fx-query-code-wrap'>
-            <textarea ref={inputRef} className='fx-query-code' value={panel.query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              placeholder='up{job="prometheus"}' spellCheck={false} />
+            <Editor
+              height='80px'
+              defaultLanguage='promql'
+              value={panel.query}
+              onChange={(val) => onQueryChange(val || '')}
+              options={{
+                minimap: { enabled: false },
+                lineNumbers: 'off',
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                fontSize: 13,
+                fontFamily: 'Menlo, Monaco, Consolas, monospace',
+                overviewRulerLanes: 0,
+                renderLineHighlight: 'none',
+                scrollbar: { vertical: 'hidden', horizontal: 'auto' },
+                padding: { top: 8, bottom: 8 },
+              }}
+              theme='vs-light'
+            />
             {panel.autocomplete && panel.suggestions?.length > 0 && (
               <div className='fx-query-suggestions'>
                 {panel.suggestions.map((metric) => (
