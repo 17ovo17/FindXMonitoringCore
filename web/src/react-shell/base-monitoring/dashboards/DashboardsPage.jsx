@@ -17,8 +17,11 @@ import {
   normalizeVariables,
   toTags,
 } from './dashboardModel.js'
+import AddPanelMenu from './AddPanelMenu.jsx'
+import AutoRefreshPicker from './AutoRefreshPicker.jsx'
 import PanelChart from './PanelChart.jsx'
 import PanelEditor from './PanelEditor.jsx'
+import TemplateVariablesBar from './TemplateVariablesBar.jsx'
 import TimeRangePicker, { QUICK_RANGES, REFRESH_OPTIONS } from './TimeRangePicker.jsx'
 import './dashboards.css'
 
@@ -128,10 +131,21 @@ function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked
   })))
   const [editorPanel, setEditorPanel] = useState(null)
   const [panelList, setPanelList] = useState(panels)
+  const [variableValues, setVariableValues] = useState({})
   const containerRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(1200)
   const refreshTimerRef = useRef(null)
   const datasourceId = 'prometheus-default'
+
+  // 解析仪表盘 JSON 中的 variables 定义
+  const dashboardVariables = useMemo(() => {
+    const raw = dashboard.raw?.variables || dashboard.variables || {}
+    if (Array.isArray(raw)) return raw
+    return Object.entries(raw).map(([key, val]) => {
+      if (typeof val === 'object' && val !== null) return { name: key, ...val }
+      return { name: key, type: 'custom', options: [], current: val }
+    })
+  }, [dashboard])
 
   useEffect(() => {
     setPanelList(panels)
@@ -204,13 +218,34 @@ function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked
   }
 
   const handleEditorSave = (updatedPanel) => {
-    setPanelList((prev) => prev.map((p) => p.id === updatedPanel.id ? { ...p, ...updatedPanel, raw: updatedPanel } : p))
+    const exists = panelList.some((p) => p.id === updatedPanel.id)
+    if (exists) {
+      setPanelList((prev) => prev.map((p) => p.id === updatedPanel.id ? { ...p, ...updatedPanel, raw: updatedPanel } : p))
+    } else {
+      setPanelList((prev) => [...prev, { ...updatedPanel, raw: updatedPanel }])
+      setLayout((prev) => [...prev, { i: updatedPanel.id, x: 0, y: Infinity, w: 12, h: 8 }])
+    }
     setEditorPanel(null)
   }
 
   const handleSave = () => {
     onUpdateDashboard?.({ title: titleValue, panels: panelList, layout })
   }
+
+  const handleAddPanel = (type) => {
+    const newPanel = {
+      id: 'panel_' + Date.now(),
+      title: '新面板',
+      type,
+      targets: [{ expr: '', legendFormat: '' }],
+      raw: { id: 'panel_' + Date.now(), title: '新面板', type, targets: [{ expr: '', legendFormat: '' }] },
+    }
+    setEditorPanel(newPanel)
+  }
+
+  const handleVariablesChange = useCallback((values) => {
+    setVariableValues(values)
+  }, [])
 
   return (
     <main className="fx-dash-detail" ref={containerRef}>
@@ -237,31 +272,22 @@ function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked
           </div>
         </div>
         <div className="fx-dash-detail__head-right">
+          <AutoRefreshPicker onRefresh={onRefresh} />
           <TimeRangePicker
             rangeKey={timeRangeKey}
             refreshKey={refreshKey}
             onRangeChange={setTimeRangeKey}
             onRefreshChange={setRefreshKey}
           />
+          <AddPanelMenu onSelect={handleAddPanel} />
           <button type="button" className="is-primary" onClick={handleSave}>保存</button>
         </div>
       </header>
       {detailError && <div className="fx-dash-alert is-warning">{detailError}</div>}
-      <section className="fx-dash-vars">
-        {variables.map((item) => (
-          <label key={item.key}>
-            <span>{item.label}</span>
-            {item.options.length ? (
-              <select defaultValue={item.value}>
-                {item.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-            ) : (
-              <input defaultValue={item.value} />
-            )}
-          </label>
-        ))}
-        {variables.length === 0 && <span className="muted">暂无变量</span>}
-      </section>
+      <TemplateVariablesBar
+        variables={dashboardVariables}
+        onVariablesChange={handleVariablesChange}
+      />
       <section className="fx-dash-grid-container">
         {panelList.length > 0 ? (
           <GridLayout
