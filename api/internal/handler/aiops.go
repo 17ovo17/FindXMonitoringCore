@@ -121,6 +121,16 @@ func AIOpsPostMessage(c *gin.Context) {
 	attachments := sanitizeAIOpsAttachments(req.Attachments)
 	now := time.Now()
 	store.AddChatMessage(model.ChatMessage{ID: store.NewID(), SessionID: sessionID, Role: "user", Content: content, CreatedAt: now})
+
+	// SSE branch: React shell sends Accept: text/event-stream and expects
+	// incremental {"type":"content"} frames followed by a {"type":"done"} frame.
+	if strings.Contains(c.GetHeader("Accept"), "text/event-stream") {
+		history := store.ListChatMessages(sessionID)
+		streamAIOpsResponse(c, sessionID, content, history)
+		return
+	}
+
+	// Legacy JSON path (Vue UI): unchanged.
 	answer := runAIOpsDiagnosis(sessionID, content, attachments, req.Audience)
 	store.AddChatMessage(model.ChatMessage{ID: answer.MessageID, SessionID: sessionID, Role: "assistant", Content: answer.Content, CreatedAt: answer.CreatedAt})
 	c.JSON(http.StatusOK, gin.H{"code": 0, "data": answer})
