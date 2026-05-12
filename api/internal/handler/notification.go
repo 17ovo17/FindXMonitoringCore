@@ -1,42 +1,29 @@
 package handler
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
+	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/notifier"
+	"ai-workbench-api/internal/store"
+
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
-type NotificationChannel struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
-	Name     string `json:"name"`
-	Endpoint string `json:"endpoint,omitempty"`
-	Receiver string `json:"receiver,omitempty"`
-	Secret   string `json:"secret,omitempty"`
-	Webhook  string `json:"webhook"`
-	Enabled  bool   `json:"enabled"`
-}
-
-var (
-	notificationChannels   []NotificationChannel
-	notificationChannelsMu sync.RWMutex
-)
+// NotificationChannel is kept as a handler-level alias so existing callers
+// (tests, helpers) compile while storage lives in the store package.
+type NotificationChannel = model.NotificationChannel
 
 func ListNotificationChannels(c *gin.Context) {
-	notificationChannelsMu.RLock()
-	defer notificationChannelsMu.RUnlock()
-	items := make([]NotificationChannel, 0, len(notificationChannels))
-	for _, ch := range notificationChannels {
-		items = append(items, redactNotificationChannel(ch))
+	items := store.ListNotificationChannels()
+	out := make([]NotificationChannel, 0, len(items))
+	for _, ch := range items {
+		out = append(out, redactNotificationChannel(ch))
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, gin.H{"items": out})
 }
 
 func SaveNotificationChannel(c *gin.Context) {
@@ -49,8 +36,10 @@ func SaveNotificationChannel(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "notification channel name required"})
 		return
 	}
+	now := time.Now()
 	if ch.ID == "" {
-		ch.ID = fmt.Sprintf("nc_%d", time.Now().UnixNano())
+		ch.ID = fmt.Sprintf("nc_%d", now.UnixNano())
+		ch.CreatedAt = now
 	}
 	if ch.Webhook == "" {
 		ch.Webhook = ch.Endpoint
@@ -58,88 +47,76 @@ func SaveNotificationChannel(c *gin.Context) {
 	if ch.Endpoint == "" {
 		ch.Endpoint = ch.Webhook
 	}
-
-	notificationChannelsMu.Lock()
-	found := false
-	for i, existing := range notificationChannels {
-		if existing.ID == ch.ID {
-			ch = mergeNotificationChannelSecrets(ch, existing)
-			notificationChannels[i] = ch
-			found = true
-			break
+	if existing, ok := store.GetNotificationChannel(ch.ID); ok {
+		ch = mergeNotificationChannelSecrets(ch, *existing)
+		if ch.CreatedAt.IsZero() {
+			ch.CreatedAt = existing.CreatedAt
 		}
 	}
-	if !found {
-		notificationChannels = append(notificationChannels, ch)
-	}
-	notificationChannelsMu.Unlock()
-
+	ch.UpdatedAt = now
+	store.PutNotificationChannel(&ch)
 	c.JSON(http.StatusOK, redactNotificationChannel(ch))
 }
 
 func DeleteNotificationChannel(c *gin.Context) {
-	id := c.Param("id")
-	notificationChannelsMu.Lock()
-	defer notificationChannelsMu.Unlock()
-	for i, ch := range notificationChannels {
-		if ch.ID == id {
-			notificationChannels = append(notificationChannels[:i], notificationChannels[i+1:]...)
-			c.JSON(http.StatusOK, gin.H{"ok": true})
-			return
-		}
+	if store.DeleteNotificationChannel(c.Param("id")) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+		return
 	}
 	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 }
 
+// TestNotificationChannel dispatches a mock alert event to a single channel
+// and reports whether the delivery succeeded. This lets the UI verify a
+// newly created channel without waiting for a real alert to fire.
+func TestNotificationChannel(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	ch, ok := store.GetNotificationChannel(id)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "notification channel not found"})
+		return
+	}
+	if !ch.Enabled {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "notification channel is disabled"})
+		return
+	}
+	event := notifier.BuildMockAlertEvent(ch.Name)
+	if err := notifier.SendToChannel(ch, event); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"ok":      false,
+			"channel": redactNotificationChannel(*ch),
+			"error":   err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":      true,
+		"channel": redactNotificationChannel(*ch),
+		"message": "notification channel delivered mock event",
+	})
+}
+
+// SendNotification is kept as a convenience wrapper used by legacy
+// diagnosis and alert handlers. It broadcasts a text notification to
+// every enabled channel using a synthetic MonitorAlertEvent.
 func SendNotification(title, content, level string) {
-	notificationChannelsMu.RLock()
-	defer notificationChannelsMu.RUnlock()
-	for _, ch := range notificationChannels {
-		if !ch.Enabled {
-			continue
-		}
-		go sendToChannel(ch, title, content, level)
+	event := &model.MonitorAlertEvent{
+		Name:     title,
+		Severity: level,
+		Status:   model.MonitorAlertEventStatusFiring,
+		Value:    content,
+		Annotations: map[string]string{
+			"title":   title,
+			"content": content,
+		},
 	}
-}
-
-func sendToChannel(ch NotificationChannel, title, content, level string) {
-	payload := buildChannelPayload(ch.Type, title, content, level)
-	if payload == nil {
-		return
+	for _, ch := range store.ListActiveNotificationChannels() {
+		chCopy := ch
+		go func(c model.NotificationChannel) {
+			if err := notifier.SendToChannel(&c, event); err != nil {
+				// SendToChannel already logs; swallow to keep signature compatible.
+				_ = err
+			}
+		}(chCopy)
 	}
-	resp, err := http.Post(ch.Webhook, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		log.WithError(err).Warnf("notification: send to %s(%s) failed", ch.Name, ch.Type)
-		return
-	}
-	resp.Body.Close()
-}
-
-func buildChannelPayload(chType, title, content, level string) []byte {
-	var payload []byte
-	switch chType {
-	case "dingtalk":
-		payload, _ = json.Marshal(map[string]any{
-			"msgtype": "markdown",
-			"markdown": map[string]string{
-				"title": title,
-				"text":  fmt.Sprintf("### %s\n%s\n> 级别: %s", title, content, level),
-			},
-		})
-	case "feishu":
-		payload, _ = json.Marshal(map[string]any{
-			"msg_type": "text",
-			"content":  map[string]string{"text": fmt.Sprintf("[%s] %s\n%s", level, title, content)},
-		})
-	case "wecom":
-		payload, _ = json.Marshal(map[string]any{
-			"msgtype": "markdown",
-			"markdown": map[string]string{
-				"content": fmt.Sprintf("### %s\n%s\n> 级别: %s", title, content, level),
-			},
-		})
-	default:
-		return nil
-	}
-	return payload
 }

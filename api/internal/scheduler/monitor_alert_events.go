@@ -7,10 +7,15 @@ import (
 
 	"ai-workbench-api/internal/evaluator"
 	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/notifier"
 	"ai-workbench-api/internal/store"
 )
 
 const monitorAlertRedactedValue = "<REDACTED>"
+
+// dispatchAlertEvent is replaced in tests to observe firing notifications
+// without touching the real notifier package.
+var dispatchAlertEvent = notifier.DispatchAlertEvent
 
 func applyMonitorAlertEvaluation(rule model.MonitorAlertRule, eval evaluator.Result) (int, int, error) {
 	if eval.Triggered && len(eval.Candidates) > 0 {
@@ -33,11 +38,15 @@ func upsertMonitorAlertCandidates(rule model.MonitorAlertRule, candidates []eval
 		event := eventFromMonitorCandidate(rule, candidate)
 		fingerprint := model.GenerateMonitorAlertEventFingerprint(event)
 		active[fingerprint] = true
-		if !currentMonitorAlertFingerprintExists(fingerprint) {
+		newlyFiring := !currentMonitorAlertFingerprintExists(fingerprint)
+		if newlyFiring {
 			created++
 		}
-		_, err := store.UpsertMonitorAlertEvent(event)
+		stored, err := store.UpsertMonitorAlertEvent(event)
 		joined = errors.Join(joined, err)
+		if err == nil && newlyFiring {
+			dispatchAlertEvent(stored)
+		}
 	}
 	return created, active, joined
 }

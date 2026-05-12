@@ -22,6 +22,8 @@ func registerWorkflowAndNotificationRoutes(v1 *gin.RouterGroup, mw routeMiddlewa
 	v1.GET("/notifications/channels", handler.ListNotificationChannels)
 	v1.POST("/notifications/channels", mw.adminRequired, handler.SaveNotificationChannel)
 	v1.DELETE("/notifications/channels/:id", mw.adminRequired, handler.DeleteNotificationChannel)
+	v1.POST("/notifications/channels/:id/test", mw.adminRequired, handler.TestNotificationChannel)
+	v1.POST("/monitor/notification-channels/:id/test", mw.adminRequired, handler.TestNotificationChannel)
 	v1.GET("/notifications/rules", handler.ListNotificationRules)
 	v1.POST("/notifications/rules", mw.adminRequired, handler.SaveNotificationRules)
 	v1.DELETE("/notifications/rules", mw.adminRequired, handler.DeleteNotificationRules)

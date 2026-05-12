@@ -41,14 +41,11 @@ func redactNotificationChannel(ch NotificationChannel) NotificationChannel {
 }
 
 func getNotificationChannel(id string) (NotificationChannel, bool) {
-	notificationChannelsMu.RLock()
-	defer notificationChannelsMu.RUnlock()
-	for _, ch := range notificationChannels {
-		if ch.ID == id {
-			return ch, true
-		}
+	ch, ok := store.GetNotificationChannel(id)
+	if !ok || ch == nil {
+		return NotificationChannel{}, false
 	}
-	return NotificationChannel{}, false
+	return *ch, true
 }
 
 func decorateNotificationRules(items []model.NotificationRule) []model.NotificationRule {
