@@ -1,0 +1,384 @@
+.fx-ds-page {
+  min-height: calc(100vh - 104px);
+  padding: 18px;
+  color: #172033;
+  background: #f6f8fb;
+}
+
+.fx-ds-header,
+.fx-ds-panel,
+.fx-ds-form,
+.fx-ds-drawer,
+.fx-ds-modal__panel {
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.fx-ds-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.fx-ds-header p {
+  margin: 0;
+  color: #1769ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-ds-header h1,
+.fx-ds-form h2,
+.fx-ds-drawer h2,
+.fx-ds-modal h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.fx-ds-header span,
+.fx-ds-source,
+.fx-ds-form p {
+  color: #65758d;
+  font-size: 13px;
+}
+
+.fx-ds-actions,
+.fx-ds-row-actions,
+.fx-ds-drawer__actions,
+.fx-ds-form footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-ds-page button,
+.fx-ds-page input,
+.fx-ds-page select,
+.fx-ds-page textarea {
+  font: inherit;
+}
+
+.fx-ds-page button {
+  min-height: 32px;
+  border: 1px solid #c8d2df;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #1b2b44;
+  cursor: pointer;
+}
+
+.fx-ds-page button:hover {
+  border-color: #1769ff;
+}
+
+.fx-ds-page button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.fx-ds-page button.is-primary {
+  border-color: #1769ff;
+  background: #1769ff;
+  color: #ffffff;
+}
+
+.fx-ds-page button.is-danger {
+  color: #b42318;
+}
+
+.fx-ds-panel {
+  padding: 14px;
+}
+
+.fx-ds-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 160px 140px;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.fx-ds-toolbar input,
+.fx-ds-toolbar select,
+.fx-ds-form input,
+.fx-ds-form textarea {
+  min-height: 34px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c8d2df;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: #1b2b44;
+  background: #ffffff;
+}
+
+.fx-ds-source {
+  margin-bottom: 10px;
+}
+
+.fx-ds-alert {
+  margin: 10px 0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.fx-ds-alert.is-error {
+  border: 1px solid #f2b8b5;
+  color: #9b1c13;
+  background: #fff4f3;
+}
+
+.fx-ds-alert.is-warning {
+  border: 1px solid #f7d78a;
+  color: #7a4b00;
+  background: #fff8e8;
+}
+
+.fx-ds-table-wrap {
+  overflow: auto;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+}
+
+.fx-ds-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fx-ds-table th,
+.fx-ds-table td {
+  border-bottom: 1px solid #e6ebf2;
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.fx-ds-table th {
+  color: #52627a;
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.fx-ds-link {
+  border: 0 !important;
+  padding: 0 !important;
+  color: #1769ff !important;
+  background: transparent !important;
+}
+
+.fx-ds-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #b9c7d8;
+  border-radius: 999px;
+  padding: 0 8px;
+  color: #43546d;
+  background: #f8fafc;
+}
+
+.fx-ds-empty {
+  padding: 42px;
+  text-align: center;
+  color: #66758d;
+}
+
+.fx-ds-form {
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.fx-ds-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.fx-ds-form label {
+  display: grid;
+  gap: 6px;
+  color: #4d5f78;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fx-ds-form label.is-wide {
+  grid-column: 1 / -1;
+}
+
+.fx-ds-form footer {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.fx-ds-drawer {
+  position: fixed;
+  z-index: 30;
+  top: 0;
+  right: 0;
+  width: min(540px, 100vw);
+  height: 100vh;
+  box-shadow: -16px 0 42px rgba(20, 32, 50, .16);
+  padding: 16px;
+  overflow: auto;
+}
+
+.fx-ds-drawer header,
+.fx-ds-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fx-ds-icon-button {
+  width: 32px;
+  padding: 0 !important;
+}
+
+.fx-ds-detail-list {
+  display: grid;
+  gap: 8px;
+}
+
+.fx-ds-detail-list div {
+  border: 1px solid #e1e7f0;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.fx-ds-detail-list dt {
+  color: #66758d;
+  font-size: 12px;
+}
+
+.fx-ds-detail-list dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-ds-json {
+  max-height: 360px;
+  overflow: auto;
+  border-radius: 8px;
+  padding: 12px;
+  color: #25324a;
+  background: #f5f7fb;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fx-ds-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.fx-ds-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .32);
+}
+
+.fx-ds-modal__panel {
+  position: relative;
+  width: min(760px, calc(100vw - 28px));
+  margin: 8vh auto 0;
+  padding: 16px;
+}
+
+.fx-ds-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.fx-ds-type-card {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 6px 10px;
+  min-height: 96px;
+  text-align: left;
+}
+
+.fx-ds-type-card__icon {
+  grid-row: 1 / span 3;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #1769ff;
+}
+
+.fx-ds-type-card__logo {
+  grid-row: 1 / span 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.fx-ds-type-card span:not(.fx-ds-type-card__icon) {
+  grid-column: 2 / span 2;
+  color: #66758d;
+  font-size: 12px;
+}
+
+.fx-ds-type-card em {
+  color: #1769ff;
+  font-style: normal;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .fx-ds-header,
+  .fx-ds-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fx-ds-toolbar,
+  .fx-ds-form__grid,
+  .fx-ds-type-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fx-ds-alert.is-success {
+  border: 1px solid #86efac;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.fx-ds-header-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.fx-ds-header-row input {
+  flex: 1;
+}
+
+.fx-ds-form select {
+  min-height: 34px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c8d2df;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: #1b2b44;
+  background: #ffffff;
+}
