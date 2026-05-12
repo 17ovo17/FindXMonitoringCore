@@ -153,6 +153,61 @@ func TestContractMatrixSeededDatasourceBriefListIsReady(t *testing.T) {
 	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 }
 
+func TestContractMatrixSeededPrometheusSingleQueryAdapterIsReady(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("single query adapter should be ready, got %d body=%s", w.Code, w.Body.String())
+	}
+	var item model.ContractMatrixEntry
+	decodeContractMatrixResponse(t, w, &item)
+	if item.Status != model.ContractStatusReady ||
+		item.Handler == "" || item.Backend == "" || item.Datasource == "" || item.Executor == "" ||
+		len(item.EvidenceRefs) == 0 {
+		t.Fatalf("single query ready contract missing executable evidence: %#v", item)
+	}
+	body := w.Body.String()
+	for _, want := range []string{"/monitor/query", "/monitor/query-range", "/monitor/labels", "/monitor/label-values", "upstream_scope"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("single query adapter response missing %s: %s", want, body)
+		}
+	}
+	for _, forbidden := range []string{"query-range-batch", "query-instant-batch", "/api/n9e/tag-metrics", "/api/n9e/metric-views"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("single query adapter must not claim Nightingale batch/query view endpoint %s: %s", forbidden, body)
+		}
+	}
+	assertContractMatrixNoSensitiveLeak(t, body)
+}
+
+func TestContractMatrixSeededMetricQueryBatchAndMetricViewsStayBlocked(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	tests := []struct {
+		id     string
+		status string
+	}{
+		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+tt.id, nil)
+			if w.Code != http.StatusConflict {
+				t.Fatalf("%s should remain blocked 409, got %d body=%s", tt.id, w.Code, w.Body.String())
+			}
+			var payload model.ContractMatrixBlockedResponse
+			decodeContractMatrixResponse(t, w, &payload)
+			if payload.ContractGapID != tt.id || payload.Status != tt.status || payload.Code != model.ContractBlockedByContractCode || payload.SafeToRetry {
+				t.Fatalf("blocked response mismatch for %s: %#v", tt.id, payload)
+			}
+			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+			assertContractMatrixBlockedShape(t, w.Body.String())
+		})
+	}
+}
+
 func TestContractMatrixDropsSensitiveInput(t *testing.T) {
 	store.ResetContractMatrixForTest()
 	r := contractMatrixTestRouter()

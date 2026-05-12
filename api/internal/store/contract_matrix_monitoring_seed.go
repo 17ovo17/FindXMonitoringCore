@@ -92,6 +92,31 @@ func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequ
 
 func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterRequest {
 	return []model.ContractMatrixRegisterRequest{
+		monitoringReadyContractSeed(
+			"FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY",
+			"FindX Prometheus single query adapter",
+			[]string{
+				`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`,
+				`D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`,
+				`D:\项目迁移文件\平台源码\fe-main\src\services\metric.ts`,
+			},
+			"MonitorQuery MonitorQueryRange ListMonitorLabels ListMonitorLabelValues",
+			"handler.monitoring_query Prometheus single query adapter",
+			"monitoring.PrometheusGateway",
+			"/api/v1/monitor/query /api/v1/monitor/query-range /api/v1/monitor/labels /api/v1/monitor/label-values",
+			[]string{
+				"api/routes_monitor.go registers /monitor/query, /monitor/query-range, /monitor/labels, /monitor/label-values",
+				"api/internal/handler/monitoring_query.go validates single PromQL query/range and label requests",
+				"api/internal/handler/monitoring_query_prometheus.go proxies Prometheus query, query_range, labels, and label values",
+				"api/internal/handler/monitoring_query_test.go covers single query, range query, labels validation, datasource miss, and redaction",
+			},
+			monitoringContractScopeMetadata(
+				"/query?section=metrics",
+				"findx_prometheus_single_query_adapter",
+				"/monitor/query,/monitor/query-range,/monitor/labels,/monitor/label-values",
+				"FindX single Prometheus query, range, labels, and label-values only; not Nightingale batch query or metric views CRUD",
+			),
+		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-METRIC-VIEWS-CRUD",
 			"Metric views CRUD",
@@ -183,6 +208,12 @@ func monitoringContractMetadata(findxRoute, gapType, upstreamRef string) map[str
 		"gap_type":     gapType,
 		"upstream_ref": upstreamRef,
 	}
+}
+
+func monitoringContractScopeMetadata(findxRoute, gapType, upstreamRef, upstreamScope string) map[string]string {
+	metadata := monitoringContractMetadata(findxRoute, gapType, upstreamRef)
+	metadata["upstream_scope"] = upstreamScope
+	return metadata
 }
 
 func monitoringContractAdapterMetadata(findxRoute, adapter, upstreamRef string) map[string]string {
