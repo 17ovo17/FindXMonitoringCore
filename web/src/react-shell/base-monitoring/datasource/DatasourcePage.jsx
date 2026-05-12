@@ -15,6 +15,8 @@ import {
 import { SourceTypeModal } from './SourceTypeModal.jsx'
 import { DatasourceForm } from './DatasourceForm.jsx'
 import { DatasourceDrawer } from './DatasourceDrawer.jsx'
+import { ConfirmModal } from './ConfirmModal.jsx'
+import { Pagination } from './Pagination.jsx'
 import './datasource.css'
 
 function formatError(error) {
@@ -64,6 +66,9 @@ export function DatasourcePage() {
   const [typeModalVisible, setTypeModalVisible] = useState(false)
   const [formState, setFormState] = useState(null)
   const [sortAsc, setSortAsc] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const debouncedKeyword = useDebounce(keyword, 300)
 
@@ -102,6 +107,15 @@ export function DatasourcePage() {
     })
   }, [rows, debouncedKeyword, typeFilter, sortAsc])
 
+  // 筛选变化时重置页码
+  useEffect(() => { setCurrentPage(1) }, [debouncedKeyword, typeFilter])
+
+  const totalCount = filteredRows.length
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredRows.slice(start, start + pageSize)
+  }, [filteredRows, currentPage, pageSize])
+
   const chooseType = (item) => {
     setTypeModalVisible(false)
     setFormState({ dsType: item, editRow: null })
@@ -114,16 +128,23 @@ export function DatasourcePage() {
     setSelected(null)
   }
 
-  const handleDelete = async (row) => {
+  const handleDelete = (row) => {
     const id = datasourceId(row)
     if (!id) { setError('该记录缺少 ID，无法删除'); return }
-    if (!window.confirm(`确认删除数据源「${displayName(row)}」？此操作不可恢复。`)) return
+    setDeleteTarget(row)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = datasourceId(deleteTarget)
     try {
       await datasourceApi.remove(id)
       setNotice('删除成功')
       load()
     } catch (err) {
       setError(`删除失败：${redactText(err?.message || '未知错误')}`)
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -194,7 +215,7 @@ export function DatasourcePage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row, index) => {
+              {pagedRows.map((row, index) => {
                 const key = rowKey(row) || `row-${index}`
                 return (
                   <tr key={key}>
@@ -214,10 +235,24 @@ export function DatasourcePage() {
           </table>
           {!loading && filteredRows.length === 0 && <div className='fx-ds-empty'>暂无数据源</div>}
         </div>
+        <Pagination
+          total={totalCount}
+          current={currentPage}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+        />
       </section>
 
       <DatasourceDrawer row={selected} onClose={() => setSelected(null)} onEdit={handleEdit} />
       <SourceTypeModal visible={typeModalVisible} onClose={() => setTypeModalVisible(false)} onChoose={chooseType} />
+      <ConfirmModal
+        visible={!!deleteTarget}
+        title='确认删除'
+        content={`确定删除数据源「${deleteTarget ? displayName(deleteTarget) : ''}」？此操作不可恢复。`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </main>
   )
 }

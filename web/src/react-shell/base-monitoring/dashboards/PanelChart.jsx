@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { queryPanel } from './panelQuery.js'
+import { StatPanel, BarGaugePanel, GaugePanel } from './chartRenderers.jsx'
+import { PiePanel, HexbinPanel, TextPanel, HeatmapPanel, IframePanel, BarChartPanel, TableNGPanel } from './chartRenderersExtra.jsx'
+import { formatValue } from './unitFormat.js'
 
 const COLORS = [
   '#1769ff', '#e6550d', '#31a354', '#756bb1', '#636363',
@@ -25,7 +28,7 @@ function formatMetricLabel(series) {
   return labels ? `${name}{${labels}}` : name || 'series'
 }
 
-function TimeSeriesChart({ series, onBrushEnd }) {
+function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
   const containerRef = useRef(null)
   const chartRef = useRef(null)
 
@@ -52,12 +55,40 @@ function TimeSeriesChart({ series, onBrushEnd }) {
     const width = containerRef.current.clientWidth || 400
     const height = Math.min(Math.max(containerRef.current.clientHeight - 30, 120), 300)
 
+    /* DEGRADE-005: Annotations 渲染 hook */
+    const drawAnnotations = (u) => {
+      if (!annotations || annotations.length === 0) return
+      const ctx = u.ctx
+      const xMin = u.scales.x.min
+      const xMax = u.scales.x.max
+      for (const ann of annotations) {
+        const ts = Number(ann.time || ann.timestamp)
+        if (ts < xMin || ts > xMax) continue
+        const px = u.valToPos(ts, 'x', true)
+        ctx.save()
+        ctx.strokeStyle = ann.color || '#e6550d'
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([4, 2])
+        ctx.beginPath()
+        ctx.moveTo(px, u.bbox.top)
+        ctx.lineTo(px, u.bbox.top + u.bbox.height)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = ann.color || '#e6550d'
+        ctx.beginPath()
+        ctx.arc(px, u.bbox.top + 4, 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+    }
+
     const opts = {
       width,
       height,
       cursor: { drag: { x: true, y: false } },
       select: { show: true },
       hooks: {
+        drawAxes: [drawAnnotations],
         setSelect: [
           (u) => {
             if (!u.select.width || u.select.width < 5) return
@@ -76,7 +107,10 @@ function TimeSeriesChart({ series, onBrushEnd }) {
       ],
       axes: [
         { stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 40 },
-        { stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 50 },
+        {
+          stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 50,
+          values: (u, vals) => vals.map((v) => unit ? formatValue(v, unit) : (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : String(v))),
+        },
       ],
     }
 
@@ -92,7 +126,7 @@ function TimeSeriesChart({ series, onBrushEnd }) {
       window.removeEventListener('resize', handleResize)
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
     }
-  }, [series, onBrushEnd])
+  }, [series, annotations, onBrushEnd, unit])
 
   if (series.length === 0) {
     return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
@@ -109,23 +143,6 @@ function TimeSeriesChart({ series, onBrushEnd }) {
           </span>
         ))}
       </div>
-    </div>
-  )
-}
-
-function StatPanel({ series }) {
-  if (series.length === 0) {
-    return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
-  }
-  const lastValues = series[0].values
-  const value = lastValues.length > 0 ? lastValues[lastValues.length - 1][1] : 0
-  const formatted = Number.isFinite(value)
-    ? (value % 1 === 0 ? value.toString() : value.toFixed(2))
-    : '-'
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '160px' }}>
-      <span style={{ fontSize: '42px', fontWeight: 700, color: 'var(--fx-blue)' }}>{formatted}</span>
-      <span style={{ fontSize: '12px', color: 'var(--fx-muted)', marginTop: '4px' }}>{formatMetricLabel(series[0])}</span>
     </div>
   )
 }
@@ -192,6 +209,18 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
   }, [panel, timeRange, datasourceId])
 
   const rawPanel = panel.raw || panel
+  const type = (panel.type || '').toLowerCase()
+  const displayOpts = rawPanel.displayOptions || panel.displayOptions || {}
+  const unit = rawPanel.unit || panel.unit
+
+  /* text 和 iframe 不需要查询数据 */
+  if (type === 'text') {
+    return <TextPanel panel={panel} options={displayOpts} />
+  }
+  if (type === 'iframe') {
+    return <IframePanel panel={panel} options={displayOpts} />
+  }
+
   const hasTargets = (Array.isArray(rawPanel.targets) && rawPanel.targets.some((t) => t.expr || t.expression || t.query))
     || rawPanel.expr || rawPanel.query || rawPanel.expression || rawPanel.metric
   if (!hasTargets) {
@@ -206,16 +235,35 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
     return <div style={{ color: '#c0392b', padding: '12px', fontSize: '12px', background: 'rgba(192,57,43,0.06)', borderRadius: '4px' }}>{error}</div>
   }
 
-  const type = (panel.type || '').toLowerCase()
-
   if (type === 'stat' || type === 'singlestat') {
-    return <StatPanel series={series} />
+    return <StatPanel series={series} options={{ ...displayOpts, unit }} />
   }
-  if (type === 'table' || type === 'table-old' || type === 'tableng') {
+  if (type === 'table' || type === 'table-old') {
     return <TablePanel series={series} />
   }
+  if (type === 'tableng') {
+    return <TableNGPanel series={series} options={{ ...displayOpts, unit }} />
+  }
+  if (type === 'pie') {
+    return <PiePanel series={series} options={{ ...displayOpts, unit }} />
+  }
+  if (type === 'hexbin') {
+    return <HexbinPanel series={series} options={displayOpts} />
+  }
+  if (type === 'bargauge') {
+    return <BarGaugePanel series={series} options={{ ...displayOpts, unit }} />
+  }
+  if (type === 'gauge') {
+    return <GaugePanel series={series} options={{ ...displayOpts, unit }} />
+  }
+  if (type === 'heatmap') {
+    return <HeatmapPanel series={series} options={displayOpts} />
+  }
+  if (type === 'barchart') {
+    return <BarChartPanel series={series} options={{ ...displayOpts, unit }} />
+  }
   if (type === 'timeseries' || type === 'graph' || type === '') {
-    return <TimeSeriesChart series={series} annotations={annotations} onBrushEnd={onBrushEnd} />
+    return <TimeSeriesChart series={series} annotations={annotations} onBrushEnd={onBrushEnd} unit={unit} />
   }
 
   return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>{panel.type} 暂不支持</div>
