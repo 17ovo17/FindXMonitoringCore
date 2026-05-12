@@ -11,7 +11,7 @@ import PanelMenu from './PanelMenu.jsx'
 import ShareLinkModal from './ShareLinkModal.jsx'
 import TemplateVariablesBar, { replaceVariables } from './TemplateVariablesBar.jsx'
 import TimeRangePicker, { QUICK_RANGES, REFRESH_OPTIONS, parseTimeRangeFromURL, syncTimeRangeToURL } from './TimeRangePicker.jsx'
-import TimezoneSelector, { applyTimezoneOffset, getStoredTimezone } from './TimezoneSelector.jsx'
+import { applyTimezoneOffset, getStoredTimezone } from './TimezoneSelector.jsx'
 import { useBeforeUnload, useSaveMode } from './useDashboardHooks.js'
 import { usePermission } from './usePermission.jsx'
 
@@ -54,9 +54,7 @@ function GlobalLoading() {
 
 export default function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked, onExport, onShare, onFullscreen, detailError, onUpdateDashboard, loading: externalLoading }) {
   const { canEdit } = usePermission()
-  const [timeRangeKey, setTimeRangeKey] = useState(() => parseTimeRangeFromURL() || '1h')
-  const [customTimeRange, setCustomTimeRange] = useState(null)
-  const [refreshKey, setRefreshKey] = useState('off')
+  const [timeRange, setTimeRange] = useState(() => parseTimeRangeFromURL() || { start: 'now-1h', end: 'now' })
   const [timezone, setTimezone] = useState(getStoredTimezone)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(dashboard.title)
@@ -76,7 +74,6 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const containerRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(1200)
-  const refreshTimerRef = useRef(null)
   const datasourceId = 'prometheus-default'
 
   /* DEGRADE-001: 保存模式 */
@@ -97,7 +94,6 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
       return { name: key, type: 'custom', options: [], current: val }
     })
   }, [dashboard])
-
   const dashboardLinks = useMemo(() => dashboard.raw?.links || [], [dashboard])
 
   useEffect(() => { setPanelList(panels); setLayout(panels.filter((p) => p.type !== 'row').map((p, i) => ({ i: p.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 8, w: 12, h: 8 }))) }, [panels])
@@ -109,37 +105,43 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
-    const opt = REFRESH_OPTIONS.find((r) => r.key === refreshKey)
-    if (opt && opt.ms) refreshTimerRef.current = setInterval(() => onRefresh(), opt.ms)
-    return () => { if (refreshTimerRef.current) clearInterval(refreshTimerRef.current) }
-  }, [refreshKey, onRefresh])
-  useEffect(() => {
     const handleEsc = (e) => { if (e.key === 'Escape' && isFullscreen) { setIsFullscreen(false); document.body.classList.remove('fx-fullscreen') } }
     document.addEventListener('keydown', handleEsc)
     return () => { document.removeEventListener('keydown', handleEsc); document.body.classList.remove('fx-fullscreen') }
   }, [isFullscreen])
 
-  const timeRange = useMemo(() => {
-    let range
-    if (customTimeRange) {
-      const step = Math.max(15, Math.floor((customTimeRange.end - customTimeRange.start) / 240))
-      range = { ...customTimeRange, step }
-    } else {
-      const now = Math.floor(Date.now() / 1000)
-      const r = QUICK_RANGES.find((r) => r.key === timeRangeKey) || QUICK_RANGES[3]
-      const step = Math.max(15, Math.floor(r.seconds / 240))
-      range = { start: now - r.seconds, end: now, step }
+  const computedTimeRange = useMemo(() => {
+    if (!timeRange) return { start: Math.floor(Date.now() / 1000) - 3600, end: Math.floor(Date.now() / 1000), step: 15 }
+    const now = Math.floor(Date.now() / 1000)
+    let start = now - 3600
+    let end = now
+    // 解析 start
+    if (typeof timeRange.start === 'string' && timeRange.start.startsWith('now')) {
+      const m = /^now(?:-(\d+)([smhdwMy]))?$/.exec(timeRange.start)
+      if (m && m[1] && m[2]) {
+        const amount = parseInt(m[1], 10)
+        const unitMap = { s: 1, m: 60, h: 3600, d: 86400, w: 604800, M: 2592000, y: 31536000 }
+        start = now - amount * (unitMap[m[2]] || 60)
+      }
+    } else if (typeof timeRange.start === 'number') {
+      start = timeRange.start
     }
-    return applyTimezoneOffset(range, timezone)
-  }, [timeRangeKey, customTimeRange, timezone])
+    // 解析 end
+    if (typeof timeRange.end === 'string' && timeRange.end === 'now') {
+      end = now
+    } else if (typeof timeRange.end === 'number') {
+      end = timeRange.end
+    }
+    const step = Math.max(15, Math.floor((end - start) / 240))
+    return applyTimezoneOffset({ start, end, step }, timezone)
+  }, [timeRange, timezone])
 
   const markChanged = useCallback(() => { if (!hasChanges) setHasChanges(true); triggerAutoSave() }, [hasChanges, triggerAutoSave])
   const handleLayoutChange = useCallback((newLayout) => { setLayout(newLayout); markChanged() }, [markChanged])
   const handleTitleSave = () => { setEditingTitle(false); if (titleValue !== dashboard.title) { onUpdateDashboard?.({ title: titleValue }); markChanged() } }
   const toggleFullscreen = () => { setIsFullscreen((prev) => { const next = !prev; document.body.classList.toggle('fx-fullscreen', next); return next }) }
   const toggleRow = (rowId) => { setCollapsedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] })) }
-  const handleBrushEnd = useCallback((range) => { setCustomTimeRange(range) }, [])
+  const handleBrushEnd = useCallback((range) => { setTimeRange(range) }, [])
   const handleBack = () => { confirmLeave(onBack) }
 
   const handlePanelAction = (action, panel) => {
@@ -180,8 +182,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
   }
   const handleVariablesChange = useCallback((values) => { setVariableValues(values) }, [])
   const handleVariablesUpdate = (updatedVars) => { onUpdateDashboard?.({ variables: updatedVars }) }
-  const handleTimeRangeChange = (key) => { setTimeRangeKey(key); setCustomTimeRange(null) }
-
+  const handleTimeRangeChange = (range) => { setTimeRange(range) }
   /* DEGRADE-004: 全局 Loading */
   if (externalLoading) return <GlobalLoading />
 
@@ -191,43 +192,42 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         <div className="fx-dash-detail__head-left">
           <button type="button" className="fx-dash-back-btn" onClick={handleBack}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-            返回
           </button>
+          <span className="fx-dash-breadcrumb">
+            <a className="fx-dash-breadcrumb__link" onClick={handleBack}>仪表盘列表</a>
+            <span className="fx-dash-breadcrumb__sep">/</span>
+          </span>
           {editingTitle ? (
             <input className="fx-dash-title-input" value={titleValue} onChange={(e) => setTitleValue(e.target.value)} onBlur={handleTitleSave} onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave() }} autoFocus />
           ) : (
-            <h1 className="fx-dash-detail__title" onClick={() => canEdit && setEditingTitle(true)}>{titleValue}</h1>
+            <h1 className="fx-dash-detail__title" onClick={() => canEdit && setEditingTitle(true)}>
+              {titleValue}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+            </h1>
           )}
-          <div className="fx-dash-detail__tags">
-            {dashboard.tags.map((tag) => <span className="fx-dash-tag" key={tag}>{tag}</span>)}
-          </div>
-          {/* DEGRADE-006: DashboardLinks */}
           <DashboardLinks links={dashboardLinks} />
         </div>
         <div className="fx-dash-detail__head-right">
-          <TimeRangePicker rangeKey={timeRangeKey} refreshKey={refreshKey} onRangeChange={handleTimeRangeChange} onRefreshChange={setRefreshKey} />
-          {/* DEGRADE-007: 时区选择 */}
-          <TimezoneSelector value={timezone} onChange={setTimezone} />
+          {/* 1. 添加面板 */}
+          {canEdit && <AddPanelMenu onSelect={handleAddPanel} />}
+          {/* 2. 时间范围选择器（含时区） */}
+          <TimeRangePicker value={timeRange} onChange={handleTimeRangeChange} timezone={timezone} onTimezoneChange={setTimezone} />
+          {/* 3. 自动刷新 */}
           <AutoRefreshPicker onRefresh={onRefresh} />
-          {/* DEGRADE-001: 保存模式切换 */}
+          {/* 4. 保存模式下拉 */}
           <select className="fx-dash-save-mode" value={saveMode} onChange={(e) => toggleSaveMode(e.target.value)} title="保存模式">
             <option value="manual">手动保存</option>
             <option value="auto">自动保存</option>
           </select>
-          {/* DEGRADE-003: 权限控制 - 非 admin 隐藏编辑按钮 */}
-          {canEdit && <AddPanelMenu onSelect={handleAddPanel} />}
+          {/* 5. 全屏 */}
           <button type="button" className="fx-dash-icon-btn" title="全屏" onClick={toggleFullscreen}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           </button>
+          {/* 6. 分享 */}
           <button type="button" className="fx-dash-icon-btn" title="分享" onClick={() => setShowShare(true)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           </button>
-          {/* DEGRADE-003: 权限控制 - 非 admin 隐藏设置按钮 */}
-          {canEdit && (
-            <button type="button" className="fx-dash-icon-btn" title="设置" onClick={() => setShowSettings(true)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            </button>
-          )}
+          {/* 7. 保存按钮（仅 hasChanges 时显示） */}
           {hasChanges && saveMode === 'manual' && <button type="button" className="is-primary" onClick={handleSave}>保存</button>}
         </div>
       </header>
@@ -246,7 +246,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         )}
         {renderGrid()}
       </section>
-      {editorPanel && <PanelEditor panel={editorPanel.raw || editorPanel} timeRange={timeRange} datasourceId={datasourceId} dashboardVariables={dashboardVariables} onSave={handleEditorSave} onClose={() => setEditorPanel(null)} />}
+      {editorPanel && <PanelEditor panel={editorPanel.raw || editorPanel} timeRange={computedTimeRange} datasourceId={datasourceId} dashboardVariables={dashboardVariables} onSave={handleEditorSave} onClose={() => setEditorPanel(null)} />}
       {showSettings && <DashboardSettingsModal dashboard={dashboard} onClose={() => setShowSettings(false)} onSaved={() => onRefresh()} />}
       {showShare && <ShareLinkModal onClose={() => setShowShare(false)} />}
       {inspectPanel && (
@@ -259,7 +259,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         <div className="fx-panel-fullscreen">
           <header><strong>{fullscreenPanel.title}</strong><button type="button" onClick={() => setFullscreenPanel(null)}>x</button></header>
           <div className="fx-panel-fullscreen__body">
-            <PanelChart panel={fullscreenPanel} timeRange={timeRange} datasourceId={datasourceId} onBrushEnd={handleBrushEnd} />
+            <PanelChart panel={fullscreenPanel} timeRange={computedTimeRange} datasourceId={datasourceId} onBrushEnd={handleBrushEnd} />
           </div>
         </div>
       )}
@@ -290,7 +290,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
               {canEdit && <PanelMenu panel={panel} onAction={handlePanelAction} />}
             </header>
             <div className="fx-dash-panel__body">
-              <PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} annotations={annotations} onBrushEnd={handleBrushEnd} />
+              <PanelChart panel={panel} timeRange={computedTimeRange} datasourceId={datasourceId} annotations={annotations} onBrushEnd={handleBrushEnd} />
             </div>
           </div>
         ))}

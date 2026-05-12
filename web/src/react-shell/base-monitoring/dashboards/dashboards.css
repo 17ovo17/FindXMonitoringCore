@@ -587,68 +587,228 @@
   min-height: 0;
 }
 
-/* TimeRangePicker */
-.fx-time-picker {
+/* TimeRangePicker — 夜莺 Popover 面板结构 */
+.fx-trp {
   position: relative;
 }
 
-.fx-time-picker__trigger {
+.fx-trp__trigger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  border: 1px solid #d8e1ee;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
   white-space: nowrap;
 }
 
-.fx-time-picker__refresh-badge {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #eef5ff;
-  color: #1769ff;
+.fx-trp__trigger:hover {
+  border-color: #1769ff;
+}
+
+.fx-trp__tz-badge {
+  color: #d4a017;
   font-size: 11px;
   font-weight: 600;
 }
 
-.fx-time-picker__dropdown {
+.fx-trp__clear {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.fx-trp__trigger:hover .fx-trp__clear {
+  opacity: 1;
+}
+
+.fx-trp__popover {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 100;
-  min-width: 280px;
+  z-index: 200;
+  min-width: 520px;
   border: 1px solid #e1e7f0;
   border-radius: 8px;
-  padding: 12px;
   background: #fff;
   box-shadow: 0 8px 24px rgba(31, 45, 61, 0.12);
 }
 
-.fx-time-picker__section {
+.fx-trp__body {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 0;
+}
+
+.fx-trp__left {
+  padding: 16px;
+  border-right: 1px solid #e1e7f0;
+}
+
+.fx-trp__right {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow: hidden;
+}
+
+.fx-trp__field {
   margin-bottom: 12px;
 }
 
-.fx-time-picker__section:last-child {
-  margin-bottom: 0;
-}
-
-.fx-time-picker__section strong {
+.fx-trp__field label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: #65758d;
   font-size: 12px;
 }
 
-.fx-time-picker__grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+.fx-trp__field input {
+  width: 100%;
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
-.fx-time-picker__grid button {
-  padding: 6px 4px;
+.fx-trp__field input.is-error {
+  border-color: #e53e3e;
+}
+
+.fx-trp__error {
+  color: #e53e3e;
+  font-size: 11px;
+  margin-top: 2px;
+  display: block;
+}
+
+.fx-trp__confirm {
+  margin-bottom: 12px;
+}
+
+.fx-trp__history {
+  border-top: 1px solid #e1e7f0;
+  padding-top: 10px;
+}
+
+.fx-trp__history-title {
+  color: #65758d;
   font-size: 12px;
-  text-align: center;
+}
+
+.fx-trp__history ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.fx-trp__history li {
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.fx-trp__history li:hover {
+  background: #f0f5ff;
+  color: #1769ff;
+}
+
+.fx-trp__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.fx-trp__search input {
+  border: none;
+  outline: none;
+  font-size: 12px;
+  width: 100%;
+}
+
+.fx-trp__quick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.fx-trp__quick-list li {
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.fx-trp__quick-list li:hover {
+  background: #f0f5ff;
+}
+
+.fx-trp__quick-list li.is-active {
+  color: #1769ff;
+  background: #eef5ff;
+  font-weight: 500;
+}
+
+.fx-trp__footer {
+  border-top: 1px solid #e1e7f0;
+  padding: 10px 16px;
+}
+
+.fx-trp__tz-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fx-trp__tz-label {
+  color: #65758d;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.fx-trp__tz-picker select {
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  background: #fff;
+}
+
+/* 面包屑 */
+.fx-dash-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.fx-dash-breadcrumb__link {
+  color: #1769ff;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.fx-dash-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.fx-dash-breadcrumb__sep {
+  color: #8a96aa;
 }
 
 /* Panel Editor */
@@ -1083,8 +1243,31 @@
   background: #e1e7f0;
 }
 
-/* AutoRefreshPicker (D04) */
+/* AutoRefreshPicker — 夜莺 AutoRefresh 结构 */
 .fx-auto-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fx-auto-refresh__sync-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d8e1ee;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.fx-auto-refresh__sync-btn:hover {
+  border-color: #1769ff;
+  color: #1769ff;
+}
+
+.fx-auto-refresh__dropdown-wrap {
   position: relative;
 }
 
@@ -1094,7 +1277,7 @@
   gap: 6px;
   border: 1px solid #d8e1ee;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   font-size: 13px;
   background: #fff;
   cursor: pointer;
@@ -1140,6 +1323,16 @@
   border-color: #1769ff;
   color: #fff;
   background: #1769ff;
+}
+
+/* 旋转动画 */
+@keyframes fx-spin-anim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fx-spin {
+  animation: fx-spin-anim 1s linear infinite;
 }
 
 /* D06: Dashboard Settings Modal */
