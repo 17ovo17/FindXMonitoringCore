@@ -232,7 +232,7 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         </div>
       </header>
       {detailError && <div className="fx-dash-alert is-warning">{detailError}</div>}
-      <TemplateVariablesBar variables={dashboardVariables} onVariablesChange={handleVariablesChange} onVariablesUpdate={canEdit ? handleVariablesUpdate : undefined} />
+      <TemplateVariablesBar variables={dashboardVariables} dashboardId={dashboard.id} onVariablesChange={handleVariablesChange} onVariablesUpdate={canEdit ? handleVariablesUpdate : undefined} />
       <section className="fx-dash-grid-container">
         {panelList.some((p) => p.type === 'row') && (
           <div className="fx-dash-rows">
