@@ -911,5 +911,16 @@ export function IntegrationsPage({ query = {}, onNavigate }) {
   const section = asSection(query.section)
   if (section === 'datasources') return <DatasourcePage />
   if (section === 'systems') return <SystemsContainer />
-  return <TemplatesSection query={query} onNavigate={onNavigate} />
+  return <TemplatesCenterPage query={query} onNavigate={onNavigate} />
+}
+
+function TemplatesCenterPage(props) {
+  const [Page, setPage] = React.useState(null)
+  React.useEffect(() => {
+    import('../templates/TemplatesPage.jsx').then((mod) => {
+      setPage(() => mod.TemplatesPage)
+    })
+  }, [])
+  if (!Page) return <div style={{ padding: 24 }}>加载模板中心...</div>
+  return <Page {...props} />
 }
