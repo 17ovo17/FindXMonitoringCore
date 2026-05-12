@@ -1,4 +1,4 @@
-import { get, normalizeList, post, put, redactText, safeJson } from './http.js'
+import { del, get, normalizeList, post, put, redactText, safeJson } from './http.js'
 
 export const PLATFORM_BLOCKERS = {
   llmCrud: 'BLOCKED_BY_CONTRACT: 成熟 LLM 配置的单条详情、extra_config、单条测试和删除禁用契约尚未完整开放。',
@@ -60,8 +60,29 @@ export const platformApi = {
   getEmbedding: () => get('/settings/embedding'),
   saveEmbedding: (body) => put('/settings/embedding', body),
   testEmbedding: (body) => post('/settings/embedding/test', body),
+  testProvider: (body) => post('/ai-providers/test', body),
   getReranker: () => get('/settings/reranker'),
   saveReranker: (body) => put('/settings/reranker', body),
+  testReranker: (body) => post('/settings/reranker/test', body),
+  // 站点设置
+  getSiteSettings: () => get('/platform/site'),
+  saveSiteSettings: (body) => put('/platform/site', body),
+  // 变量设置
+  listVariables: (params) => tryList('/platform/variables', params, '变量配置契约'),
+  createVariable: (body) => post('/platform/variables', body),
+  updateVariable: (id, body) => put(`/platform/variables/${encodeURIComponent(id)}`, body),
+  deleteVariable: (id) => del(`/platform/variables/${encodeURIComponent(id)}`),
+  // SSO
+  getSsoConfig: () => get('/platform/sso'),
+  saveSsoConfig: (body) => put('/platform/sso', body),
+  testSsoConnection: (body) => post('/platform/sso/test', body),
+  // 告警引擎
+  listEngines: (params) => tryList('/platform/alerting-engines', params, '告警引擎契约'),
+  createEngine: (body) => post('/platform/alerting-engines', body),
+  updateEngine: (id, body) => put(`/platform/alerting-engines/${encodeURIComponent(id)}`, body),
+  deleteEngine: (id) => del(`/platform/alerting-engines/${encodeURIComponent(id)}`),
+  checkEngineHealth: (id) => post(`/platform/alerting-engines/${encodeURIComponent(id)}/health-check`),
+  // 兼容旧接口
   site: (params) => tryList('/platform/site', params, '站点配置契约'),
   variables: (params) => tryList('/platform/variables', params, '变量配置契约'),
   sso: (params) => tryList('/platform/sso', params, 'SSO 配置契约'),

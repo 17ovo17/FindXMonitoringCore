@@ -321,3 +321,75 @@
     margin-top: 12px;
   }
 }
+
+.fx-platform-btn-primary {
+  background: #1769ff !important;
+  border-color: #1769ff !important;
+  color: #fff !important;
+}
+
+.fx-platform-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fx-platform-filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.fx-platform-filter-row input,
+.fx-platform-filter-row select {
+  border: 1px solid #cdd8e8;
+  border-radius: 7px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #1f2f46;
+  min-width: 120px;
+}
+
+.fx-status-ok {
+  color: #166534;
+  font-weight: 600;
+}
+
+.fx-status-warn {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
+.fx-audit-detail-row td {
+  background: #f8fbff;
+}
+
+.fx-audit-detail {
+  padding: 8px 0;
+}
+
+.fx-audit-detail h4 {
+  margin: 8px 0 4px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.fx-audit-detail pre {
+  white-space: pre-wrap;
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
+  max-height: 200px;
+  overflow: auto;
+  background: #f1f5f9;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.fx-audit-detail p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #475569;
+}

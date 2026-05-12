@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { formatPlatformError, platformApi, PLATFORM_BLOCKERS, safePlatformJson } from '../api/platform.js'
 import { McpServersSection } from './McpServersSection.jsx'
 import { SsoSection } from './SsoSection.jsx'
+import { SiteSettingsSection } from './SiteSettingsSection.jsx'
+import { VariablesSection } from './VariablesSection.jsx'
+import { AlertingEnginesSection } from './AlertingEnginesSection.jsx'
+import { AuditSection } from './AuditSection.jsx'
 import { useConfirm } from '../shared/ConfirmModal.jsx'
 import './platform.css'
 
@@ -119,6 +123,17 @@ function ModelsSection() {
     await saveProviders(providers.map((item) => ({ ...item, default: item.id === provider.id })))
   }
 
+  const testProvider = async (provider) => {
+    setFeedback('')
+    setError('')
+    try {
+      const result = await platformApi.testProvider({ id: provider.id, base_url: provider.base_url, api_key: provider.api_key, models: provider.models })
+      setFeedback(result?.message || `AI 服务 ${provider.name} 测试通过。`)
+    } catch (err) {
+      setError(formatPlatformError(err))
+    }
+  }
+
   const saveEmbedding = async () => {
     setFeedback('')
     try {
@@ -149,6 +164,16 @@ function ModelsSection() {
     }
   }
 
+  const testReranker = async () => {
+    setFeedback('')
+    try {
+      const result = await platformApi.testReranker({ api_url: reranker.api_url, api_key: reranker.api_key, model: reranker.model })
+      setFeedback(result?.message || 'Reranker 测试通过。')
+    } catch (err) {
+      setError(formatPlatformError(err))
+    }
+  }
+
   return (
     <section className='fx-platform-models'>
       <div className='fx-platform-toolbar'><button type='button' onClick={() => setModal({ mode: 'create', item: emptyProvider })}>新增 AI 服务</button><button type='button' onClick={load}>刷新</button><span>{source}</span></div>
@@ -162,7 +187,7 @@ function ModelsSection() {
             <p>{provider.base_url || '未配置 API 地址'}</p>
             <p>模型：{(provider.models || []).join(', ') || '-'}</p>
             {provider.default && <strong>默认服务</strong>}
-            <footer><button type='button' onClick={() => setDefault(provider)}>设为默认</button><button type='button' onClick={() => setModal({ mode: 'edit', item: { ...provider, models: (provider.models || []).join(', ') } })}>编辑</button><button type='button' className='danger' onClick={() => removeProvider(provider)}>删除</button></footer>
+            <footer><button type='button' onClick={() => setDefault(provider)}>设为默认</button><button type='button' onClick={() => testProvider(provider)}>测试</button><button type='button' onClick={() => setModal({ mode: 'edit', item: { ...provider, models: (provider.models || []).join(', ') } })}>编辑</button><button type='button' className='danger' onClick={() => removeProvider(provider)}>删除</button></footer>
           </article>
         ))}
         {!providers.length && <div className='fx-platform-empty'>暂无 AI 服务配置。</div>}
@@ -180,7 +205,7 @@ function ModelsSection() {
           <Field label='Provider'><select value={reranker.provider || 'llm'} onChange={(e) => setReranker((prev) => ({ ...prev, provider: e.target.value }))}><option value='llm'>LLM 重排</option><option value='api'>外部 API</option></select></Field>
           <Field label='Top-K'><input value={reranker.top_k || 5} onChange={(e) => setReranker((prev) => ({ ...prev, top_k: Number(e.target.value) || 5 }))} /></Field>
           <Field label='API URL'><input value={reranker.api_url || ''} onChange={(e) => setReranker((prev) => ({ ...prev, api_url: e.target.value }))} /></Field>
-          <footer><button type='button' onClick={saveReranker}>保存</button></footer>
+          <footer><button type='button' onClick={saveReranker}>保存</button><button type='button' onClick={testReranker}>测试连接</button></footer>
         </ConfigCard>
       </div>
       {modal && <ProviderModal modal={modal} onClose={() => setModal(null)} onSave={saveProviderModal} saving={saving} />}
@@ -209,43 +234,6 @@ function ConfigCard({ title, children }) {
   return <article className='fx-platform-config'><h3>{title}</h3>{children}</article>
 }
 
-function ContractSection({ type }) {
-  const [rows, setRows] = useState([])
-  const [message, setMessage] = useState('')
-  const configs = {
-    site: { title: '站点设置', blocker: PLATFORM_BLOCKERS.site, loader: platformApi.site, fields: ['站点 URL', '首页 URL', '团队展示模式', '业务组展示模式', '访问日志开关'] },
-    variables: { title: '变量设置', blocker: PLATFORM_BLOCKERS.variables, loader: platformApi.variables, fields: ['变量名', '说明', '加密开关', '引用范围', '更新人'] },
-    sso: { title: '单点登录', blocker: PLATFORM_BLOCKERS.sso, loader: platformApi.sso, fields: ['协议类型', '启用状态', '默认角色', '默认团队', '回调地址'] },
-    'alerting-engines': { title: '告警引擎', blocker: PLATFORM_BLOCKERS.engines, loader: platformApi.alertingEngines, fields: ['集群', '实例', '数据源', '心跳', '时钟偏移'] },
-  }
-  const config = configs[type]
-
-  useEffect(() => {
-    let alive = true
-    config.loader({}).then((result) => {
-      if (!alive) return
-      setRows(result.rows || [])
-      setMessage(result.source || '')
-    }).catch((err) => {
-      if (!alive) return
-      setRows([])
-      setMessage(formatPlatformError(err))
-    })
-    return () => { alive = false }
-  }, [type])
-
-  return (
-    <section className='fx-platform-contract'>
-      <header><h2>{config.title}</h2><button type='button' disabled>保存</button></header>
-      <Blocked>{message || config.blocker}</Blocked>
-      <div className='fx-platform-form is-disabled'>
-        {config.fields.map((field) => <Field key={field} label={field}><input disabled value='' placeholder='等待 FindX 契约开放' /></Field>)}
-      </div>
-      {rows.length > 0 && <pre>{safePlatformJson(rows)}</pre>}
-    </section>
-  )
-}
-
 function HealthSection() {
   const [health, setHealth] = useState(null)
   const [error, setError] = useState('')
@@ -272,38 +260,6 @@ function HealthSection() {
   )
 }
 
-function AuditSection({ q }) {
-  const [rows, setRows] = useState([])
-  const [error, setError] = useState('')
-  const [source, setSource] = useState('')
-  const load = async () => {
-    try {
-      const result = await platformApi.audit({ q })
-      setRows(result.rows || [])
-      setSource(result.source || '')
-      setError('')
-    } catch (err) {
-      setError(formatPlatformError(err))
-    }
-  }
-  useEffect(() => { load() }, [q])
-  return (
-    <section className='fx-platform-audit'>
-      <div className='fx-platform-toolbar'><button type='button' onClick={load}>刷新</button><span>{source}</span></div>
-      {error && <div className='fx-platform-error'>{error}</div>}
-      <div className='fx-platform-table'>
-        <table>
-          <thead><tr><th>动作</th><th>操作人</th><th>对象</th><th>风险</th><th>决策</th><th>描述</th><th>时间</th></tr></thead>
-          <tbody>
-            {rows.map((row) => <tr key={row.id || `${row.action}-${row.timestamp || row.created_at}`}><td>{row.action || '-'}</td><td>{row.operator || '-'}</td><td>{row.target || '-'}</td><td>{row.risk || '-'}</td><td>{row.decision || '-'}</td><td>{row.description || row.detail || '-'}</td><td>{row.timestamp ? new Date(row.timestamp).toLocaleString('zh-CN') : row.created_at ? new Date(row.created_at).toLocaleString('zh-CN') : '-'}</td></tr>)}
-          </tbody>
-        </table>
-        {!rows.length && <div className='fx-platform-empty'>暂无审计日志。</div>}
-      </div>
-    </section>
-  )
-}
-
 export function PlatformPage({ query = {}, onNavigate }) {
   const section = sectionSet.has(query.section) ? query.section : 'models'
   const current = useMemo(() => sections.find((item) => item.value === section), [section])
@@ -324,7 +280,9 @@ export function PlatformPage({ query = {}, onNavigate }) {
       {section === 'models' && <ModelsSection />}
       {section === 'mcp' && <McpServersSection />}
       {section === 'sso' && <SsoSection />}
-      {['site', 'variables', 'alerting-engines'].includes(section) && <ContractSection type={section} />}
+      {section === 'site' && <SiteSettingsSection />}
+      {section === 'variables' && <VariablesSection />}
+      {section === 'alerting-engines' && <AlertingEnginesSection />}
       {section === 'health' && <HealthSection />}
       {section === 'audit' && <AuditSection q={q} />}
     </main>
