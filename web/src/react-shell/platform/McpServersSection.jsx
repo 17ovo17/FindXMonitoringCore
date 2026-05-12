@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { get, post, put, del } from '../api/http.js'
+import { useConfirm } from '../shared/ConfirmModal.jsx'
 
 const MCP_TYPES = [
   { value: 'nightingale', label: '夜莺监控' },
@@ -60,6 +61,7 @@ export function McpServersSection() {
   const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
   const [healthResults, setHealthResults] = useState({})
+  const { confirm, modal: confirmModal } = useConfirm()
 
   const load = async () => {
     setError('')
@@ -89,7 +91,8 @@ export function McpServersSection() {
   }
 
   const handleDelete = async (server) => {
-    if (!window.confirm(`确认删除 MCP 服务 "${server.name}"？`)) return
+    const ok = await confirm({ title: '删除 MCP 服务', message: `确认删除 MCP 服务 "${server.name}"？`, confirmText: '删除', danger: true })
+    if (!ok) return
     setError('')
     try {
       await del(`/mcp/servers/${server.id}`)
@@ -147,6 +150,7 @@ export function McpServersSection() {
         {!servers.length && <div className='fx-platform-empty'>暂无 MCP 服务注册。</div>}
       </div>
       {modal && <McpModal mode={modal.mode} item={modal.item} onClose={() => setModal(null)} onSave={handleSave} />}
+      {confirmModal}
     </section>
   )
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { formatPlatformError, platformApi, PLATFORM_BLOCKERS, safePlatformJson } from '../api/platform.js'
 import { McpServersSection } from './McpServersSection.jsx'
 import { SsoSection } from './SsoSection.jsx'
+import { useConfirm } from '../shared/ConfirmModal.jsx'
 import './platform.css'
 
 const sections = [
@@ -63,6 +64,7 @@ function ModelsSection() {
   const [embedding, setEmbedding] = useState({ provider: 'builtin', api_url: '', api_key: '', model: '', dimensions: 1536 })
   const [reranker, setReranker] = useState({ enabled: false, provider: 'llm', api_url: '', api_key: '', model: '', top_k: 5 })
   const [feedback, setFeedback] = useState('')
+  const { confirm, modal: confirmModal } = useConfirm()
 
   const load = async () => {
     setError('')
@@ -108,7 +110,8 @@ function ModelsSection() {
   }
 
   const removeProvider = async (provider) => {
-    if (!window.confirm(`确认删除 AI 服务 ${provider.name}？`)) return
+    const ok = await confirm({ title: '删除 AI 服务', message: `确认删除 AI 服务 ${provider.name}？`, confirmText: '删除', danger: true })
+    if (!ok) return
     await saveProviders(providers.filter((item) => item.id !== provider.id))
   }
 
@@ -181,6 +184,7 @@ function ModelsSection() {
         </ConfigCard>
       </div>
       {modal && <ProviderModal modal={modal} onClose={() => setModal(null)} onSave={saveProviderModal} saving={saving} />}
+      {confirmModal}
     </section>
   )
 }

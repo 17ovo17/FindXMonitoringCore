@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AISRE_BLOCKERS, aiSreApi, formatAiSreError } from '../api/aiSre.js'
 import { Blocked, Empty, ErrorBox, Field, StatusPill } from './AiSreShared.jsx'
+import { useConfirm } from '../shared/ConfirmModal.jsx'
 
 const categories = ['全部', '故障处理', '最佳实践', '架构设计', '运维手册', '告警规则', '其他']
 
@@ -98,6 +99,7 @@ export function KnowledgeSection({ query, addEvidence }) {
   const [showForm, setShowForm] = useState(false)
   const [editDoc, setEditDoc] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   const loadDocs = async () => {
     setLoading(true); setError('')
@@ -157,7 +159,8 @@ export function KnowledgeSection({ query, addEvidence }) {
   }
 
   const handleDeleteRunbook = async id => {
-    if (!window.confirm('确认删除此 Runbook？')) return
+    const ok = await confirm({ title: '删除 Runbook', message: '确认删除此 Runbook？', confirmText: '删除', danger: true })
+    if (!ok) return
     try {
       await aiSreApi.knowledge.removeRunbook(id)
       loadRunbooks()
@@ -232,6 +235,7 @@ export function KnowledgeSection({ query, addEvidence }) {
         <RunbookList runbooks={runbooks} onDelete={handleDeleteRunbook} />
         <Blocked>{AISRE_BLOCKERS.knowledgeWrite}</Blocked>
       </div>
+      {confirmModal}
     </section>
   )
 }

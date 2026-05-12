@@ -17,6 +17,9 @@ import { RuleFormModal } from './form/RuleFormModal.jsx'
 import { BatchRuleActions } from './form/BatchRuleActions.jsx'
 import { BusinessGroupTree } from './form/BusinessGroupTree.jsx'
 import { ColumnConfigModal, allColumns, getVisibleColumns } from './form/ColumnConfig.jsx'
+import { Pagination } from '../../shared/ConfirmModal.jsx'
+
+const PAGE_SIZE = 20
 
 const emptyDraft = {
   id: '',
@@ -89,6 +92,7 @@ export function AlertRulesSection() {
   const [draft, setDraft] = useState(null)
   const [formError, setFormError] = useState('')
   const [showColumnConfig, setShowColumnConfig] = useState(false)
+  const [page, setPage] = useState(1)
 
   const loadRules = async () => {
     setLoading(true); setError('')
@@ -106,12 +110,16 @@ export function AlertRulesSection() {
   useEffect(() => { loadRules() }, [status])
 
   const datasourceOptions = useMemo(() => getUniqueOptions(rules, 'datasourceId'), [rules])
-  const filtered = useMemo(() => rules.filter((rule) => {
+  const filtered = useMemo(() => {
+    setPage(1)
+    return rules.filter((rule) => {
     if (severity && rule.severity !== severity) return false
     if (datasourceId && rule.datasourceId !== datasourceId) return false
     if (businessGroup && rule.businessGroup !== businessGroup) return false
     return filterText([rule.name, rule.datasourceId, rule.businessGroup, rule.category, rule.query, ...mapToPairs(rule.labels)], keyword)
-  }), [rules, keyword, severity, datasourceId, businessGroup])
+  })}, [rules, keyword, severity, datasourceId, businessGroup])
+
+  const paged = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page])
 
   const selectedRules = useMemo(() => filtered.filter((r) => selectedIds.includes(r.id)), [filtered, selectedIds])
 
@@ -241,7 +249,7 @@ export function AlertRulesSection() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((rule) => (
+              {paged.map((rule) => (
                 <tr key={rule.id}>
                   <td><input type='checkbox' checked={selectedIds.includes(rule.id)} onChange={(e) => toggleSelect(rule.id, e.target.checked)} /></td>
                   {isColVisible('status') && <td><button type='button' className={rule.enabled ? 'fx-alert-state is-on' : 'fx-alert-state'} onClick={() => rowAction(rule.enabled ? 'disable' : 'enable', rule)}>{rule.enabled ? '启用' : '停用'}</button></td>}
@@ -259,6 +267,7 @@ export function AlertRulesSection() {
             </tbody>
           </table>
           {!loading && filtered.length === 0 && <div className='fx-alert-empty'>暂无规则</div>}
+          <Pagination total={filtered.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
         </div>
       </div>
       {draft && <RuleFormModal draft={draft} setDraft={setDraft} saving={saving} error={formError} onSubmit={submitDraft} onTryRun={tryRunDraft} onClose={() => setDraft(null)} />}

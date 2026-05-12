@@ -15,6 +15,7 @@ import {
 } from './alertModel.js'
 import { EventDrawer } from './form/EventDrawer.jsx'
 import { AggregatedView } from './form/AggregatedView.jsx'
+import { useConfirm } from '../../shared/ConfirmModal.jsx'
 
 const rangeOptions = [
   { value: '', label: '全部时间' },
@@ -67,6 +68,7 @@ export function AlertEventsSection({ historyMode = false }) {
   const [history, setHistory] = useState(historyMode)
   const [keyword, setKeyword] = useState('')
   const [severity, setSeverity] = useState('')
+  const { confirm, modal: confirmModal } = useConfirm()
   const [status, setStatus] = useState('')
   const [datasourceId, setDatasourceId] = useState('')
   const [timeRange, setTimeRange] = useState('')
@@ -150,7 +152,8 @@ export function AlertEventsSection({ historyMode = false }) {
 
   const batchDelete = async () => {
     if (!selectedIds.length) return
-    if (!window.confirm(`确认删除 ${selectedIds.length} 个事件？`)) return
+    const ok = await confirm({ title: '批量删除事件', message: `确认删除 ${selectedIds.length} 个事件？`, confirmText: '删除', danger: true })
+    if (!ok) return
     try { await alertsApi.batchDeleteEvents(selectedIds); await loadEvents() }
     catch (err) { setModal({ title: '批量删除失败', body: makeError(err) }) }
   }
@@ -224,6 +227,7 @@ export function AlertEventsSection({ historyMode = false }) {
       {viewMode === 'target' && <AggregatedView events={filtered} groupKey='target' onOpenDetail={openDetail} />}
       {active && <EventDrawer event={active} onClose={() => setActive(null)} onAction={eventAction} />}
       {modal && <div className='fx-alert-modal'><div className='fx-alert-modal__body'><header><h2>{modal.title}</h2><button type='button' onClick={() => setModal(null)}>关闭</button></header><pre>{modal.body}</pre></div></div>}
+      {confirmModal}
     </section>
   )
 }

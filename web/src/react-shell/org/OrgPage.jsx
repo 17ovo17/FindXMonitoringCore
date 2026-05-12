@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { formatOrgError, orgApi, ORG_BLOCKERS } from '../api/org.js'
+import { useConfirm } from '../shared/ConfirmModal.jsx'
 import './org.css'
 
 const sections = [
@@ -87,6 +88,7 @@ function UsersSection({ q, reloadKey }) {
   const [feedback, setFeedback] = useState('')
   const [actionError, setActionError] = useState('')
   const [selected, setSelected] = useState(new Set())
+  const { confirm, modal: confirmModal } = useConfirm()
 
   useEffect(() => {
     if (reloadKey) reload()
@@ -106,7 +108,8 @@ function UsersSection({ q, reloadKey }) {
   const batchSetStatus = async (status) => {
     if (!selected.size) return
     const label = status === 1 ? '启用' : '禁用'
-    if (!window.confirm(`确认批量${label}选中的 ${selected.size} 个用户？`)) return
+    const ok = await confirm({ title: '批量操作确认', message: `确认批量${label}选中的 ${selected.size} 个用户？`, confirmText: label, danger: status !== 1 })
+    if (!ok) return
     setActionError('')
     setFeedback('')
     try {
@@ -141,7 +144,8 @@ function UsersSection({ q, reloadKey }) {
   }
 
   const remove = async (row) => {
-    if (!window.confirm(`确认删除用户 ${row.username}？`)) return
+    const ok = await confirm({ title: '删除用户', message: `确认删除用户 ${row.username}？`, confirmText: '删除', danger: true })
+    if (!ok) return
     setActionError('')
     setFeedback('')
     try {
@@ -203,6 +207,7 @@ function UsersSection({ q, reloadKey }) {
         {!rows.length && !loading && <div className='fx-org-empty'>暂无用户。新增用户会进入真实组织契约，不创建临时列表。</div>}
       </div>
       {modal && <UserModal modal={modal} onClose={() => setModal(null)} onSave={save} />}
+      {confirmModal}
     </section>
   )
 }
@@ -264,6 +269,7 @@ function TeamsSection({ q }) {
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null)
   const [memberText, setMemberText] = useState('')
+  const { confirm, modal: confirmModal } = useConfirm()
   const [actionError, setActionError] = useState('')
   const [actionFeedback, setActionFeedback] = useState('')
   const detail = selected || rows[0] || null
@@ -293,7 +299,8 @@ function TeamsSection({ q }) {
     }
   }
   const remove = async (row) => {
-    if (!window.confirm(`确认删除团队 ${row.name}？`)) return
+    const ok = await confirm({ title: '删除团队', message: `确认删除团队 ${row.name}？`, confirmText: '删除', danger: true })
+    if (!ok) return
     setActionError('')
     setActionFeedback('')
     try {
@@ -360,6 +367,7 @@ function TeamsSection({ q }) {
         ) : <Blocked>{ORG_BLOCKERS.members}</Blocked>}
       </aside>
       {modal && <SimpleModal title={modal.mode === 'edit' ? '编辑团队' : '新增团队'} fields={['name', 'note', 'parent_id']} labels={{ name: '名称', note: '备注', parent_id: '父级 ID' }} initial={modal.item} onClose={() => setModal(null)} onSave={save} />}
+      {confirmModal}
     </section>
   )
 }
@@ -371,6 +379,7 @@ function BusinessSection({ q }) {
   const [teamID, setTeamID] = useState('')
   const [actionError, setActionError] = useState('')
   const [actionFeedback, setActionFeedback] = useState('')
+  const { confirm, modal: confirmModal } = useConfirm()
   const detail = selected || rows[0] || null
 
   useEffect(() => {
@@ -397,7 +406,8 @@ function BusinessSection({ q }) {
     }
   }
   const remove = async (row) => {
-    if (!window.confirm(`确认删除业务组 ${row.name}？`)) return
+    const ok = await confirm({ title: '删除业务组', message: `确认删除业务组 ${row.name}？`, confirmText: '删除', danger: true })
+    if (!ok) return
     setActionError('')
     setActionFeedback('')
     try {
@@ -463,6 +473,7 @@ function BusinessSection({ q }) {
         ) : <Blocked>{ORG_BLOCKERS.members}</Blocked>}
       </aside>
       {modal && <SimpleModal title={modal.mode === 'edit' ? '编辑业务组' : '新增业务组'} fields={['name', 'note', 'parent_id']} labels={{ name: '名称', note: '备注', parent_id: '父级 ID' }} initial={modal.item} onClose={() => setModal(null)} onSave={save} />}
+      {confirmModal}
     </section>
   )
 }
@@ -475,6 +486,7 @@ function RolesSection({ q }) {
   const [modal, setModal] = useState(null)
   const [actionError, setActionError] = useState('')
   const [actionFeedback, setActionFeedback] = useState('')
+  const { confirm, modal: confirmModal } = useConfirm()
   const detail = selected || rows[0] || null
 
   useEffect(() => {
@@ -526,7 +538,8 @@ function RolesSection({ q }) {
   }
   const removeRole = async (role) => {
     if (role.builtin) return
-    if (!window.confirm(`确认删除角色 ${role.name}？`)) return
+    const ok = await confirm({ title: '删除角色', message: `确认删除角色 ${role.name}？`, confirmText: '删除', danger: true })
+    if (!ok) return
     setActionError('')
     setActionFeedback('')
     try {
@@ -560,6 +573,7 @@ function RolesSection({ q }) {
         ) : <div className='fx-org-empty'>请选择角色。</div>}
       </aside>
       {modal && <SimpleModal title={modal.mode === 'edit' ? '编辑角色' : '新增角色'} fields={['name', 'note']} labels={{ name: '名称', note: '备注' }} initial={modal.item} onClose={() => setModal(null)} onSave={saveRole} />}
+      {confirmModal}
     </section>
   )
 }

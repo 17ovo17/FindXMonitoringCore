@@ -1,0 +1,85 @@
+.fx-system-page {
+  min-height: calc(100vh - 56px);
+  padding: 24px;
+  color: #172033;
+  background: #f6f8fb;
+}
+
+.fx-system-notfound {
+  max-width: 760px;
+  padding: 20px;
+  border: 1px solid #d8e1ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.fx-system-eyebrow {
+  margin: 0 0 8px;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fx-system-notfound h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.fx-system-copy {
+  margin: 10px 0 16px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.fx-system-path {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.fx-system-path dt {
+  color: #64748b;
+}
+
+.fx-system-path dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-system-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fx-system-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #246bfe;
+  border-radius: 6px;
+  background: #246bfe;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fx-system-actions button:first-child {
+  background: #fff;
+  color: #246bfe;
+}
+
+@media (max-width: 640px) {
+  .fx-system-page {
+    padding: 12px;
+  }
+
+  .fx-system-path {
+    grid-template-columns: 1fr;
+  }
+}

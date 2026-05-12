@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { alertsApi } from '../../../api/alerts.js'
 import { displayJson, makeError } from '../alertModel.js'
+import { useConfirm } from '../../../shared/ConfirmModal.jsx'
 
 /**
  * 批量操作/导入/导出组件
@@ -10,6 +11,7 @@ import { displayJson, makeError } from '../alertModel.js'
 export function BatchRuleActions({ selectedIds, selectedRules, onRefresh, onMessage }) {
   const [importing, setImporting] = useState(false)
   const fileRef = useRef(null)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   const batchEnable = async () => {
     if (!selectedIds.length) { onMessage?.('请先选择规则'); return }
@@ -33,7 +35,8 @@ export function BatchRuleActions({ selectedIds, selectedRules, onRefresh, onMess
 
   const batchDelete = async () => {
     if (!selectedIds.length) { onMessage?.('请先选择规则'); return }
-    if (!window.confirm(`确认删除 ${selectedIds.length} 条规则？此操作不可恢复。`)) return
+    const ok = await confirm({ title: '批量删除规则', message: `确认删除 ${selectedIds.length} 条规则？此操作不可恢复。`, confirmText: '删除', danger: true })
+    if (!ok) return
     try {
       await alertsApi.batchDeleteRules(selectedIds)
       onRefresh?.()
@@ -74,6 +77,7 @@ export function BatchRuleActions({ selectedIds, selectedRules, onRefresh, onMess
   }
 
   return (
+    <>
     <div className='fx-alert-batch-actions'>
       <button type='button' onClick={batchEnable} disabled={!selectedIds.length}>批量启用</button>
       <button type='button' onClick={batchDisable} disabled={!selectedIds.length}>批量停用</button>
@@ -86,5 +90,7 @@ export function BatchRuleActions({ selectedIds, selectedRules, onRefresh, onMess
         </button>
       </label>
     </div>
+    {confirmModal}
+    </>
   )
 }

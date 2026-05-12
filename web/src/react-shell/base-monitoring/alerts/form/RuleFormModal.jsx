@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { displayJson, noDataPolicies, severities } from '../alertModel.js'
 import { EffectiveTimeConfig } from './EffectiveTimeConfig.jsx'
 import { NotifyConfig } from './NotifyConfig.jsx'
@@ -11,6 +11,19 @@ import { TriggersConfig } from './TriggersConfig.jsx'
  */
 export function RuleFormModal({ draft, setDraft, saving, error, onSubmit, onClose, onTryRun }) {
   const updateField = (field, value) => setDraft({ ...draft, [field]: value })
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  const validate = () => {
+    const errors = {}
+    if (!draft.name?.trim()) errors.name = '规则名称不能为空'
+    if (!draft.query?.trim()) errors.query = '查询语句不能为空'
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = () => {
+    if (validate()) onSubmit()
+  }
 
   return (
     <div className='fx-alert-modal'>
@@ -23,7 +36,7 @@ export function RuleFormModal({ draft, setDraft, saving, error, onSubmit, onClos
           <section>
             <h3>基础信息</h3>
             <div className='fx-alert-form'>
-              <label><span>名称</span><input value={draft.name} onChange={(e) => updateField('name', e.target.value)} /></label>
+              <label><span className='fx-field-required'>名称</span><input value={draft.name} onChange={(e) => updateField('name', e.target.value)} />{fieldErrors.name && <span className='fx-field-error'>{fieldErrors.name}</span>}</label>
               <label><span>数据源 ID</span><input value={draft.datasourceId} onChange={(e) => updateField('datasourceId', e.target.value)} /></label>
               <label><span>级别</span><select value={draft.severity} onChange={(e) => updateField('severity', e.target.value)}>{severities.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
               <label className='fx-alert-check'><input type='checkbox' checked={draft.enabled} onChange={(e) => updateField('enabled', e.target.checked)} />启用</label>
@@ -32,7 +45,7 @@ export function RuleFormModal({ draft, setDraft, saving, error, onSubmit, onClos
           <section>
             <h3>规则条件</h3>
             <div className='fx-alert-form'>
-              <label className='is-wide'><span>查询语句</span><textarea rows={5} value={draft.query} onChange={(e) => updateField('query', e.target.value)} /></label>
+              <label className='is-wide'><span className='fx-field-required'>查询语句</span><textarea rows={5} value={draft.query} onChange={(e) => updateField('query', e.target.value)} />{fieldErrors.query && <span className='fx-field-error'>{fieldErrors.query}</span>}</label>
               <label className='is-wide'><span>目标选择器 JSON</span><textarea rows={3} value={draft.targetSelector} onChange={(e) => updateField('targetSelector', e.target.value)} /></label>
             </div>
           </section>
@@ -76,7 +89,7 @@ export function RuleFormModal({ draft, setDraft, saving, error, onSubmit, onClos
         <div className='fx-alert-actions'>
           <button type='button' onClick={onClose}>取消</button>
           <button type='button' onClick={onTryRun}>试运行</button>
-          <button type='button' className='is-primary' disabled={saving} onClick={onSubmit}>{saving ? '保存中...' : '保存'}</button>
+          <button type='button' className='is-primary' disabled={saving} onClick={handleSubmit}>{saving ? '保存中...' : '保存'}</button>
         </div>
       </div>
     </div>

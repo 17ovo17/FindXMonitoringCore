@@ -34,6 +34,7 @@ import {
   SystemsSection,
 } from './IntegrationParts.jsx'
 import './integrations.css'
+import { useConfirm } from '../../shared/ConfirmModal.jsx'
 
 const validSections = new Set(['datasources', 'templates', 'systems'])
 const validTabs = new Set(['instructions', 'collect', 'metric', 'dashboard', 'alert', 'record'])
@@ -76,6 +77,7 @@ function TemplatesSection({ query, onNavigate }) {
   const [componentSaving, setComponentSaving] = useState(false)
   const [payloadForm, setPayloadForm] = useState(null)
   const [payloadSaving, setPayloadSaving] = useState(false)
+  const { confirm, modal: confirmModal } = useConfirm()
 
   const visibleComponents = useMemo(() => {
     const text = searchValue.trim().toLowerCase()
@@ -246,7 +248,10 @@ function TemplatesSection({ query, onNavigate }) {
       showBlocked('componentDelete')
       return
     }
-    if (typeof window !== 'undefined' && !window.confirm(`确认删除组件“${row.ident}”？`)) return
+    if (typeof window !== 'undefined') {
+      const ok = await confirm({ title: '删除组件', message: `确认删除组件”${row.ident}”？`, confirmText: '删除', danger: true })
+      if (!ok) return
+    }
     setComponentSaving(true)
     try {
       await integrationsApi.deleteBuiltinComponents([row.id])
@@ -313,7 +318,10 @@ function TemplatesSection({ query, onNavigate }) {
       showBlocked('payloadDelete')
       return
     }
-    if (typeof window !== 'undefined' && !window.confirm(`确认删除 payload“${row.name}”？`)) return
+    if (typeof window !== 'undefined') {
+      const ok = await confirm({ title: '删除 Payload', message: `确认删除 payload”${row.name}”？`, confirmText: '删除', danger: true })
+      if (!ok) return
+    }
     setPayloadSaving(true)
     try {
       await integrationsApi.deleteBuiltinPayloads([row.id])
@@ -545,10 +553,10 @@ function TemplatesSection({ query, onNavigate }) {
         onSubmit={submitImport}
         onOpenDashboard={openImportedDashboard}
       />
+      {confirmModal}
     </main>
   )
 }
-
 function SystemsContainer() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
@@ -561,6 +569,7 @@ function SystemsContainer() {
   const [orderOpen, setOrderOpen] = useState(false)
   const [orderRows, setOrderRows] = useState([])
   const [orderError, setOrderError] = useState('')
+  const { confirm: confirmSys, modal: confirmSysModal } = useConfirm()
 
   const visibleRows = useMemo(
     () => filterSystemIntegrations(rows, searchValue),
@@ -658,7 +667,10 @@ function SystemsContainer() {
 
   const deleteRow = async (row) => {
     if (!row) return
-    if (typeof window !== 'undefined' && !window.confirm(`确认删除系统集成「${row.name}」？`)) return
+    if (typeof window !== 'undefined') {
+      const ok = await confirmSys({ title: '删除系统集成', message: `确认删除系统集成「${row.name}」？`, confirmText: '删除', danger: true })
+      if (!ok) return
+    }
     setSaving(true)
     setNotice('')
     try {
@@ -740,6 +752,7 @@ function SystemsContainer() {
   }
 
   return (
+    <>
     <SystemsSection
       rows={visibleRows}
       orderRows={orderRows}
@@ -769,6 +782,8 @@ function SystemsContainer() {
       onBlocked={showBlocked}
       onClosePreview={() => setSelected(null)}
     />
+    {confirmSysModal}
+    </>
   )
 }
 

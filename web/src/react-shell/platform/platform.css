@@ -1,0 +1,323 @@
+.fx-platform-page {
+  min-height: 100%;
+  padding: 22px;
+  color: #233653;
+  background: #f5f8fc;
+}
+
+.fx-platform-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.fx-platform-head p {
+  margin: 0 0 4px;
+  color: #1769ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-platform-head h1 {
+  margin: 0;
+  color: #193a63;
+  font-size: 24px;
+}
+
+.fx-platform-head span {
+  display: block;
+  margin-top: 7px;
+  color: #60728e;
+  font-size: 13px;
+}
+
+.fx-platform-head nav,
+.fx-platform-toolbar,
+.fx-platform-provider-grid footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-platform-head button,
+.fx-platform-filter button,
+.fx-platform-toolbar button,
+.fx-platform-provider-grid button,
+.fx-platform-config button,
+.fx-platform-modal button,
+.fx-platform-contract button {
+  border: 1px solid #cdd8e8;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: #fff;
+  color: #21344d;
+  cursor: pointer;
+}
+
+.fx-platform-head button.is-active,
+.fx-platform-toolbar button:first-child,
+.fx-platform-form footer button:first-child {
+  background: #1769ff;
+  border-color: #1769ff;
+  color: #fff;
+}
+
+.fx-platform-provider-grid button.danger {
+  border-color: #ffd2cc;
+  color: #b42318;
+}
+
+.fx-platform-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.fx-platform-filter input,
+.fx-platform-field input,
+.fx-platform-field select {
+  min-width: 0;
+  border: 1px solid #cdd8e8;
+  border-radius: 7px;
+  padding: 9px 10px;
+  background: #fff;
+  color: #1f2f46;
+}
+
+.fx-platform-filter input {
+  width: min(420px, 100%);
+}
+
+.fx-platform-toolbar {
+  margin-bottom: 12px;
+}
+
+.fx-platform-toolbar span {
+  color: #708198;
+  font-size: 12px;
+}
+
+.fx-platform-models,
+.fx-platform-contract,
+.fx-platform-health,
+.fx-platform-audit {
+  border: 1px solid #dde6f2;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(31, 45, 61, .06);
+}
+
+.fx-platform-provider-grid,
+.fx-platform-settings-grid,
+.fx-platform-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.fx-platform-settings-grid {
+  margin-top: 14px;
+}
+
+.fx-platform-card,
+.fx-platform-config,
+.fx-platform-health-grid article {
+  border: 1px solid #e3ebf5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdff;
+}
+
+.fx-platform-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fx-platform-card h3,
+.fx-platform-config h3,
+.fx-platform-contract h2 {
+  margin: 0 0 10px;
+  color: #193a63;
+}
+
+.fx-platform-card p {
+  color: #60728e;
+  margin: 6px 0;
+}
+
+.fx-platform-card strong,
+.fx-platform-card span.is-ok {
+  color: #166534;
+}
+
+.fx-platform-card span.is-unknown {
+  color: #8a5a00;
+}
+
+.fx-platform-form {
+  display: grid;
+  gap: 12px;
+}
+
+.fx-platform-form.is-disabled {
+  opacity: .72;
+}
+
+.fx-platform-field {
+  display: grid;
+  gap: 6px;
+}
+
+.fx-platform-field span {
+  color: #60728e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-platform-form footer,
+.fx-platform-config footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fx-platform-blocked,
+.fx-platform-error,
+.fx-platform-feedback,
+.fx-platform-empty {
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.fx-platform-blocked {
+  display: flex;
+  gap: 10px;
+  background: #fff8e6;
+  border: 1px solid #ffe1a8;
+  color: #644200;
+}
+
+.fx-platform-error {
+  background: #fff1f0;
+  border: 1px solid #ffccc7;
+  color: #9f1f17;
+}
+
+.fx-platform-feedback {
+  background: #ecfdf3;
+  border: 1px solid #b7ebc7;
+  color: #166534;
+}
+
+.fx-platform-empty {
+  background: #f8fbff;
+  border: 1px dashed #d9e4f1;
+  color: #61728a;
+}
+
+.fx-platform-health-grid article span,
+.fx-platform-health-grid article strong {
+  display: block;
+}
+
+.fx-platform-health-grid article span {
+  color: #60728e;
+  margin-bottom: 8px;
+}
+
+.fx-platform-health-grid article strong {
+  color: #193a63;
+  font-size: 24px;
+}
+
+.fx-platform-table {
+  overflow: auto;
+}
+
+.fx-platform-table table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.fx-platform-table th,
+.fx-platform-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid #eef3f8;
+  text-align: left;
+  vertical-align: top;
+}
+
+.fx-platform-table th {
+  background: #f8fbff;
+  color: #60728e;
+}
+
+.fx-platform-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, .35);
+}
+
+.fx-platform-modal__body {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 42px);
+  overflow: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 28px 78px rgba(15, 23, 42, .25);
+}
+
+.fx-platform-modal__body > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e6edf6;
+}
+
+.fx-platform-modal__body h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.fx-platform-modal__body .fx-platform-form {
+  padding: 18px;
+}
+
+.fx-platform-contract header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.fx-platform-contract pre,
+.fx-platform-health pre {
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #dbeafe;
+}
+
+@media (max-width: 900px) {
+  .fx-platform-head {
+    display: block;
+  }
+
+  .fx-platform-head nav {
+    margin-top: 12px;
+  }
+}

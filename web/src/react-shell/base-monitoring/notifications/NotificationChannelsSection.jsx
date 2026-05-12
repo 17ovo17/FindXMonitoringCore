@@ -5,16 +5,27 @@ import { channelDraftFromRaw, channelFormFields, channelPayloadFromDraft, channe
 
 function ChannelForm({ draft, setDraft, saving, onSubmit, onClose }) {
   const fields = channelFormFields[draft.type] || []
+  const [fieldErrors, setFieldErrors] = useState({})
   const switchType = (type) => {
     const newFields = channelFormFields[type] || []
     const next = { id: draft.id, type, name: draft.name, enabled: draft.enabled }
     newFields.forEach((f) => { next[f.key] = f.type === 'checkbox' ? false : '' })
     setDraft(next)
   }
+  const validate = () => {
+    const errors = {}
+    if (!draft.name?.trim()) errors.name = '名称不能为空'
+    fields.filter((f) => f.required).forEach((f) => {
+      if (!draft[f.key]?.toString().trim()) errors[f.key] = `${f.label}不能为空`
+    })
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+  const handleSubmit = () => { if (validate()) onSubmit() }
   return (
     <Modal title={draft.id ? '编辑媒介' : '新建媒介'} onClose={onClose}>
       <div className='fx-notify-form'>
-        <label><span>名称</span><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
+        <label><span className='fx-field-required'>名称</span><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />{fieldErrors.name && <span className='fx-field-error'>{fieldErrors.name}</span>}</label>
         <label><span>类型</span>
           <select value={draft.type} onChange={(e) => switchType(e.target.value)}>
             {channelTypes.filter((t) => t.supported).map((t) => <option key={t.ident} value={t.ident}>{t.label}</option>)}
@@ -30,13 +41,13 @@ function ChannelForm({ draft, setDraft, saving, onSubmit, onClose }) {
           if (f.type === 'textarea') {
             return <label key={f.key} className='is-wide'><span>{f.label}</span><textarea rows={3} value={draft[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} /></label>
           }
-          return <label key={f.key}><span>{f.label}{f.required && ' *'}</span><input type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'} value={draft[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} /></label>
+          return <label key={f.key}><span>{f.label}{f.required && <span className='fx-field-required'></span>}</span><input type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'} value={draft[f.key] || ''} placeholder={f.placeholder} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />{fieldErrors[f.key] && <span className='fx-field-error'>{fieldErrors[f.key]}</span>}</label>
         })}
         <label className='fx-notify-check'><input type='checkbox' checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />启用</label>
       </div>
       <div className='fx-notify-actions'>
         <button type='button' onClick={onClose}>取消</button>
-        <button type='button' className='is-primary' disabled={saving} onClick={onSubmit}>{saving ? '保存中...' : '保存'}</button>
+        <button type='button' className='is-primary' disabled={saving} onClick={handleSubmit}>{saving ? '保存中...' : '保存'}</button>
       </div>
     </Modal>
   )
