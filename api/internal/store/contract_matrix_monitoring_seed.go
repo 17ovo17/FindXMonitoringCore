@@ -422,6 +422,7 @@ func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRe
 	entries = append(entries, monitoringAlertRuleGroupGapSeeds()...)
 	entries = append(entries, monitoringAlertRuleLifecycleGapSeeds()...)
 	entries = append(entries, monitoringAlertMuteShieldGapSeeds()...)
+	entries = append(entries, monitoringAlertSubscribeGapSeeds()...)
 	return entries
 }
 
@@ -542,6 +543,66 @@ func alertMuteShieldSourceRefs() []string {
 		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\utils.ts`,
 		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\shield\components\CateSelect\index.tsx`,
 	}
+}
+
+func monitoringAlertSubscribeGapSeeds() []model.ContractMatrixRegisterRequest {
+	entries := []model.ContractMatrixRegisterRequest{
+		monitoringContractSeed(
+			"FX-CONTRACT-N9E-ALERT-SUBSCRIBE",
+			"Alert subscribe aggregate",
+			model.ContractStatusBlocked,
+			alertSubscribeSourceRefs(),
+			"Alert subscribe aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/alerts?section=subscribes",
+				"alert_subscribe_aggregate",
+				"alert-subscribe-aggregate",
+				"owns only subscribe list,detail,create,update,delete,tryrun; excludes alert rule groups,lifecycle,mute,shield,notification,dashboard,template,metric,event",
+			),
+		),
+	}
+	entries = append(entries,
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-LIST-BY-BUSI-GROUP", "Alert subscribe list by business group", model.ContractStatusMissingBackend, "alert_subscribe_list_by_busi_group", "GET /api/n9e/busi-group/{id}/alert-subscribes", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-LIST-BY-BUSI-GROUPS", "Alert subscribe list by business groups", model.ContractStatusMissingBackend, "alert_subscribe_list_by_busi_groups", "GET /api/n9e/busi-groups/alert-subscribes", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-DETAIL", "Alert subscribe detail", model.ContractStatusMissingBackend, "alert_subscribe_detail", "GET /api/n9e/alert-subscribe/{subscribeId}", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-CREATE", "Alert subscribe create", model.ContractStatusMissingBackend, "alert_subscribe_create", "POST /api/n9e/busi-group/{busiId}/alert-subscribes", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-UPDATE", "Alert subscribe update", model.ContractStatusMissingBackend, "alert_subscribe_update", "PUT /api/n9e/busi-group/{busiId}/alert-subscribes", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-DELETE", "Alert subscribe delete", model.ContractStatusMissingBackend, "alert_subscribe_delete", "DELETE /api/n9e/busi-group/{busiId}/alert-subscribes", "Alert subscribe backend contract is missing"),
+		monitoringAlertSubscribeGapSeed("FX-CONTRACT-N9E-ALERT-SUBSCRIBE-TRYRUN", "Alert subscribe tryrun", model.ContractStatusMissingDatasource, "alert_subscribe_tryrun", "POST /api/n9e/alert-subscribe/alert-subscribes-tryrun", "Alert subscribe datasource contract is missing"),
+	)
+	return entries
+}
+
+func monitoringAlertSubscribeGapSeed(id, capability, status, gapType, upstreamRef, blockedReason string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		status,
+		alertSubscribeSourceRefs(),
+		blockedReason,
+		monitoringContractMetadata("/alerts?section=subscribes", gapType, upstreamRef),
+	)
+}
+
+func alertSubscribeSourceRefs() []string {
+	return alertSubscribeMatureSourceRefs(
+		`fe-main\src\services\subscribe.ts`,
+		`fe-main\src\pages\warning\subscribe\index.tsx`,
+		`fe-main\src\pages\warning\subscribe\ListNG.tsx`,
+		`fe-main\src\pages\warning\subscribe\add.tsx`,
+		`fe-main\src\pages\warning\subscribe\edit.tsx`,
+		`fe-main\src\pages\warning\subscribe\components\operateForm.tsx`,
+		`fe-main\src\pages\warning\subscribe\components\ruleModal.tsx`,
+		`fe-main\src\pages\warning\subscribe\constants.ts`,
+	)
+}
+
+func alertSubscribeMatureSourceRefs(relativePaths ...string) []string {
+	refs := make([]string, 0, len(relativePaths))
+	for _, relativePath := range relativePaths {
+		refs = append(refs, `D:\项目迁移文件\平台源码\`+relativePath)
+	}
+	return refs
 }
 
 func warningAndRuleModalSourceRefs() []string {

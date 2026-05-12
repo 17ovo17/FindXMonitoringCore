@@ -103,6 +103,14 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-ALERT-MUTE-BULK-FIELDS-UPDATE",
 	"FX-CONTRACT-N9E-ALERT-MUTE-PREVIEW-EVENTS",
 	"FX-CONTRACT-N9E-ALERT-MUTE-TRYRUN",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-LIST-BY-BUSI-GROUP",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-LIST-BY-BUSI-GROUPS",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-DETAIL",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-CREATE",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-UPDATE",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-DELETE",
+	"FX-CONTRACT-N9E-ALERT-SUBSCRIBE-TRYRUN",
 	"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
 }
 
@@ -199,6 +207,28 @@ func TestMonitoringContractMatrixAlertMuteShieldSourceRefs(t *testing.T) {
 	for _, ref := range want {
 		if !contractListContains(got, ref) {
 			t.Fatalf("alert mute shield source refs missing %q: %#v", ref, got)
+		}
+	}
+}
+
+func TestMonitoringContractMatrixAlertSubscribeSourceRefs(t *testing.T) {
+	got := alertSubscribeSourceRefs()
+	want := []string{
+		`D:\项目迁移文件\平台源码\fe-main\src\services\subscribe.ts`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\index.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\ListNG.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\add.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\edit.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\components\operateForm.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\components\ruleModal.tsx`,
+		`D:\项目迁移文件\平台源码\fe-main\src\pages\warning\subscribe\constants.ts`,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("alert subscribe source refs count = %d, want %d: %#v", len(got), len(want), got)
+	}
+	for _, ref := range want {
+		if !contractListContains(got, ref) {
+			t.Fatalf("alert subscribe source refs missing %q: %#v", ref, got)
 		}
 	}
 }
