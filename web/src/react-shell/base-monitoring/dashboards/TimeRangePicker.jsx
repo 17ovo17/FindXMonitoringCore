@@ -1,17 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 const QUICK_RANGES = [
-  { key: '5m', label: '近 5 分钟', seconds: 300 },
-  { key: '15m', label: '近 15 分钟', seconds: 900 },
-  { key: '30m', label: '近 30 分钟', seconds: 1800 },
-  { key: '1h', label: '近 1 小时', seconds: 3600 },
-  { key: '3h', label: '近 3 小时', seconds: 10800 },
-  { key: '6h', label: '近 6 小时', seconds: 21600 },
-  { key: '12h', label: '近 12 小时', seconds: 43200 },
-  { key: '24h', label: '近 24 小时', seconds: 86400 },
-  { key: '2d', label: '近 2 天', seconds: 172800 },
-  { key: '7d', label: '近 7 天', seconds: 604800 },
+  { key: '5m', label: '近 5 分钟', seconds: 300, from: 'now-5m' },
+  { key: '15m', label: '近 15 分钟', seconds: 900, from: 'now-15m' },
+  { key: '30m', label: '近 30 分钟', seconds: 1800, from: 'now-30m' },
+  { key: '1h', label: '近 1 小时', seconds: 3600, from: 'now-1h' },
+  { key: '3h', label: '近 3 小时', seconds: 10800, from: 'now-3h' },
+  { key: '6h', label: '近 6 小时', seconds: 21600, from: 'now-6h' },
+  { key: '12h', label: '近 12 小时', seconds: 43200, from: 'now-12h' },
+  { key: '24h', label: '近 24 小时', seconds: 86400, from: 'now-24h' },
+  { key: '2d', label: '近 2 天', seconds: 172800, from: 'now-2d' },
+  { key: '7d', label: '近 7 天', seconds: 604800, from: 'now-7d' },
+  { key: '30d', label: '近 30 天', seconds: 2592000, from: 'now-30d' },
 ]
+
+/** 从 URL search params 中恢复时间范围 key */
+export function parseTimeRangeFromURL() {
+  const params = new URLSearchParams(window.location.search)
+  const from = params.get('from')
+  if (!from) return null
+  const match = QUICK_RANGES.find((r) => r.from === from)
+  return match ? match.key : null
+}
+
+/** 将时间范围同步到 URL params（不刷新页面） */
+export function syncTimeRangeToURL(rangeKey) {
+  const range = QUICK_RANGES.find((r) => r.key === rangeKey)
+  if (!range) return
+  const params = new URLSearchParams(window.location.search)
+  params.set('from', range.from)
+  params.set('to', 'now')
+  const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`
+  window.history.replaceState(null, '', newUrl)
+}
 
 const REFRESH_OPTIONS = [
   { key: 'off', label: '关闭' },
@@ -32,6 +53,12 @@ export default function TimeRangePicker({ rangeKey, refreshKey, onRangeChange, o
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  const handleRangeChange = (key) => {
+    onRangeChange(key)
+    syncTimeRangeToURL(key)
+    setOpen(false)
+  }
 
   const activeRange = QUICK_RANGES.find((r) => r.key === rangeKey) || QUICK_RANGES[3]
   const activeRefresh = REFRESH_OPTIONS.find((r) => r.key === refreshKey) || REFRESH_OPTIONS[0]
@@ -61,7 +88,7 @@ export default function TimeRangePicker({ rangeKey, refreshKey, onRangeChange, o
                   key={r.key}
                   type="button"
                   className={r.key === rangeKey ? 'is-active' : ''}
-                  onClick={() => { onRangeChange(r.key); setOpen(false) }}
+                  onClick={() => handleRangeChange(r.key)}
                 >
                   {r.label}
                 </button>

@@ -22,6 +22,15 @@ const LEGEND_POSITIONS = [
   { key: 'hidden', label: '隐藏' },
 ]
 
+const UNIT_OPTIONS = [
+  { key: 'none', label: '无' },
+  { key: 'bytes', label: 'bytes' },
+  { key: 'percent', label: '%' },
+  { key: 'seconds', label: '秒 (s)' },
+  { key: 'reqps', label: 'requests/s' },
+  { key: 'ms', label: '毫秒 (ms)' },
+]
+
 function QueryEditor({ targets, onChange }) {
   const addTarget = () => {
     onChange([...targets, { expr: '', legendFormat: '' }])
@@ -141,6 +150,7 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
     initial.displayOptions || { lineWidth: 1, fillOpacity: 10, pointSize: 0, stackMode: 'none', legendPosition: 'bottom' }
   )
   const [thresholds, setThresholds] = useState(initial.thresholds || [])
+  const [unit, setUnit] = useState(initial.unit || 'none')
 
   const previewPanel = useMemo(() => ({
     type: panelType,
@@ -158,6 +168,7 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
       targets,
       displayOptions: displayOpts,
       thresholds,
+      unit,
     })
   }
 
@@ -205,6 +216,15 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
             <DisplayOptions options={displayOpts} onChange={setDisplayOpts} />
           )}
           <ThresholdsEditor thresholds={thresholds} onChange={setThresholds} />
+          <div className="fx-pe-section">
+            <strong>单位</strong>
+            <label className="fx-pe-field">
+              <span>数值单位</span>
+              <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+                {UNIT_OPTIONS.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+              </select>
+            </label>
+          </div>
         </aside>
       </div>
       <footer className="fx-pe-footer">
