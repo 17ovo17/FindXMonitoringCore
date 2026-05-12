@@ -173,7 +173,7 @@ func TestContractMatrixSeededPrometheusSingleQueryAdapterIsReady(t *testing.T) {
 			t.Fatalf("single query adapter response missing %s: %s", want, body)
 		}
 	}
-	for _, forbidden := range []string{"query-range-batch", "query-instant-batch", "/api/n9e/tag-metrics", "/api/n9e/metric-views"} {
+	for _, forbidden := range []string{"query-range-batch", "query-instant-batch", "/api/n9e-plus/query-batch", "/api/n9e/tag-pairs", "/api/n9e/tag-metrics", "/api/n9e/query", "/api/n9e/metric-views", "/api/n9e/prometheus/api/v1", "/api/n9e/share-charts", "/api/n9e/metrics/desc"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("single query adapter must not claim Nightingale batch/query view endpoint %s: %s", forbidden, body)
 		}
@@ -188,8 +188,18 @@ func TestContractMatrixSeededMetricQueryBatchAndMetricViewsStayBlocked(t *testin
 		id     string
 		status string
 	}{
-		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusBlocked},
 		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-QUERY-RANGE-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-QUERY-INSTANT-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-PLUS-QUERY-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-TAG-PAIRS", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-TAG-METRICS", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-QUERY-DATA", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-QUERY-BENCH", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-SHARE-CHARTS", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-METRICS-DESC", status: model.ContractStatusMissingBackend},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id, func(t *testing.T) {
@@ -201,6 +211,30 @@ func TestContractMatrixSeededMetricQueryBatchAndMetricViewsStayBlocked(t *testin
 			decodeContractMatrixResponse(t, w, &payload)
 			if payload.ContractGapID != tt.id || payload.Status != tt.status || payload.Code != model.ContractBlockedByContractCode || payload.SafeToRetry {
 				t.Fatalf("blocked response mismatch for %s: %#v", tt.id, payload)
+			}
+			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+			assertContractMatrixBlockedShape(t, w.Body.String())
+		})
+	}
+}
+
+func TestContractMatrixSeededMetricQuerySplitGapsDoNotLeakRuntimeState(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	for _, id := range []string{
+		"FX-CONTRACT-N9E-QUERY-INSTANT-BATCH",
+		"FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API",
+		"FX-CONTRACT-N9E-METRICS-DESC",
+	} {
+		t.Run(id, func(t *testing.T) {
+			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+id, nil)
+			if w.Code != http.StatusConflict {
+				t.Fatalf("%s should return BLOCKED_BY_CONTRACT 409, got %d body=%s", id, w.Code, w.Body.String())
+			}
+			var payload model.ContractMatrixBlockedResponse
+			decodeContractMatrixResponse(t, w, &payload)
+			if payload.Code != model.ContractBlockedByContractCode || payload.ContractGapID != id || payload.Status == model.ContractStatusReady || payload.SafeToRetry {
+				t.Fatalf("blocked split gap response mismatch for %s: %#v", id, payload)
 			}
 			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 			assertContractMatrixBlockedShape(t, w.Body.String())
@@ -291,7 +325,7 @@ func assertContractMatrixBlockedShape(t *testing.T, body string) {
 
 func assertContractMatrixNoFakeRuntimeState(t *testing.T, body string) {
 	t.Helper()
-	for _, forbidden := range []string{"queued", "running", "succeeded", "installed", "data_arrived"} {
+	for _, forbidden := range []string{"queued", "running", "succeeded", "success", "installed", "data_arrived", "applied", "rolled-back"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("blocked path must not expose fake runtime state %q: %s", forbidden, body)
 		}

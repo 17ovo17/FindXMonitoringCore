@@ -91,7 +91,7 @@ func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequ
 }
 
 func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterRequest {
-	return []model.ContractMatrixRegisterRequest{
+	entries := []model.ContractMatrixRegisterRequest{
 		monitoringReadyContractSeed(
 			"FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY",
 			"FindX Prometheus single query adapter",
@@ -114,7 +114,7 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 				"/query?section=metrics",
 				"findx_prometheus_single_query_adapter",
 				"/monitor/query,/monitor/query-range,/monitor/labels,/monitor/label-values",
-				"FindX single Prometheus query, range, labels, and label-values only; not Nightingale batch query or metric views CRUD",
+				"FindX single Prometheus query, range, labels, and label-values only; not batch query or metric views CRUD",
 			),
 		),
 		monitoringContractSeed(
@@ -127,12 +127,20 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-METRIC-QUERY-BATCH",
-			"Metric query batch",
-			model.ContractStatusMissingDatasource,
+			"Metric query aggregate",
+			model.ContractStatusBlocked,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\metric.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`, `D:\项目迁移文件\平台源码\fe-main\src\services\warning.ts`},
-			"Metric query datasource contract is missing",
-			monitoringContractMetadata("/query?section=metrics", "metric_query_contract", "/api/n9e/tag-metrics"),
+			"Metric query aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/query?section=metrics",
+				"metric_query_contract",
+				"metric-query-aggregate",
+				"Child gaps carry endpoint refs: FX-CONTRACT-N9E-QUERY-RANGE-BATCH, FX-CONTRACT-N9E-QUERY-INSTANT-BATCH, FX-CONTRACT-N9E-PLUS-QUERY-BATCH, FX-CONTRACT-N9E-TAG-PAIRS, FX-CONTRACT-N9E-TAG-METRICS, FX-CONTRACT-N9E-QUERY-DATA, FX-CONTRACT-N9E-QUERY-BENCH, FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API",
+			),
 		),
+	}
+	entries = append(entries, monitoringMetricQueryGapSeeds()...)
+	entries = append(entries,
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS",
 			"Dashboard annotations",
@@ -141,7 +149,39 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 			"Dashboard annotation backend contract is missing",
 			monitoringContractMetadata("/dashboards?section=list", "dashboard_annotation", "/api/n9e/dashboard-annotations"),
 		),
+	)
+	return entries
+}
+
+func monitoringMetricQueryGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-QUERY-RANGE-BATCH", "Metric range batch query", model.ContractStatusMissingDatasource, dashboardV2SourceRefs(), "Metric range batch datasource contract is missing", "/query?section=metrics", "metric_query_range_batch", "/api/{N9E_PATHNAME}/query-range-batch"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-QUERY-INSTANT-BATCH", "Metric instant batch query", model.ContractStatusMissingDatasource, dashboardV2SourceRefs(), "Metric instant batch datasource contract is missing", "/query?section=metrics", "metric_query_instant_batch", "/api/{N9E_PATHNAME}/query-instant-batch"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-PLUS-QUERY-BATCH", "Metric plus query batch", model.ContractStatusMissingDatasource, dashboardV2SourceRefs(), "Metric plus query datasource contract is missing", "/query?section=metrics", "metric_query_plus_batch", "/api/n9e-plus/query-batch"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-TAG-PAIRS", "Metric tag pairs", model.ContractStatusMissingDatasource, metricSourceRefs(), "Metric tag pairs datasource contract is missing", "/query?section=metrics", "metric_tag_pairs", "/api/n9e/tag-pairs"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-TAG-METRICS", "Metric tag metrics", model.ContractStatusMissingDatasource, metricSourceRefs(), "Metric tag metrics datasource contract is missing", "/query?section=metrics", "metric_tag_metrics", "/api/n9e/tag-metrics"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-QUERY-DATA", "Metric raw data query", model.ContractStatusMissingDatasource, metricSourceRefs(), "Metric raw data datasource contract is missing", "/query?section=metrics", "metric_query_data", "/api/n9e/query"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-QUERY-BENCH", "Metric query bench", model.ContractStatusMissingBackend, metricSourceRefs(), "Metric query bench backend contract is missing", "/query?section=metrics", "metric_query_bench", "/api/n9e/query-bench"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API", "Prometheus compatibility API", model.ContractStatusMissingDatasource, append(metricSourceRefs(), metricViewsSourceRefs()...), "Prometheus compatibility datasource contract is missing", "/query?section=metrics", "prometheus_compat_api", "/api/n9e/prometheus/api/v1/{path}"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-SHARE-CHARTS", "Metric share charts", model.ContractStatusMissingBackend, append(metricSourceRefs(), metricViewsSourceRefs()...), "Metric share charts backend contract is missing", "/query?section=metrics", "metric_share_charts", "/api/n9e/share-charts"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-METRICS-DESC", "Metric description", model.ContractStatusMissingBackend, metricViewsSourceRefs(), "Metric description backend contract is missing", "/query?section=metric-views", "metric_description", "/api/n9e/metrics/desc"),
 	}
+}
+
+func monitoringMetricQueryGapSeed(id, capability, status string, sourceRefs []string, blockedReason, findxRoute, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(id, capability, status, sourceRefs, blockedReason, monitoringContractMetadata(findxRoute, gapType, upstreamRef))
+}
+
+func dashboardV2SourceRefs() []string {
+	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`}
+}
+
+func metricSourceRefs() []string {
+	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\metric.ts`}
+}
+
+func metricViewsSourceRefs() []string {
+	return []string{`D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`}
 }
 
 func monitoringAlertNotificationContractSeeds() []model.ContractMatrixRegisterRequest {

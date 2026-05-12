@@ -16,6 +16,16 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY",
 	"FX-CONTRACT-N9E-METRIC-VIEWS-CRUD",
 	"FX-CONTRACT-N9E-METRIC-QUERY-BATCH",
+	"FX-CONTRACT-N9E-QUERY-RANGE-BATCH",
+	"FX-CONTRACT-N9E-QUERY-INSTANT-BATCH",
+	"FX-CONTRACT-N9E-PLUS-QUERY-BATCH",
+	"FX-CONTRACT-N9E-TAG-PAIRS",
+	"FX-CONTRACT-N9E-TAG-METRICS",
+	"FX-CONTRACT-N9E-QUERY-DATA",
+	"FX-CONTRACT-N9E-QUERY-BENCH",
+	"FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API",
+	"FX-CONTRACT-N9E-SHARE-CHARTS",
+	"FX-CONTRACT-N9E-METRICS-DESC",
 	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS",
 	"FX-CONTRACT-N9E-ALERT-RULE-GROUPS",
 	"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
@@ -150,11 +160,22 @@ func TestMonitoringContractMatrixNightingaleBatchAndMetricViewsStayGaps(t *testi
 	ResetContractMatrixForTest()
 
 	tests := []struct {
-		id     string
-		status string
+		id          string
+		status      string
+		upstreamRef string
 	}{
-		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend},
-		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusMissingDatasource},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend, upstreamRef: "/api/n9e/metric-views"},
+		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusBlocked, upstreamRef: "metric-query-aggregate"},
+		{id: "FX-CONTRACT-N9E-QUERY-RANGE-BATCH", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/{N9E_PATHNAME}/query-range-batch"},
+		{id: "FX-CONTRACT-N9E-QUERY-INSTANT-BATCH", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/{N9E_PATHNAME}/query-instant-batch"},
+		{id: "FX-CONTRACT-N9E-PLUS-QUERY-BATCH", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/n9e-plus/query-batch"},
+		{id: "FX-CONTRACT-N9E-TAG-PAIRS", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/n9e/tag-pairs"},
+		{id: "FX-CONTRACT-N9E-TAG-METRICS", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/n9e/tag-metrics"},
+		{id: "FX-CONTRACT-N9E-QUERY-DATA", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/n9e/query"},
+		{id: "FX-CONTRACT-N9E-QUERY-BENCH", status: model.ContractStatusMissingBackend, upstreamRef: "/api/n9e/query-bench"},
+		{id: "FX-CONTRACT-N9E-PROMETHEUS-COMPAT-API", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/n9e/prometheus/api/v1/{path}"},
+		{id: "FX-CONTRACT-N9E-SHARE-CHARTS", status: model.ContractStatusMissingBackend, upstreamRef: "/api/n9e/share-charts"},
+		{id: "FX-CONTRACT-N9E-METRICS-DESC", status: model.ContractStatusMissingBackend, upstreamRef: "/api/n9e/metrics/desc"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id, func(t *testing.T) {
@@ -171,7 +192,26 @@ func TestMonitoringContractMatrixNightingaleBatchAndMetricViewsStayGaps(t *testi
 			if item.Status == model.ContractStatusReady || item.SafeToRetry || item.Handler != "" || item.Backend != "" || item.Datasource != "" || item.Executor != "" || len(item.EvidenceRefs) != 0 {
 				t.Fatalf("%s was incorrectly upgraded by single query adapter: %#v", tt.id, item)
 			}
+			assertMonitoringN9eGapMetadata(t, item, tt.upstreamRef)
 		})
+	}
+}
+
+func assertMonitoringN9eGapMetadata(t *testing.T, item model.ContractMatrixEntry, upstreamRef string) {
+	t.Helper()
+	if item.Metadata["upstream_ref"] != upstreamRef {
+		t.Fatalf("%s upstream_ref = %q, want %q", item.ID, item.Metadata["upstream_ref"], upstreamRef)
+	}
+	for _, key := range []string{"findx_route", "gap_type", "upstream_ref"} {
+		if strings.TrimSpace(item.Metadata[key]) == "" {
+			t.Fatalf("%s missing metadata %s: %#v", item.ID, key, item.Metadata)
+		}
+	}
+	if strings.TrimSpace(item.BlockedReason) == "" {
+		t.Fatalf("%s missing blocked_reason", item.ID)
+	}
+	if len(item.SourceRefs) == 0 {
+		t.Fatalf("%s missing source_refs", item.ID)
 	}
 }
 
@@ -286,10 +326,10 @@ func assertReadyMonitoringContractSeedEntry(t *testing.T, item model.ContractMat
 			t.Fatalf("single query adapter must point only to FindX monitor query endpoints, got %#v", item.Metadata)
 		}
 		scope := strings.ToLower(item.Metadata["upstream_scope"])
-		if !strings.Contains(scope, "single prometheus query") || !strings.Contains(scope, "not nightingale batch") || !strings.Contains(scope, "metric views crud") {
+		if !strings.Contains(scope, "single prometheus query") || !strings.Contains(scope, "not batch query") || !strings.Contains(scope, "metric views crud") {
 			t.Fatalf("single query adapter scope must not imply Nightingale batch or metric views readiness: %#v", item.Metadata)
 		}
-		for _, forbidden := range []string{"query-range-batch", "query-instant-batch", "/api/n9e/tag-metrics", "/api/n9e/metric-views"} {
+		for _, forbidden := range []string{"query-range-batch", "query-instant-batch", "/api/n9e-plus/query-batch", "/api/n9e/tag-pairs", "/api/n9e/tag-metrics", "/api/n9e/query", "/api/n9e/metric-views", "/api/n9e/prometheus/api/v1", "/api/n9e/share-charts", "/api/n9e/metrics/desc"} {
 			if strings.Contains(item.Metadata["upstream_ref"], forbidden) {
 				t.Fatalf("single query adapter upstream_ref must not claim batch/query view endpoint %s: %#v", forbidden, item.Metadata)
 			}
