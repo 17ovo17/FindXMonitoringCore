@@ -81,6 +81,7 @@ func TestContractMatrixGapStatusesAndBlockedResponse(t *testing.T) {
 			if !strings.Contains(payload.Message, "能力缺少后端、数据源或执行器契约") {
 				t.Fatalf("blocked response message must be readable UTF-8 Chinese, got %#v", payload.Message)
 			}
+			assertContractMatrixNoMojibake(t, payload.Message)
 			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 			assertContractMatrixNoFakeRuntimeState(t, w.Body.String())
 		})
@@ -129,6 +130,7 @@ func TestContractMatrixSeededMonitoringGapDetailIsBlocked(t *testing.T) {
 	if !strings.Contains(payload.Message, "能力缺少后端、数据源或执行器契约") {
 		t.Fatalf("blocked response message must be readable UTF-8 Chinese, got %#v", payload.Message)
 	}
+	assertContractMatrixNoMojibake(t, payload.Message)
 	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 	assertContractMatrixBlockedShape(t, w.Body.String())
 }
@@ -189,7 +191,11 @@ func TestContractMatrixSeededMetricQueryBatchAndMetricViewsStayBlocked(t *testin
 		status string
 	}{
 		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusBlocked},
-		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusBlocked},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-LIST", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CREATE", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE", status: model.ContractStatusMissingBackend},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-DELETE", status: model.ContractStatusMissingBackend},
 		{id: "FX-CONTRACT-N9E-QUERY-RANGE-BATCH", status: model.ContractStatusMissingDatasource},
 		{id: "FX-CONTRACT-N9E-QUERY-INSTANT-BATCH", status: model.ContractStatusMissingDatasource},
 		{id: "FX-CONTRACT-N9E-PLUS-QUERY-BATCH", status: model.ContractStatusMissingDatasource},
@@ -320,6 +326,7 @@ func assertContractMatrixBlockedShape(t *testing.T, body string) {
 			t.Fatalf("blocked response missing required field %s: %s", required, body)
 		}
 	}
+	assertContractMatrixNoMojibake(t, body)
 	assertContractMatrixNoFakeRuntimeState(t, body)
 }
 
@@ -329,5 +336,26 @@ func assertContractMatrixNoFakeRuntimeState(t *testing.T, body string) {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("blocked path must not expose fake runtime state %q: %s", forbidden, body)
 		}
+	}
+}
+
+func assertContractMatrixNoMojibake(t *testing.T, body string) {
+	t.Helper()
+	for _, forbidden := range contractMatrixMojibakeDenylist() {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("contract matrix response contains mojibake %q: %s", forbidden, body)
+		}
+	}
+}
+
+func contractMatrixMojibakeDenylist() []string {
+	return []string{
+		string([]rune{0x9473, 0x85c9, 0x59cf}),
+		string([]rune{0x7f02, 0x54c4, 0x76af}),
+		string([]rune{0x6924, 0x572d, 0x6d30}),
+		string([]rune{0x9a9e, 0x51b2, 0x5f74}),
+		string([]rune{0x0044, 0x951b}),
+		string([]rune{0x0044, 0xf03a}),
+		"\ufffd",
 	}
 }

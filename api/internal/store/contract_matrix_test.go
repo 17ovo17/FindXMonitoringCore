@@ -15,6 +15,10 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT",
 	"FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY",
 	"FX-CONTRACT-N9E-METRIC-VIEWS-CRUD",
+	"FX-CONTRACT-N9E-METRIC-VIEWS-LIST",
+	"FX-CONTRACT-N9E-METRIC-VIEWS-CREATE",
+	"FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE",
+	"FX-CONTRACT-N9E-METRIC-VIEWS-DELETE",
 	"FX-CONTRACT-N9E-METRIC-QUERY-BATCH",
 	"FX-CONTRACT-N9E-QUERY-RANGE-BATCH",
 	"FX-CONTRACT-N9E-QUERY-INSTANT-BATCH",
@@ -164,7 +168,11 @@ func TestMonitoringContractMatrixNightingaleBatchAndMetricViewsStayGaps(t *testi
 		status      string
 		upstreamRef string
 	}{
-		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusMissingBackend, upstreamRef: "/api/n9e/metric-views"},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CRUD", status: model.ContractStatusBlocked, upstreamRef: "metric-views-crud-aggregate"},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-LIST", status: model.ContractStatusMissingBackend, upstreamRef: "GET /api/n9e/metric-views"},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-CREATE", status: model.ContractStatusMissingBackend, upstreamRef: "POST /api/n9e/metric-views"},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE", status: model.ContractStatusMissingBackend, upstreamRef: "PUT /api/n9e/metric-views"},
+		{id: "FX-CONTRACT-N9E-METRIC-VIEWS-DELETE", status: model.ContractStatusMissingBackend, upstreamRef: "DELETE /api/n9e/metric-views"},
 		{id: "FX-CONTRACT-N9E-METRIC-QUERY-BATCH", status: model.ContractStatusBlocked, upstreamRef: "metric-query-aggregate"},
 		{id: "FX-CONTRACT-N9E-QUERY-RANGE-BATCH", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/{N9E_PATHNAME}/query-range-batch"},
 		{id: "FX-CONTRACT-N9E-QUERY-INSTANT-BATCH", status: model.ContractStatusMissingDatasource, upstreamRef: "/api/{N9E_PATHNAME}/query-instant-batch"},
@@ -195,6 +203,43 @@ func TestMonitoringContractMatrixNightingaleBatchAndMetricViewsStayGaps(t *testi
 			assertMonitoringN9eGapMetadata(t, item, tt.upstreamRef)
 		})
 	}
+}
+
+func TestMonitoringContractMatrixMetricViewsCrudIsSplitIntoPreciseGaps(t *testing.T) {
+	ResetContractMatrixForTest()
+
+	aggregate, ok, err := GetContractMatrixEntry("FX-CONTRACT-N9E-METRIC-VIEWS-CRUD")
+	if err != nil {
+		t.Fatalf("get metric views aggregate: %v", err)
+	}
+	if !ok {
+		t.Fatal("metric views aggregate seed missing")
+	}
+	if aggregate.Status != model.ContractStatusBlocked {
+		t.Fatalf("metric views aggregate status = %s, want blocked", aggregate.Status)
+	}
+	if aggregate.Metadata["upstream_ref"] != "metric-views-crud-aggregate" {
+		t.Fatalf("aggregate must not own endpoint directly: %#v", aggregate.Metadata)
+	}
+	assertMonitoringMetricViewsSplitGap(t, "FX-CONTRACT-N9E-METRIC-VIEWS-LIST", "GET /api/n9e/metric-views")
+	assertMonitoringMetricViewsSplitGap(t, "FX-CONTRACT-N9E-METRIC-VIEWS-CREATE", "POST /api/n9e/metric-views")
+	assertMonitoringMetricViewsSplitGap(t, "FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE", "PUT /api/n9e/metric-views")
+	assertMonitoringMetricViewsSplitGap(t, "FX-CONTRACT-N9E-METRIC-VIEWS-DELETE", "DELETE /api/n9e/metric-views")
+}
+
+func assertMonitoringMetricViewsSplitGap(t *testing.T, id, upstreamRef string) {
+	t.Helper()
+	item, ok, err := GetContractMatrixEntry(id)
+	if err != nil {
+		t.Fatalf("get %s: %v", id, err)
+	}
+	if !ok {
+		t.Fatalf("%s seed missing", id)
+	}
+	if item.Status == model.ContractStatusReady || item.SafeToRetry || item.Handler != "" || item.Backend != "" || item.Datasource != "" || item.Executor != "" || len(item.EvidenceRefs) != 0 {
+		t.Fatalf("%s should remain non-ready without executable evidence: %#v", id, item)
+	}
+	assertMonitoringN9eGapMetadata(t, item, upstreamRef)
 }
 
 func assertMonitoringN9eGapMetadata(t *testing.T, item model.ContractMatrixEntry, upstreamRef string) {
@@ -266,11 +311,17 @@ func monitoringMojibakeDenylist() []string {
 		string([]rune{0x6769, 0x4F7A, 0x0429}),
 		string([]rune{0x9A9E, 0x51B2, 0x5F74}),
 		string([]rune{0x5A67, 0x612E, 0x721C}),
+		string([]rune{0x9473, 0x85C9, 0x59CF}),
+		string([]rune{0x7F02, 0x54C4, 0x76AF}),
+		string([]rune{0x0044, 0x951B}),
+		string([]rune{0x0044, 0xF03A}),
+		"\ufffd",
 	}
 }
 
 func assertMonitoringContractSeedEntry(t *testing.T, item model.ContractMatrixEntry) {
 	t.Helper()
+	assertMonitoringContractSeedHasNoMojibake(t, item)
 	if item.ID == "FX-CONTRACT-N9E-DATASOURCE-BRIEF-LIST" || item.ID == "FX-CONTRACT-FINDX-PROMETHEUS-SINGLE-QUERY" {
 		assertReadyMonitoringContractSeedEntry(t, item)
 		return
@@ -294,6 +345,23 @@ func assertMonitoringContractSeedEntry(t *testing.T, item model.ContractMatrixEn
 	for _, forbidden := range []string{"queued", "running", "succeeded", "success", "applied", "rolled-back", "installed", "data_arrived"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("monitoring seed exposed fake success state %q: %#v", forbidden, item)
+		}
+	}
+}
+
+func assertMonitoringContractSeedHasNoMojibake(t *testing.T, item model.ContractMatrixEntry) {
+	t.Helper()
+	values := []string{item.Capability, item.BlockedReason, item.Handler, item.Backend, item.Datasource, item.Executor}
+	values = append(values, item.SourceRefs...)
+	values = append(values, item.EvidenceRefs...)
+	for key, value := range item.Metadata {
+		values = append(values, key, value)
+	}
+	for _, value := range values {
+		for _, mojibake := range monitoringMojibakeDenylist() {
+			if strings.Contains(value, mojibake) {
+				t.Fatalf("%s contains mojibake %q in value %q: %#v", item.ID, mojibake, value, item)
+			}
 		}
 	}
 }

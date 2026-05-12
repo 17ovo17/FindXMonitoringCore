@@ -119,11 +119,16 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-METRIC-VIEWS-CRUD",
-			"Metric views CRUD",
-			model.ContractStatusMissingBackend,
+			"Metric views CRUD aggregate",
+			model.ContractStatusBlocked,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\metricViews.ts`},
-			"Metric views CRUD backend contract is missing",
-			monitoringContractMetadata("/query?section=metric-views", "metric_view_contract", "/api/n9e/metric-views"),
+			"Metric views CRUD aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/query?section=metric-views",
+				"metric_view_contract",
+				"metric-views-crud-aggregate",
+				"Child gaps carry endpoint refs: FX-CONTRACT-N9E-METRIC-VIEWS-LIST, FX-CONTRACT-N9E-METRIC-VIEWS-CREATE, FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE, FX-CONTRACT-N9E-METRIC-VIEWS-DELETE",
+			),
 		),
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-METRIC-QUERY-BATCH",
@@ -139,6 +144,7 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 			),
 		),
 	}
+	entries = append(entries, monitoringMetricViewsGapSeeds()...)
 	entries = append(entries, monitoringMetricQueryGapSeeds()...)
 	entries = append(entries,
 		monitoringContractSeed(
@@ -151,6 +157,15 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 		),
 	)
 	return entries
+}
+
+func monitoringMetricViewsGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-METRIC-VIEWS-LIST", "Metric views list", model.ContractStatusMissingBackend, metricViewsSourceRefs(), "Metric views list backend contract is missing", "/query?section=metric-views", "metric_view_list", "GET /api/n9e/metric-views"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-METRIC-VIEWS-CREATE", "Metric views create", model.ContractStatusMissingBackend, metricViewsSourceRefs(), "Metric views create backend contract is missing", "/query?section=metric-views", "metric_view_create", "POST /api/n9e/metric-views"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-METRIC-VIEWS-UPDATE", "Metric views update", model.ContractStatusMissingBackend, metricViewsSourceRefs(), "Metric views update backend contract is missing", "/query?section=metric-views", "metric_view_update", "PUT /api/n9e/metric-views"),
+		monitoringMetricQueryGapSeed("FX-CONTRACT-N9E-METRIC-VIEWS-DELETE", "Metric views delete", model.ContractStatusMissingBackend, metricViewsSourceRefs(), "Metric views delete backend contract is missing", "/query?section=metric-views", "metric_view_delete", "DELETE /api/n9e/metric-views"),
+	}
 }
 
 func monitoringMetricQueryGapSeeds() []model.ContractMatrixRegisterRequest {
