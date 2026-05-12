@@ -180,14 +180,40 @@ func monitoringQueryDashboardContractSeeds() []model.ContractMatrixRegisterReque
 	entries = append(entries,
 		monitoringContractSeed(
 			"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS",
-			"Dashboard annotations",
-			model.ContractStatusMissingBackend,
+			"Dashboard annotations aggregate",
+			model.ContractStatusBlocked,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`},
-			"Dashboard annotation backend contract is missing",
-			monitoringContractMetadata("/dashboards?section=list", "dashboard_annotation", "/api/n9e/dashboard-annotations"),
+			"Dashboard annotations aggregate is represented by child contract gaps",
+			monitoringContractScopeMetadata(
+				"/dashboards?section=list",
+				"dashboard_annotation_aggregate",
+				"dashboard-annotations-aggregate",
+				"Child gaps own list, create, update, and delete annotation endpoint refs",
+			),
 		),
 	)
+	entries = append(entries, monitoringDashboardActionGapSeeds()...)
 	return entries
+}
+
+func monitoringDashboardActionGapSeeds() []model.ContractMatrixRegisterRequest {
+	return []model.ContractMatrixRegisterRequest{
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-LIST", "Dashboard annotations list", "/dashboards?section=list", "dashboard_annotation_list", "GET /api/n9e/dashboard-annotations"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-CREATE", "Dashboard annotations create", "/dashboards?section=list", "dashboard_annotation_create", "POST /api/n9e/dashboard-annotations"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-UPDATE", "Dashboard annotations update", "/dashboards?section=list", "dashboard_annotation_update", "PUT /api/n9e/dashboard-annotation/{id}"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-DELETE", "Dashboard annotations delete", "/dashboards?section=list", "dashboard_annotation_delete", "DELETE /api/n9e/dashboard-annotation/{id}"),
+	}
+}
+
+func monitoringDashboardActionGapSeed(id, capability, findxRoute, gapType, upstreamRef string) model.ContractMatrixRegisterRequest {
+	return monitoringContractSeed(
+		id,
+		capability,
+		model.ContractStatusMissingBackend,
+		dashboardV2SourceRefs(),
+		"Dashboard annotations backend contract is missing",
+		monitoringContractMetadata(findxRoute, gapType, upstreamRef),
+	)
 }
 
 func monitoringMetricViewsGapSeeds() []model.ContractMatrixRegisterRequest {

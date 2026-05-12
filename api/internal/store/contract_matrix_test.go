@@ -39,6 +39,10 @@ var monitoringContractSeedIDs = []string{
 	"FX-CONTRACT-N9E-SHARE-CHARTS",
 	"FX-CONTRACT-N9E-METRICS-DESC",
 	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS",
+	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-LIST",
+	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-CREATE",
+	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-UPDATE",
+	"FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-DELETE",
 	"FX-CONTRACT-N9E-ALERT-RULE-GROUPS",
 	"FX-CONTRACT-N9E-NOTIFICATION-FINDX-ADAPTER",
 	"FX-CONTRACT-N9E-BUSI-GROUP-RESOURCE-GROUP-MAP",
@@ -286,6 +290,58 @@ func TestMonitoringContractMatrixDatasourceProxyIsSplitIntoPreciseGaps(t *testin
 	}
 }
 
+func TestMonitoringContractMatrixDashboardAnnotationsIsSplitIntoPreciseGaps(t *testing.T) {
+	ResetContractMatrixForTest()
+
+	aggregate, ok, err := GetContractMatrixEntry("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS")
+	if err != nil {
+		t.Fatalf("get dashboard annotations aggregate: %v", err)
+	}
+	if !ok {
+		t.Fatal("dashboard annotations aggregate seed missing")
+	}
+	if aggregate.Status != model.ContractStatusBlocked {
+		t.Fatalf("dashboard annotations aggregate status = %s, want blocked", aggregate.Status)
+	}
+	if aggregate.SafeToRetry || aggregate.Handler != "" || aggregate.Backend != "" || aggregate.Datasource != "" || aggregate.Executor != "" || len(aggregate.EvidenceRefs) != 0 {
+		t.Fatalf("dashboard annotations aggregate should remain non-ready without executable evidence: %#v", aggregate)
+	}
+	if aggregate.Metadata["upstream_ref"] != "dashboard-annotations-aggregate" {
+		t.Fatalf("aggregate must not own dashboard annotations endpoint directly: %#v", aggregate.Metadata)
+	}
+	if strings.Contains(aggregate.Metadata["upstream_ref"], "/api/n9e/dashboard-annotations") ||
+		strings.Contains(aggregate.Metadata["upstream_ref"], "/api/n9e/dashboard-annotation") {
+		t.Fatalf("aggregate must point to child gaps, not direct endpoint ownership: %#v", aggregate.Metadata)
+	}
+	if !strings.Contains(aggregate.Metadata["upstream_scope"], "list") ||
+		!strings.Contains(aggregate.Metadata["upstream_scope"], "create") ||
+		!strings.Contains(aggregate.Metadata["upstream_scope"], "update") ||
+		!strings.Contains(aggregate.Metadata["upstream_scope"], "delete") {
+		t.Fatalf("aggregate scope must enumerate annotations child gaps: %#v", aggregate.Metadata)
+	}
+	assertMonitoringN9eGapMetadata(t, aggregate, "dashboard-annotations-aggregate")
+
+	tests := []struct {
+		id          string
+		upstreamRef string
+	}{
+		{id: "FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-LIST", upstreamRef: "GET /api/n9e/dashboard-annotations"},
+		{id: "FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-CREATE", upstreamRef: "POST /api/n9e/dashboard-annotations"},
+		{id: "FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-UPDATE", upstreamRef: "PUT /api/n9e/dashboard-annotation/{id}"},
+		{id: "FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-DELETE", upstreamRef: "DELETE /api/n9e/dashboard-annotation/{id}"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			item := assertMonitoringDashboardAnnotationsSplitGap(t, tt.id, tt.upstreamRef)
+			for _, want := range monitoringMatureSourceRefs(`fe-main\src\services\dashboardV2.ts`) {
+				if !contractListContains(item.SourceRefs, want) {
+					t.Fatalf("%s source_refs missing mature source %s: %#v", tt.id, want, item.SourceRefs)
+				}
+			}
+		})
+	}
+}
+
 func assertMonitoringMetricViewsSplitGap(t *testing.T, id, upstreamRef string) {
 	t.Helper()
 	item, ok, err := GetContractMatrixEntry(id)
@@ -323,6 +379,28 @@ func assertMonitoringDatasourceProxySplitGap(t *testing.T, id, findxRoute, upstr
 		strings.Contains(item.Metadata["upstream_ref"], "query-instant-batch") ||
 		strings.Contains(item.Metadata["upstream_ref"], "/api/n9e-plus/query-batch") {
 		t.Fatalf("%s must not duplicate batch/query compatibility gaps: %#v", id, item.Metadata)
+	}
+	assertMonitoringN9eGapMetadata(t, item, upstreamRef)
+	return item
+}
+
+func assertMonitoringDashboardAnnotationsSplitGap(t *testing.T, id, upstreamRef string) model.ContractMatrixEntry {
+	t.Helper()
+	item, ok, err := GetContractMatrixEntry(id)
+	if err != nil {
+		t.Fatalf("get %s: %v", id, err)
+	}
+	if !ok {
+		t.Fatalf("%s seed missing", id)
+	}
+	if item.Status != model.ContractStatusMissingBackend {
+		t.Fatalf("%s status = %s, want missing_backend", id, item.Status)
+	}
+	if item.SafeToRetry || item.Handler != "" || item.Backend != "" || item.Datasource != "" || item.Executor != "" || len(item.EvidenceRefs) != 0 {
+		t.Fatalf("%s should remain non-ready without executable evidence: %#v", id, item)
+	}
+	if item.Metadata["findx_route"] != "/dashboards?section=list" {
+		t.Fatalf("%s findx_route = %q, want /dashboards?section=list", id, item.Metadata["findx_route"])
 	}
 	assertMonitoringN9eGapMetadata(t, item, upstreamRef)
 	return item
