@@ -37,6 +37,7 @@ var (
 	findxAgentConfigRollouts      = map[string]*model.FindXAgentConfigRollout{}
 	findxAgentExecutionTasks      = map[string]*model.FindXAgentExecutionTask{}
 	findxAgentDataArrivalEvidence = map[string]*model.FindXAgentDataArrivalEvidence{}
+	contractMatrixEntries         = map[string]*model.ContractMatrixEntry{}
 	monitorDashboards             = map[string]*model.MonitorDashboard{}
 	monitorBuiltinComponents      = map[string]*model.MonitoringBuiltinComponent{}
 	monitorBuiltinPayloads        = map[string]*model.MonitoringBuiltinPayload{}

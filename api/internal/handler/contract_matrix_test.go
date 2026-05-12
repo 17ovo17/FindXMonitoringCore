@@ -1,0 +1,199 @@
+package handler
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/store"
+
+	"github.com/gin-gonic/gin"
+)
+
+func TestContractMatrixReadyRequiresExecutableContract(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	badReady := performContractMatrixRequest(t, r, http.MethodPost, "/contract-matrix", map[string]any{
+		"id":         "FX-CONTRACT-AGENT-INSTALL",
+		"domain":     "agent",
+		"capability": "install",
+		"status":     model.ContractStatusReady,
+		"handler":    "InstallFindXAgent",
+	})
+	if badReady.Code != http.StatusBadRequest {
+		t.Fatalf("ready without backend/datasource/executor/evidence should fail, got %d body=%s", badReady.Code, badReady.Body.String())
+	}
+
+	ready := performContractMatrixRequest(t, r, http.MethodPost, "/contract-matrix", map[string]any{
+		"id":            "FX-CONTRACT-AGENT-INSTALL",
+		"domain":        "agent",
+		"capability":    "install",
+		"status":        model.ContractStatusReady,
+		"handler":       "InstallFindXAgent",
+		"backend":       "findx_agent_lifecycle",
+		"datasource":    "agent_package_repository",
+		"executor":      "ssh_executor",
+		"evidence_refs": []string{"source:AutoOps serviceDeploy.go"},
+	})
+	if ready.Code != http.StatusOK {
+		t.Fatalf("executable ready contract should pass, got %d body=%s", ready.Code, ready.Body.String())
+	}
+	var item model.ContractMatrixEntry
+	decodeContractMatrixResponse(t, ready, &item)
+	if item.Status != model.ContractStatusReady || item.ID != "FX-CONTRACT-AGENT-INSTALL" {
+		t.Fatalf("unexpected ready item: %#v", item)
+	}
+}
+
+func TestContractMatrixGapStatusesAndBlockedResponse(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	tests := []struct {
+		name   string
+		id     string
+		status string
+	}{
+		{name: "missing backend", id: "FX-CONTRACT-LOGS-LIVE-BACKEND", status: model.ContractStatusMissingBackend},
+		{name: "missing datasource", id: "FX-CONTRACT-APM-OAP-DATASOURCE", status: model.ContractStatusMissingDatasource},
+		{name: "missing executor", id: "FX-CONTRACT-AGENT-EXECUTOR-SSH", status: model.ContractStatusMissingExecutor},
+		{name: "unsafe", id: "FX-CONTRACT-UNSAFE-INPUT", status: model.ContractStatusUnsafe},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := performContractMatrixRequest(t, r, http.MethodPost, "/contract-matrix", map[string]any{
+				"id":         tt.id,
+				"domain":     "agent",
+				"capability": tt.name,
+				"status":     tt.status,
+			})
+			if w.Code != http.StatusConflict {
+				t.Fatalf("gap registration should be blocked 409, got %d body=%s", w.Code, w.Body.String())
+			}
+			var payload model.ContractMatrixBlockedResponse
+			decodeContractMatrixResponse(t, w, &payload)
+			if payload.Code != model.ContractBlockedByContractCode || payload.ContractGapID != tt.id || payload.Status != tt.status || payload.SafeToRetry {
+				t.Fatalf("blocked response mismatch: %#v", payload)
+			}
+			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+			assertContractMatrixNoFakeRuntimeState(t, w.Body.String())
+		})
+	}
+}
+
+func TestContractMatrixQueryReturnsRegisteredGapID(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	created := performContractMatrixRequest(t, r, http.MethodPost, "/contract-matrix", map[string]any{
+		"id":             "FX-CONTRACT-AGENT-EXECUTOR-SSH",
+		"domain":         "agent",
+		"capability":     "ssh executor",
+		"status":         model.ContractStatusMissingExecutor,
+		"blocked_reason": "executor contract missing",
+	})
+	if created.Code != http.StatusConflict {
+		t.Fatalf("gap create should be conflict, got %d body=%s", created.Code, created.Body.String())
+	}
+	w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/FX-CONTRACT-AGENT-EXECUTOR-SSH", nil)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("gap detail should be blocked 409, got %d body=%s", w.Code, w.Body.String())
+	}
+	var payload model.ContractMatrixBlockedResponse
+	decodeContractMatrixResponse(t, w, &payload)
+	if payload.ContractGapID != "FX-CONTRACT-AGENT-EXECUTOR-SSH" || payload.Status != model.ContractStatusMissingExecutor {
+		t.Fatalf("frontend must be able to map blocked response to gap id, got %#v", payload)
+	}
+}
+
+func TestContractMatrixDropsSensitiveInput(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	w := performContractMatrixRequest(t, r, http.MethodPost, "/contract-matrix", map[string]any{
+		"id":             "FX-CONTRACT-LOGS-DATASOURCE",
+		"domain":         "logs",
+		"capability":     "query",
+		"status":         model.ContractStatusMissingDatasource,
+		"blocked_reason": "missing password passwd secret api_key access_key session privatekey token cookie DSN private key",
+		"metadata": map[string]string{
+			"password":   "secret",
+			"api_key":    "api-key-value",
+			"access_key": "access-key-value",
+			"session":    "session-value",
+			"privatekey": "private-key-value",
+			"passwd":     "passwd-value",
+			"note":       "safe source evidence",
+		},
+	})
+	if w.Code != http.StatusConflict {
+		t.Fatalf("sensitive blocked gap should still be represented safely, got %d body=%s", w.Code, w.Body.String())
+	}
+	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+	assertContractMatrixBlockedShape(t, w.Body.String())
+	list := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix", nil)
+	assertContractMatrixNoSensitiveLeak(t, list.Body.String())
+}
+
+func contractMatrixTestRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/contract-matrix", ListContractMatrixEntries)
+	r.POST("/contract-matrix", RegisterContractMatrixEntry)
+	r.GET("/contract-matrix/:id", GetContractMatrixEntry)
+	return r
+}
+
+func performContractMatrixRequest(t *testing.T, r *gin.Engine, method, path string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	var payload []byte
+	if body != nil {
+		var err error
+		payload, err = json.Marshal(body)
+		if err != nil {
+			t.Fatalf("marshal request: %v", err)
+		}
+	}
+	req := httptest.NewRequest(method, path, bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func decodeContractMatrixResponse(t *testing.T, w *httptest.ResponseRecorder, out any) {
+	t.Helper()
+	if err := json.Unmarshal(w.Body.Bytes(), out); err != nil {
+		t.Fatalf("decode response: %v body=%s", err, w.Body.String())
+	}
+}
+
+func assertContractMatrixNoSensitiveLeak(t *testing.T, body string) {
+	t.Helper()
+	lower := strings.ToLower(body)
+	for _, forbidden := range []string{"token", "password", "passwd", "cookie", "dsn", "private key", "private_key", "privatekey", "bearer", "secret", "api_key", "apikey", "access_key", "session"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("contract matrix response leaked sensitive marker %q: %s", forbidden, body)
+		}
+	}
+}
+
+func assertContractMatrixBlockedShape(t *testing.T, body string) {
+	t.Helper()
+	for _, required := range []string{`"code"`, `"message"`, `"contract_gap_id"`, `"status"`, `"safe_to_retry":false`} {
+		if !strings.Contains(body, required) {
+			t.Fatalf("blocked response missing required field %s: %s", required, body)
+		}
+	}
+	assertContractMatrixNoFakeRuntimeState(t, body)
+}
+
+func assertContractMatrixNoFakeRuntimeState(t *testing.T, body string) {
+	t.Helper()
+	for _, forbidden := range []string{"queued", "running", "succeeded", "installed", "data_arrived"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("blocked path must not expose fake runtime state %q: %s", forbidden, body)
+		}
+	}
+}
