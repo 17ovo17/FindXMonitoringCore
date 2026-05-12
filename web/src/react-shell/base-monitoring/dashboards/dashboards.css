@@ -142,6 +142,12 @@
   background: #f8fbff;
 }
 
+.fx-dash-tag.is-purple {
+  border-color: #d3adf7;
+  color: #531dab;
+  background: #f9f0ff;
+}
+
 .fx-dash-state.is-on {
   border-color: #b7ebcf;
   color: #0f7a43;
@@ -2110,6 +2116,12 @@ body.fx-fullscreen .fx-dash-detail {
 .fx-dash-pagination button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.fx-dash-pagination button.is-active {
+  border-color: #1769ff;
+  color: #fff;
+  background: #1769ff;
 }
 
 .fx-dash-pagination select {
