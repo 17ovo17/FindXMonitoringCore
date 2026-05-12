@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const contractMatrixBlockedMessage = "能力缺少执行器或数据源契约，已阻断"
+const contractMatrixBlockedMessage = "能力缺少后端、数据源或执行器契约，已按安全策略阻断"
 
 func ListContractMatrixEntries(c *gin.Context) {
 	items, err := store.ListContractMatrixEntries(c.Query("status"), c.Query("domain"))

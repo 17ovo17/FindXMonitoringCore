@@ -78,6 +78,9 @@ func TestContractMatrixGapStatusesAndBlockedResponse(t *testing.T) {
 			if payload.Code != model.ContractBlockedByContractCode || payload.ContractGapID != tt.id || payload.Status != tt.status || payload.SafeToRetry {
 				t.Fatalf("blocked response mismatch: %#v", payload)
 			}
+			if !strings.Contains(payload.Message, "能力缺少后端、数据源或执行器契约") {
+				t.Fatalf("blocked response message must be readable UTF-8 Chinese, got %#v", payload.Message)
+			}
 			assertContractMatrixNoSensitiveLeak(t, w.Body.String())
 			assertContractMatrixNoFakeRuntimeState(t, w.Body.String())
 		})
@@ -106,6 +109,28 @@ func TestContractMatrixQueryReturnsRegisteredGapID(t *testing.T) {
 	if payload.ContractGapID != "FX-CONTRACT-AGENT-EXECUTOR-SSH" || payload.Status != model.ContractStatusMissingExecutor {
 		t.Fatalf("frontend must be able to map blocked response to gap id, got %#v", payload)
 	}
+}
+
+func TestContractMatrixSeededMonitoringGapDetailIsBlocked(t *testing.T) {
+	store.ResetContractMatrixForTest()
+	r := contractMatrixTestRouter()
+	w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID", nil)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("seeded monitoring gap detail should be blocked 409, got %d body=%s", w.Code, w.Body.String())
+	}
+	var payload model.ContractMatrixBlockedResponse
+	decodeContractMatrixResponse(t, w, &payload)
+	if payload.ContractGapID != "FX-CONTRACT-N9E-DATASOURCE-PROXY-BY-ID" ||
+		payload.Status != model.ContractStatusMissingDatasource ||
+		payload.Code != model.ContractBlockedByContractCode ||
+		payload.SafeToRetry {
+		t.Fatalf("seeded monitoring blocked response mismatch: %#v", payload)
+	}
+	if !strings.Contains(payload.Message, "能力缺少后端、数据源或执行器契约") {
+		t.Fatalf("blocked response message must be readable UTF-8 Chinese, got %#v", payload.Message)
+	}
+	assertContractMatrixNoSensitiveLeak(t, w.Body.String())
+	assertContractMatrixBlockedShape(t, w.Body.String())
 }
 
 func TestContractMatrixDropsSensitiveInput(t *testing.T) {

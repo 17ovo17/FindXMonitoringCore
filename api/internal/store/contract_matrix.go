@@ -25,6 +25,9 @@ func SaveContractMatrixEntry(input model.ContractMatrixRegisterRequest) (model.C
 }
 
 func ListContractMatrixEntries(status, domain string) ([]model.ContractMatrixEntry, error) {
+	if err := EnsureMonitoringContractMatrixSeeded(); err != nil {
+		return nil, err
+	}
 	status = strings.TrimSpace(status)
 	domain = strings.TrimSpace(domain)
 	if status != "" && !model.IsContractMatrixStatus(status) {
@@ -52,6 +55,9 @@ func ListContractMatrixEntries(status, domain string) ([]model.ContractMatrixEnt
 }
 
 func GetContractMatrixEntry(id string) (model.ContractMatrixEntry, bool, error) {
+	if err := EnsureMonitoringContractMatrixSeeded(); err != nil {
+		return model.ContractMatrixEntry{}, false, err
+	}
 	id = strings.TrimSpace(id)
 	if id == "" || containsContractSensitiveText(id) {
 		return model.ContractMatrixEntry{}, false, ErrContractMatrixValidation
@@ -143,7 +149,7 @@ func dropContractPrefix(parts []string) []string {
 
 func cleanContractText(value string, max int) string {
 	clean := strings.TrimSpace(removeContractControlRunes(value))
-	if clean == "" || containsContractSensitiveText(clean) {
+	if clean == "" || containsContractSensitiveText(clean) || containsContractFakeSuccessText(clean) {
 		return ""
 	}
 	runes := []rune(clean)
@@ -181,6 +187,16 @@ func cleanContractMetadata(input map[string]string) map[string]string {
 func containsContractSensitiveText(value string) bool {
 	normalized := strings.NewReplacer("-", "_", " ", "_", ".", "_").Replace(strings.ToLower(value))
 	for _, marker := range []string{"token", "password", "passwd", "cookie", "dsn", "private_key", "privatekey", "secret", "bearer", "api_key", "apikey", "access_key", "session"} {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsContractFakeSuccessText(value string) bool {
+	normalized := strings.ReplaceAll(strings.ToLower(value), "_", "-")
+	for _, marker := range []string{"queued", "running", "succeeded", "success", "applied", "rolled-back", "installed", "data-arrived"} {
 		if strings.Contains(normalized, marker) {
 			return true
 		}
