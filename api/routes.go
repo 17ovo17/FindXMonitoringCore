@@ -54,5 +54,6 @@ func registerAPIV1Routes(r *gin.Engine, v1 *gin.RouterGroup, mw routeMiddleware)
 	registerCmdbRoutes(v1, mw)
 	registerMcpRoutes(v1, mw)
 	registerSettingsRoutes(v1, mw)
+	registerTracingRoutes(v1, mw)
 	registerDownloadRoute(r)
 }
