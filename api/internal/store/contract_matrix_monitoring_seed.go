@@ -116,7 +116,12 @@ func monitoringCatalogTemplateContractSeeds() []model.ContractMatrixRegisterRequ
 			model.ContractStatusMissingBackend,
 			[]string{`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`},
 			"Dashboard template import contract is missing",
-			monitoringContractMetadata("/integrations?section=templates", "dashboard_template", "/api/n9e/dashboard/{id}/migrate"),
+			monitoringContractScopeMetadata(
+				"/integrations?section=templates",
+				"dashboard_template_import_aggregate",
+				"dashboard-template-import-aggregate",
+				"Template center import flow depends on dry-run, conflict handling, rollback, migrate, and follow-up child contracts",
+			),
 		),
 	}
 }
@@ -202,6 +207,10 @@ func monitoringDashboardActionGapSeeds() []model.ContractMatrixRegisterRequest {
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-CREATE", "Dashboard annotations create", "/dashboards?section=list", "dashboard_annotation_create", "POST /api/n9e/dashboard-annotations"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-UPDATE", "Dashboard annotations update", "/dashboards?section=list", "dashboard_annotation_update", "PUT /api/n9e/dashboard-annotation/{id}"),
 		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-ANNOTATIONS-DELETE", "Dashboard annotations delete", "/dashboards?section=list", "dashboard_annotation_delete", "DELETE /api/n9e/dashboard-annotation/{id}"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-PUBLIC-LIST", "Dashboard public list", "/dashboards?section=list", "dashboard_public_list", "GET /api/n9e/busi-groups/public-boards"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-PUBLIC-UPDATE", "Dashboard public update", "/dashboards?section=list", "dashboard_public_update", "PUT /api/n9e/board/{id}/public"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-EXPORT", "Dashboard export", "/dashboards?section=list", "dashboard_export", "POST /api/n9e/busi-group/{busiId}/dashboards/export"),
+		monitoringDashboardActionGapSeed("FX-CONTRACT-N9E-DASHBOARD-MIGRATE", "Dashboard migrate", "/dashboards?section=list", "dashboard_migrate", "PUT /api/n9e/dashboard/{id}/migrate"),
 	}
 }
 
@@ -211,7 +220,7 @@ func monitoringDashboardActionGapSeed(id, capability, findxRoute, gapType, upstr
 		capability,
 		model.ContractStatusMissingBackend,
 		dashboardV2SourceRefs(),
-		"Dashboard annotations backend contract is missing",
+		"Dashboard action backend contract is missing",
 		monitoringContractMetadata(findxRoute, gapType, upstreamRef),
 	)
 }
