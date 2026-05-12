@@ -136,7 +136,7 @@ function ThresholdsEditor({ thresholds, onChange }) {
   )
 }
 
-export default function PanelEditor({ panel, timeRange, datasourceId, onSave, onClose }) {
+export default function PanelEditor({ panel, timeRange, datasourceId, dashboardVariables, onSave, onClose }) {
   const initial = panel || {}
   const initialTargets = Array.isArray(initial.targets)
     ? initial.targets
@@ -151,6 +151,12 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
   )
   const [thresholds, setThresholds] = useState(initial.thresholds || [])
   const [unit, setUnit] = useState(initial.unit || 'none')
+  const [repeatVariable, setRepeatVariable] = useState(initial.repeat || '')
+
+  const variableNames = useMemo(() => {
+    if (!dashboardVariables || !Array.isArray(dashboardVariables)) return []
+    return dashboardVariables.map((v) => v.name || v.key).filter(Boolean)
+  }, [dashboardVariables])
 
   const previewPanel = useMemo(() => ({
     type: panelType,
@@ -169,6 +175,7 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
       displayOptions: displayOpts,
       thresholds,
       unit,
+      repeat: repeatVariable || undefined,
     })
   }
 
@@ -224,6 +231,17 @@ export default function PanelEditor({ panel, timeRange, datasourceId, onSave, on
                 {UNIT_OPTIONS.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
               </select>
             </label>
+          </div>
+          <div className="fx-pe-section">
+            <strong>重复</strong>
+            <label className="fx-pe-field">
+              <span>按变量重复</span>
+              <select value={repeatVariable} onChange={(e) => setRepeatVariable(e.target.value)}>
+                <option value="">不重复</option>
+                {variableNames.map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            {repeatVariable && <p style={{ fontSize: 11, color: 'var(--fx-muted)', margin: '4px 0 0' }}>Panel 将按变量「{repeatVariable}」的每个值重复生成</p>}
           </div>
         </aside>
       </div>

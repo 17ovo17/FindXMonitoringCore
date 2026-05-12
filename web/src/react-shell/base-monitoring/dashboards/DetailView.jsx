@@ -7,7 +7,7 @@ import PanelChart from './PanelChart.jsx'
 import PanelEditor from './PanelEditor.jsx'
 import PanelMenu from './PanelMenu.jsx'
 import ShareLinkModal from './ShareLinkModal.jsx'
-import TemplateVariablesBar from './TemplateVariablesBar.jsx'
+import TemplateVariablesBar, { replaceVariables } from './TemplateVariablesBar.jsx'
 import TimeRangePicker, { QUICK_RANGES, REFRESH_OPTIONS, parseTimeRangeFromURL, syncTimeRangeToURL } from './TimeRangePicker.jsx'
 
 /** D09: 根据折叠状态过滤可见面板 */
@@ -23,6 +23,27 @@ function getVisiblePanels(panelList, collapsedRows) {
     visible.push(panel)
   }
   return visible
+}
+
+/** D17: 根据变量值重复 Panel */
+function expandRepeatedPanels(panelList, variableValues, dashboardVariables) {
+  const expanded = []
+  for (const panel of panelList) {
+    const repeatVar = panel.repeat || panel.raw?.repeat
+    if (!repeatVar || !variableValues[repeatVar]) {
+      expanded.push(panel)
+      continue
+    }
+    const values = Array.isArray(variableValues[repeatVar])
+      ? variableValues[repeatVar]
+      : [variableValues[repeatVar]]
+    if (values.length === 0) { expanded.push(panel); continue }
+    for (const val of values) {
+      const cloned = { ...panel, id: `${panel.id}_repeat_${val}`, title: `${panel.title} [${val}]`, _repeatValue: { [repeatVar]: val } }
+      expanded.push(cloned)
+    }
+  }
+  return expanded
 }
 
 export default function DetailView({ dashboard, variables, panels, onBack, onRefresh, onBlocked, onExport, onShare, onFullscreen, detailError, onUpdateDashboard }) {
@@ -180,20 +201,23 @@ export default function DetailView({ dashboard, variables, panels, onBack, onRef
         )}
         {(() => {
           const visiblePanels = getVisiblePanels(panelList, collapsedRows)
-          if (visiblePanels.length === 0) return <div className="fx-dash-empty">暂无面板</div>
+          const expandedPanels = expandRepeatedPanels(visiblePanels, variableValues, dashboardVariables)
+          const annotations = dashboard.raw?.annotations || dashboard.annotations || []
+          const expandedLayout = expandedPanels.map((p, i) => layout.find((l) => l.i === p.id) || { i: p.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 8, w: 12, h: 8 })
+          if (expandedPanels.length === 0) return <div className="fx-dash-empty">暂无面板</div>
           return (
-            <GridLayout className="fx-dash-rgl" layout={layout.filter((l) => visiblePanels.some((p) => p.id === l.i))} cols={24} rowHeight={40} width={containerWidth - 32} draggableHandle=".fx-panel-drag" onLayoutChange={handleLayoutChange} isResizable isDraggable margin={[12, 12]}>
-              {visiblePanels.map((panel) => (
+            <GridLayout className="fx-dash-rgl" layout={expandedLayout} cols={24} rowHeight={40} width={containerWidth - 32} draggableHandle=".fx-panel-drag" onLayoutChange={handleLayoutChange} isResizable isDraggable margin={[12, 12]}>
+              {expandedPanels.map((panel) => (
                 <div key={panel.id} className="fx-dash-panel">
                   <header className="fx-panel-drag"><strong>{panel.title}</strong><PanelMenu panel={panel} onAction={handlePanelAction} /></header>
-                  <div className="fx-dash-panel__body"><PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} /></div>
+                  <div className="fx-dash-panel__body"><PanelChart panel={panel} timeRange={timeRange} datasourceId={datasourceId} annotations={annotations} /></div>
                 </div>
               ))}
             </GridLayout>
           )
         })()}
       </section>
-      {editorPanel && <PanelEditor panel={editorPanel.raw || editorPanel} timeRange={timeRange} datasourceId={datasourceId} onSave={handleEditorSave} onClose={() => setEditorPanel(null)} />}
+      {editorPanel && <PanelEditor panel={editorPanel.raw || editorPanel} timeRange={timeRange} datasourceId={datasourceId} dashboardVariables={dashboardVariables} onSave={handleEditorSave} onClose={() => setEditorPanel(null)} />}
       {showSettings && <DashboardSettingsModal dashboard={dashboard} onClose={() => setShowSettings(false)} onSaved={() => onRefresh()} />}
       {showShare && <ShareLinkModal onClose={() => setShowShare(false)} />}
       {inspectPanel && (

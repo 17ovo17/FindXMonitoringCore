@@ -14,19 +14,43 @@ import {
   normalizeVariables,
   toTags,
 } from './dashboardModel.js'
+import { ImportJsonModal, ShareConfirmModal } from './DashboardModals.jsx'
 import DetailView from './DetailView.jsx'
+import TemplatesView from './TemplatesView.jsx'
 import './dashboards.css'
 
-const defaultDraft = {
-  title: '',
-  description: '',
-  workspaceId: '',
-  resourceGroupId: '',
-  tags: '',
-  variables: {},
-  panels: [],
-  status: 'active',
+/** D12: debounce hook */
+function useDebounce(value, delay = 300) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
 }
+
+const ALL_COLUMNS = [
+  { key: 'title', label: '名称' },
+  { key: 'tags', label: '标签' },
+  { key: 'description', label: '说明' },
+  { key: 'updatedAt', label: '更新时间' },
+  { key: 'updatedBy', label: '更新人' },
+  { key: 'shared', label: '共享' },
+]
+const DEFAULT_COLUMNS = ['title', 'tags', 'updatedAt', 'updatedBy', 'shared']
+
+function loadColumnSettings() {
+  try {
+    const saved = localStorage.getItem('fx-dash-columns')
+    if (saved) return JSON.parse(saved)
+  } catch { /* ignore */ }
+  return DEFAULT_COLUMNS
+}
+function saveColumnSettings(cols) {
+  localStorage.setItem('fx-dash-columns', JSON.stringify(cols))
+}
+
+const defaultDraft = { title: '', description: '', workspaceId: '', resourceGroupId: '', tags: '', variables: {}, panels: [], status: 'active' }
 
 const makeError = (error, fallback = '请求失败') => {
   if (error?.status === 401) return '登录已过期，请重新登录。'
@@ -35,7 +59,13 @@ const makeError = (error, fallback = '请求失败') => {
   return displayText(error?.message || fallback)
 }
 
-function Toolbar({ keyword, setKeyword, onRefresh, onCreate, onTemplates, selectedCount, onBatch, loading }) {
+function Toolbar({ keyword, setKeyword, onRefresh, onCreate, onTemplates, onImportJson, selectedCount, onBatch, loading, visibleCols, setVisibleCols }) {
+  const [showColMenu, setShowColMenu] = useState(false)
+  const toggleCol = (key) => {
+    const next = visibleCols.includes(key) ? visibleCols.filter((c) => c !== key) : [...visibleCols, key]
+    setVisibleCols(next)
+    saveColumnSettings(next)
+  }
   return (
     <header className='fx-dash-toolbar'>
       <div>
@@ -46,9 +76,21 @@ function Toolbar({ keyword, setKeyword, onRefresh, onCreate, onTemplates, select
         <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder='搜索名称、标签、说明' />
         <button type='button' disabled={loading} onClick={onRefresh}>{loading ? '刷新中...' : '刷新'}</button>
         <button type='button' className='is-primary' onClick={onCreate}>新建</button>
-        <button type='button' onClick={onTemplates}>导入</button>
+        <button type='button' onClick={onTemplates}>模板导入</button>
+        <button type='button' onClick={onImportJson}>导入 JSON</button>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <button type='button' onClick={() => setShowColMenu(!showColMenu)}>列设置</button>
+          {showColMenu && (
+            <div className='fx-dash-col-menu'>
+              {ALL_COLUMNS.map((col) => (
+                <label key={col.key}><input type='checkbox' checked={visibleCols.includes(col.key)} onChange={() => toggleCol(col.key)} />{col.label}</label>
+              ))}
+            </div>
+          )}
+        </div>
         <select disabled={selectedCount === 0} onChange={(event) => { if (event.target.value) onBatch(event.target.value); event.target.value = '' }}>
           <option value=''>批量操作</option>
+          <option value='clone'>克隆</option>
           <option value='share'>公开配置</option>
           <option value='export'>导出</option>
           <option value='delete'>删除</option>
@@ -73,29 +115,39 @@ function Sidebar({ groups, scope, setScope }) {
   )
 }
 
-function DashboardList({ rows, selected, setSelected, onOpen, onRowAction }) {
+function DashboardList({ rows, selected, setSelected, onOpen, onRowAction, visibleCols }) {
+  const show = (key) => visibleCols.includes(key)
   return (
     <div className='fx-dash-table'>
       <table>
         <thead>
-          <tr><th><input type='checkbox' checked={rows.length > 0 && selected.length === rows.length} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.id) : [])} /></th><th>名称</th><th>标签</th><th>说明</th><th>更新时间</th><th>更新人</th><th>共享</th><th>操作</th></tr>
+          <tr>
+            <th><input type='checkbox' checked={rows.length > 0 && selected.length === rows.length} onChange={(event) => setSelected(event.target.checked ? rows.map((row) => row.id) : [])} /></th>
+            {show('title') && <th>名称</th>}
+            {show('tags') && <th>标签</th>}
+            {show('description') && <th>说明</th>}
+            {show('updatedAt') && <th>更新时间</th>}
+            {show('updatedBy') && <th>更新人</th>}
+            {show('shared') && <th>共享</th>}
+            <th>操作</th>
+          </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
               <td><input type='checkbox' checked={selected.includes(row.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))} /></td>
-              <td><button type='button' className='is-link' onClick={() => onOpen(row.id)}>{row.title}</button><small>{row.id}</small></td>
-              <td>{row.tags.length ? row.tags.map((tag) => <span className='fx-dash-tag' key={tag}>{tag}</span>) : <span className='muted'>无</span>}</td>
-              <td>{row.description || <span className='muted'>无</span>}</td>
-              <td>{row.updatedAt || <span className='muted'>-</span>}</td>
-              <td>{row.updatedBy || <span className='muted'>-</span>}</td>
-              <td><span className={row.shared ? 'fx-dash-state is-on' : 'fx-dash-state'}>{row.shareText}</span></td>
+              {show('title') && <td><button type='button' className='is-link' onClick={() => onOpen(row.id)}>{row.title}</button>{row.shared && <svg width="12" height="12" viewBox="0 0 24 24" fill="#1769ff" style={{marginLeft:4}}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>}</td>}
+              {show('tags') && <td>{row.tags.length ? row.tags.map((tag) => <span className='fx-dash-tag' key={tag}>{tag}</span>) : <span className='muted'>无</span>}</td>}
+              {show('description') && <td>{row.description || <span className='muted'>无</span>}</td>}
+              {show('updatedAt') && <td>{row.updatedAt || <span className='muted'>-</span>}</td>}
+              {show('updatedBy') && <td>{row.updatedBy || <span className='muted'>-</span>}</td>}
+              {show('shared') && <td><span className={row.shared ? 'fx-dash-state is-on' : 'fx-dash-state'}>{row.shareText}</span></td>}
               <td>
                 <select onChange={(event) => { if (event.target.value) onRowAction(event.target.value, row); event.target.value = '' }}>
                   <option value=''>更多</option>
                   <option value='edit'>编辑</option>
                   <option value='clone'>克隆</option>
-                  <option value='share'>分享</option>
+                  <option value='share'>公开</option>
                   <option value='export'>导出</option>
                   <option value='delete'>删除</option>
                 </select>
@@ -128,125 +180,6 @@ function DashboardForm({ draft, setDraft, onSubmit, onClose, saving, error }) {
   )
 }
 
-function TemplatesView({ templates, onBack, onPreview, onImport, loading, error }) {
-  const [keyword, setKeyword] = useState('')
-  const [activeTag, setActiveTag] = useState('全部')
-  const [selectedId, setSelectedId] = useState('')
-  const tags = useMemo(() => {
-    const values = templates.flatMap((tpl) => tpl.tags || []).filter(Boolean)
-    return ['全部', ...Array.from(new Set(values)).slice(0, 12)]
-  }, [templates])
-  const filtered = useMemo(() => templates.filter((tpl) => {
-    const words = [tpl.title, tpl.description, (tpl.tags || []).join(' ')].join(' ').toLowerCase()
-    const byKeyword = !keyword || words.includes(keyword.trim().toLowerCase())
-    const byTag = activeTag === '全部' || (tpl.tags || []).includes(activeTag)
-    return byKeyword && byTag
-  }), [templates, keyword, activeTag])
-  const selectedTemplate = useMemo(
-    () => filtered.find((tpl) => tpl.id === selectedId) || filtered[0] || null,
-    [filtered, selectedId],
-  )
-  const variableCount = selectedTemplate ? Object.keys(selectedTemplate.variables || {}).length : 0
-  const previewPanels = selectedTemplate?.panels || []
-
-  useEffect(() => {
-    if (!selectedId || !filtered.some((tpl) => tpl.id === selectedId)) {
-      setSelectedId(filtered[0]?.id || '')
-    }
-  }, [filtered, selectedId])
-
-  return (
-    <main className='fx-dash-templates'>
-      <header className='fx-dash-template-head'>
-        <div>
-          <p>导入</p>
-          <h1>仪表盘导入</h1>
-          <span>按模板预览变量、Panel 和标签后导入到仪表盘，导入失败会保留错误态。</span>
-        </div>
-        <button type='button' onClick={onBack}>返回列表</button>
-      </header>
-      <section className='fx-dash-template-filter'>
-        <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder='搜索模板名称、标签、说明' />
-        <div className='fx-dash-template-tags'>
-          {tags.map((tag) => <button type='button' key={tag} className={activeTag === tag ? 'is-active' : ''} onClick={() => setActiveTag(tag)}>{tag}</button>)}
-        </div>
-      </section>
-      {error && <div className='fx-dash-alert is-error'>{error}</div>}
-      {loading && <div className='fx-dash-empty'>加载中...</div>}
-      <section className='fx-dash-template-workbench'>
-        <div className='fx-dash-template-grid' aria-label='仪表盘模板列表'>
-          {filtered.map((tpl) => (
-            <article className={`fx-dash-template-card${selectedTemplate?.id === tpl.id ? ' is-selected' : ''}`} key={tpl.id}>
-              <button type='button' className='fx-dash-template-card__pick' onClick={() => setSelectedId(tpl.id)}>
-                <header>
-                  <div>
-                    <strong>{tpl.title}</strong>
-                    <p>{tpl.description || '无说明'}</p>
-                  </div>
-                  <span className='fx-dash-template-count'>{tpl.panelCount} Panel</span>
-                </header>
-                <div className='fx-dash-template-meta'>
-                  <span>{Object.keys(tpl.variables || {}).length} 变量</span>
-                  <span>{(tpl.tags || []).length || 0} 标签</span>
-                </div>
-                <div className='fx-dash-template-card__tags'>
-                  {(tpl.tags || []).length ? tpl.tags.map((tag) => <span className='fx-dash-tag' key={tag}>{tag}</span>) : <span className='muted'>无标签</span>}
-                </div>
-              </button>
-              <footer>
-                <button type='button' onClick={() => onPreview(tpl)}>JSON 预览</button>
-                <button type='button' className='is-primary' onClick={() => onImport(tpl)}>导入</button>
-              </footer>
-            </article>
-          ))}
-        </div>
-        <aside className='fx-dash-template-preview' aria-label='模板预览'>
-          {selectedTemplate ? (
-            <>
-              <header>
-                <div>
-                  <p>预览</p>
-                  <h2>{selectedTemplate.title}</h2>
-                  <span>{selectedTemplate.description || '无说明'}</span>
-                </div>
-                <button type='button' className='is-primary' onClick={() => onImport(selectedTemplate)}>导入</button>
-              </header>
-              <div className='fx-dash-template-summary'>
-                <span><b>{selectedTemplate.panelCount}</b><small>Panel</small></span>
-                <span><b>{variableCount}</b><small>变量</small></span>
-                <span><b>{(selectedTemplate.tags || []).length}</b><small>标签</small></span>
-              </div>
-              <section>
-                <h3>标签</h3>
-                <div className='fx-dash-template-card__tags'>
-                  {(selectedTemplate.tags || []).length ? selectedTemplate.tags.map((tag) => <span className='fx-dash-tag' key={tag}>{tag}</span>) : <span className='muted'>无标签</span>}
-                </div>
-              </section>
-              <section>
-                <h3>Panel</h3>
-                <div className='fx-dash-template-panel-list'>
-                  {previewPanels.slice(0, 6).map((panel, index) => (
-                    <span key={panel.id || panel.title || index}>
-                      <b>{displayText(panel.title || panel.name || `Panel ${index + 1}`)}</b>
-                      <small>{displayText(panel.type || panel.chartType || 'panel')}</small>
-                    </span>
-                  ))}
-                  {previewPanels.length === 0 && <span className='muted'>暂无 Panel</span>}
-                  {previewPanels.length > 6 && <span className='muted'>另有 {previewPanels.length - 6} 个 Panel</span>}
-                </div>
-              </section>
-              <button type='button' onClick={() => onPreview(selectedTemplate)}>查看脱敏 JSON</button>
-            </>
-          ) : (
-            <div className='fx-dash-empty'>选择模板后查看预览</div>
-          )}
-        </aside>
-      </section>
-      {!loading && filtered.length === 0 && <div className='fx-dash-empty'>暂无匹配模板</div>}
-    </main>
-  )
-}
-
 function DashboardOverlays({ draft, setDraft, saving, error, onSubmit, onCloseDraft, modal, onCloseModal }) {
   return (
     <>
@@ -260,6 +193,7 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   const [dashboards, setDashboards] = useState([])
   const [templates, setTemplates] = useState([])
   const [keyword, setKeyword] = useState('')
+  const debouncedKeyword = useDebounce(keyword, 300)
   const [scope, setScope] = useState('all')
   const [selected, setSelected] = useState([])
   const [loading, setLoading] = useState(false)
@@ -268,6 +202,9 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   const [draft, setDraft] = useState(null)
   const [saving, setSaving] = useState(false)
   const [modal, setModal] = useState(null)
+  const [showImportJson, setShowImportJson] = useState(false)
+  const [shareTarget, setShareTarget] = useState(null)
+  const [visibleCols, setVisibleCols] = useState(loadColumnSettings)
   const section = query.section === 'detail' || query.section === 'templates' ? query.section : 'list'
   const active = useMemo(() => dashboards.find((row) => row.id === String(query.id)) || dashboards[0], [dashboards, query.id])
   const groups = useMemo(() => Object.values(dashboards.reduce((acc, row) => {
@@ -278,10 +215,10 @@ export function DashboardsPage({ query = {}, onNavigate }) {
   }, {})), [dashboards])
   const filtered = useMemo(() => dashboards.filter((row) => {
     const text = [row.title, row.description, row.tags.join(' '), row.updatedBy].join(' ').toLowerCase()
-    const byKeyword = !keyword || text.includes(keyword.toLowerCase())
+    const byKeyword = !debouncedKeyword || text.includes(debouncedKeyword.toLowerCase())
     const byScope = scope === 'all' || (scope === 'public' ? row.shared : `group:${row.resourceGroupId || '未分组'}` === scope)
     return byKeyword && byScope
-  }), [dashboards, keyword, scope])
+  }), [dashboards, debouncedKeyword, scope])
   const variables = useMemo(() => normalizeVariables(active?.variables), [active])
   const panels = useMemo(() => normalizePanels(active?.panels), [active])
 
@@ -302,13 +239,29 @@ export function DashboardsPage({ query = {}, onNavigate }) {
         const cloned = normalizeDashboard(await dashboardsApi.clone(row.id))
         setDashboards((rows) => [cloned, ...rows])
       }
-      if (action === 'share') await dashboardsApi.share(row.id)
-      if (action === 'delete') await dashboardsApi.remove(row.id)
+      if (action === 'share') { setShareTarget(row); return }
+      if (action === 'delete') { if (!confirm(`确定删除仪表盘「${row.title}」？`)) return; await dashboardsApi.remove(row.id) }
       if (action === 'export') downloadJson(`${row.title || row.id}.json`, dashboardExportPayload(row))
-      if (['share', 'delete'].includes(action)) await loadDashboards()
+      if (['delete'].includes(action)) await loadDashboards()
     } catch (err) { setModal({ title: '操作失败', body: makeError(err) }) }
   }
-  const batchAction = async (action) => { for (const id of selected) { const row = dashboards.find((item) => item.id === id); if (row) await rowAction(action, row) } setSelected([]) }
+  const confirmShare = async () => {
+    if (!shareTarget) return
+    try { await dashboardsApi.share(shareTarget.id); setShareTarget(null); await loadDashboards() } catch (err) { setModal({ title: '公开失败', body: makeError(err) }); setShareTarget(null) }
+  }
+  const batchAction = async (action) => {
+    if (action === 'delete' && !confirm(`确定删除选中的 ${selected.length} 个仪表盘？`)) return
+    for (const id of selected) { const row = dashboards.find((item) => item.id === id); if (row) { try { if (action === 'clone') await dashboardsApi.clone(id); else if (action === 'share') await dashboardsApi.share(id); else if (action === 'delete') await dashboardsApi.remove(id); else if (action === 'export') downloadJson(`${row.title || row.id}.json`, dashboardExportPayload(row)) } catch { /* continue */ } } }
+    setSelected([]); await loadDashboards()
+  }
+  const importJsonData = async (data) => {
+    try {
+      const body = { title: data.title || data.name || '导入仪表盘', description: data.description || '', tags: toTags(data.tags || []), variables: data.variables || {}, panels: Array.isArray(data.panels) ? data.panels : [], status: 'active' }
+      const saved = normalizeDashboard(await dashboardsApi.create(body))
+      setDashboards((rows) => [saved, ...rows])
+      setShowImportJson(false)
+    } catch (err) { setModal({ title: '导入失败', body: makeError(err) }) }
+  }
   const previewTemplate = (tpl) => setModal({ title: `预览：${tpl.title}`, body: displayJson({ variables: tpl.variables, panels: tpl.panels }) })
   const importTemplate = async (tpl) => { try { const saved = normalizeDashboard(await dashboardsApi.importTemplate(tpl.id, { title: tpl.title, variables: tpl.variables, tags: tpl.tags })); setDashboards((rows) => [saved, ...rows]); onNavigate?.({ section: 'detail', id: saved.id }) } catch (err) { setModal({ title: '导入失败', body: makeError(err) }) } }
   const blocked = (title, body) => setModal({ title, body })
@@ -331,13 +284,15 @@ export function DashboardsPage({ query = {}, onNavigate }) {
         <div className='fx-dash-layout'>
           <Sidebar groups={groups} scope={scope} setScope={setScope} />
           <section className='fx-dash-main'>
-            <Toolbar keyword={keyword} setKeyword={setKeyword} loading={loading} selectedCount={selected.length} onRefresh={loadDashboards} onCreate={() => openForm(null)} onTemplates={() => onNavigate?.({ section: 'templates' })} onBatch={batchAction} />
+            <Toolbar keyword={keyword} setKeyword={setKeyword} loading={loading} selectedCount={selected.length} visibleCols={visibleCols} setVisibleCols={setVisibleCols} onRefresh={loadDashboards} onCreate={() => openForm(null)} onTemplates={() => onNavigate?.({ section: 'templates' })} onImportJson={() => setShowImportJson(true)} onBatch={batchAction} />
             {error && <div className='fx-dash-alert is-error'>{error}</div>}
-            <DashboardList rows={filtered} selected={selected} setSelected={setSelected} onOpen={openDetail} onRowAction={rowAction} />
+            <DashboardList rows={filtered} selected={selected} setSelected={setSelected} onOpen={openDetail} onRowAction={rowAction} visibleCols={visibleCols} />
           </section>
         </div>
       )}
       <DashboardOverlays draft={draft} setDraft={setDraft} saving={saving} error={error} onSubmit={saveDraft} onCloseDraft={() => setDraft(null)} modal={modal} onCloseModal={() => setModal(null)} />
+      {showImportJson && <ImportJsonModal onClose={() => setShowImportJson(false)} onImport={importJsonData} />}
+      {shareTarget && <ShareConfirmModal row={shareTarget} onClose={() => setShareTarget(null)} onConfirm={confirmShare} />}
     </main>
   )
 }

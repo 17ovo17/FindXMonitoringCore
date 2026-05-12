@@ -1438,3 +1438,28 @@ body.fx-fullscreen .fx-dash-detail {
   padding: 16px;
   overflow: hidden;
 }
+
+/* D12: 列设置下拉菜单 */
+.fx-dash-col-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid #e1e7f0;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.fx-dash-col-menu label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}

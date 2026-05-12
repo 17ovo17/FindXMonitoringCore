@@ -32,7 +32,7 @@ function formatMetricLabel(series) {
   return labels ? `${name}{${labels}}` : name || 'series'
 }
 
-function TimeSeriesChart({ series }) {
+function TimeSeriesChart({ series, annotations }) {
   const containerRef = useRef(null)
   const svgRef = useRef(null)
 
@@ -85,7 +85,33 @@ function TimeSeriesChart({ series }) {
         .attr('stroke-width', 1.5)
         .attr('d', line)
     })
-  }, [series])
+
+    // D16: Annotations - 事件标注线
+    if (annotations && annotations.length > 0) {
+      const ag = g.append('g').attr('class', 'fx-annotations')
+      annotations.forEach((ann) => {
+        const ts = Number(ann.time) * 1000
+        if (ts < xExtent[0] || ts > xExtent[1]) return
+        const x = xScale(ts)
+        const color = ann.color || '#e6550d'
+        ag.append('line')
+          .attr('x1', x).attr('x2', x)
+          .attr('y1', 0).attr('y2', innerH)
+          .attr('stroke', color)
+          .attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', '4,2')
+        ag.append('title').text(ann.text || '')
+        ag.append('circle')
+          .attr('cx', x).attr('cy', 0)
+          .attr('r', 4).attr('fill', color)
+        ag.append('text')
+          .attr('x', x + 4).attr('y', 12)
+          .attr('fill', color)
+          .style('font-size', '9px')
+          .text(ann.text || '')
+      })
+    }
+  }, [series, annotations])
 
   useEffect(() => {
     draw()
@@ -153,7 +179,7 @@ function TablePanel({ series }) {
     </div>
   )
 }
-export default function PanelChart({ panel, timeRange, datasourceId }) {
+export default function PanelChart({ panel, timeRange, datasourceId, annotations }) {
   const [series, setSeries] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -210,7 +236,7 @@ export default function PanelChart({ panel, timeRange, datasourceId }) {
     return <TablePanel series={series} />
   }
   if (type === 'timeseries' || type === 'graph' || type === '') {
-    return <TimeSeriesChart series={series} />
+    return <TimeSeriesChart series={series} annotations={annotations} />
   }
 
   return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>{panel.type} 暂不支持</div>
