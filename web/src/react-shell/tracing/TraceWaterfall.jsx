@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { displayText, durationMs } from './tracingModel.js'
 import { Empty, Status } from './TracingShared.jsx'
+import { SpanDetailPanel } from './SpanDetailPanel.jsx'
 
 // Build span tree. Each span has spanId and parentSpanId; segments link via refs.
 // We attempt a best-effort tree: parent lookup by (segmentId, parentSpanId) falling back to refs[0].parentSegmentId/parentSpanId.
@@ -51,8 +52,9 @@ function flatten(roots, collapsed, level = 0, out = []) {
   return out
 }
 
-export function TraceWaterfall({ spans }) {
+export function TraceWaterfall({ spans, onAddTagToFilter }) {
   const [collapsed, setCollapsed] = useState(() => new Set())
+  const [selectedSpan, setSelectedSpan] = useState(null)
   const tree = useMemo(() => buildTree(spans || []), [spans])
   const flat = useMemo(() => flatten(tree, collapsed), [tree, collapsed])
 
@@ -95,10 +97,11 @@ export function TraceWaterfall({ spans }) {
         const offset = Math.max(0, ((st - timeRange.start) / total) * 100)
         const width = Math.max(0.5, (node.duration / total) * 100)
         const indent = node.level * 14
+        const isSelected = selectedSpan && selectedSpan.key === node.key
         return (
-          <div key={node.key} className={`fx-tracing-waterfall__row ${node.isError ? 'is-error' : ''}`}>
+          <div key={node.key} className={`fx-tracing-waterfall__row ${node.isError ? 'is-error' : ''}`} style={isSelected ? { background: 'var(--fx-blue-soft, #e8f1ff)' } : undefined} onClick={() => setSelectedSpan(node)}>
             <div className='fx-tracing-waterfall__name' style={{ paddingLeft: indent }}>
-              <button type='button' onClick={() => node.hasChildren && toggle(node.key)} disabled={!node.hasChildren} aria-label={node.hasChildren ? (node.isCollapsed ? '展开' : '折叠') : ''}>
+              <button type='button' onClick={(e) => { e.stopPropagation(); node.hasChildren && toggle(node.key) }} disabled={!node.hasChildren} aria-label={node.hasChildren ? (node.isCollapsed ? '展开' : '折叠') : ''}>
                 {node.hasChildren ? (node.isCollapsed ? '+' : '−') : '·'}
               </button>
               <span className={`fx-span-type ${node.type === 'Entry' ? 'is-entry' : node.type === 'Exit' ? 'is-exit' : ''}`} title={node.type}>{node.type?.slice(0, 5) || 'Span'}</span>
@@ -118,6 +121,9 @@ export function TraceWaterfall({ spans }) {
           </div>
         )
       })}
+      {selectedSpan && (
+        <SpanDetailPanel span={selectedSpan} onClose={() => setSelectedSpan(null)} onAddTagToFilter={onAddTagToFilter} />
+      )}
     </div>
   )
 }

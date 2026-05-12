@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatTracingError, tracingApi } from '../api/tracing.js'
-import { displayText, entityOptions, layerOptions, rowText } from './tracingModel.js'
+import { displayText, durationPresets, durationToRange, entityOptions, layerOptions, rowText } from './tracingModel.js'
 import { AgentEvidenceNotice, AgentLinkActions, Blocked, Empty, ErrorBox, Field, Status } from './TracingShared.jsx'
+import { ServiceMetricsCharts } from './ServiceMetricsCharts.jsx'
 
 const CONNECTION_HINT = [
   '暂无服务数据。请确认 SkyWalking OAP 已启动并配置了正确的接入地址。',
@@ -104,6 +105,8 @@ function ServiceDetail({ service, onClose, onNavigate }) {
           <div className='fx-metric'><span className='fx-label'>Apdex</span><span className='fx-value'>{apdex}</span></div>
         </div>
 
+        <ServiceMetricsCharts serviceId={serviceId} />
+
         <div className='fx-tracing-split'>
           <div>
             <div className='fx-tracing-table'>
@@ -152,7 +155,7 @@ function ServiceDetail({ service, onClose, onNavigate }) {
 }
 
 export function ServicesSection({ onNavigate }) {
-  const [filters, setFilters] = useState({ layer: 'GENERAL', entity: 'service', keyword: '' })
+  const [filters, setFilters] = useState({ layer: 'GENERAL', entity: 'service', keyword: '', duration: '15m' })
   const [rows, setRows] = useState([])
   const [error, setError] = useState('')
   const [blocked, setBlocked] = useState('')
@@ -163,14 +166,15 @@ export function ServicesSection({ onNavigate }) {
   const load = useCallback(async () => {
     setLoading(true); setError(''); setBlocked('')
     try {
-      const data = await tracingApi.selectors.services({ layer: filters.layer })
+      const range = durationToRange(filters.duration)
+      const data = await tracingApi.selectors.services({ layer: filters.layer, ...range })
       setRows(data || [])
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
       if (msg.startsWith('BLOCKED_BY_CONTRACT')) setBlocked(msg); else setError(msg)
     } finally { setLoading(false) }
-  }, [filters.layer])
+  }, [filters.layer, filters.duration])
 
   useEffect(() => { load() }, [load])
 
@@ -178,6 +182,11 @@ export function ServicesSection({ onNavigate }) {
     <section className='fx-tracing-work'>
       {/* Condition bar with layer filter grouped like SkyWalking */}
       <div className='fx-tracing-condition-bar'>
+        <Field label='时间范围'>
+          <select value={filters.duration} onChange={e => setFilters(prev => Object.assign({}, prev, { duration: e.target.value }))}>
+            {durationPresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </Field>
         <Field label='层级 Layer'>
           <select value={filters.layer} onChange={e => setFilters(prev => Object.assign({}, prev, { layer: e.target.value }))}>
             {LAYER_GROUPS.map(group => (

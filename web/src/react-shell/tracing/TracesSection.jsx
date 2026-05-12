@@ -3,6 +3,7 @@ import { formatTracingError, tracingApi } from '../api/tracing.js'
 import { defaultDuration, displayText, durationMs, fmtTime, orderOptions, toTraceCondition, traceId, traceName, traceStates } from './tracingModel.js'
 import { AgentEvidenceNotice, AgentLinkActions, Blocked, Empty, ErrorBox, Field, Status } from './TracingShared.jsx'
 import { TraceWaterfall } from './TraceWaterfall.jsx'
+import { TagsFilter } from './TagsFilter.jsx'
 
 const CONNECTION_HINT = [
   '暂无 Trace 数据。请确认 SkyWalking OAP 已启动并有应用接入。',
@@ -136,6 +137,8 @@ export function TracesSection(props) {
           <button type='button' onClick={reset}>重置</button>
         </div>
       </div>
+
+      <TagsFilter value={draft.tags} onChange={v => patch('tags', v)} />
 
       <ErrorBox>{error}</ErrorBox>{blocked && <Blocked>{blocked}</Blocked>}
       <AgentEvidenceNotice>Trace 检索条件会保留服务、实例、端点或 Trace ID 上下文, 用于跳转主机 Agent 过滤; 真实探针状态必须等待 APM-Agent 映射契约。</AgentEvidenceNotice>

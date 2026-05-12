@@ -34,9 +34,14 @@ function LegendSwatch({ color, label }) {
   return <span><span className='fx-dot' style={{ background: color }} />{label}</span>
 }
 
-function TopologyGraph({ nodes, edges, onSelectNode }) {
+function TopologyGraph({ nodes, edges, onSelectNode, onSelectEdge, onContextMenu }) {
   const svgRef = useRef(null)
   const containerRef = useRef(null)
+  const zoomRef = useRef(null)
+
+  const zoomIn = () => { if (zoomRef.current && svgRef.current) d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1.3) }
+  const zoomOut = () => { if (zoomRef.current && svgRef.current) d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 0.7) }
+  const zoomReset = () => { if (zoomRef.current && svgRef.current) d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.transform, d3.zoomIdentity) }
 
   useEffect(() => {
     const svg = svgRef.current
@@ -49,23 +54,24 @@ function TopologyGraph({ nodes, edges, onSelectNode }) {
     sel.selectAll('*').remove()
     sel.attr('viewBox', '0 0 ' + width + ' ' + height)
 
-    // Arrow marker for directed edges
+    // Zoom + pan behavior
+    const g = sel.append('g')
+    const zoom = d3.zoom().scaleExtent([0.2, 5]).on('zoom', (event) => { g.attr('transform', event.transform) })
+    sel.call(zoom)
+    zoomRef.current = zoom
+
+    // Arrow marker
     const defs = sel.append('defs')
     defs.append('marker')
       .attr('id', 'fx-topo-arrow')
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 18)
-      .attr('refY', 0)
-      .attr('markerWidth', 8)
-      .attr('markerHeight', 8)
+      .attr('refX', 18).attr('refY', 0)
+      .attr('markerWidth', 8).attr('markerHeight', 8)
       .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#8ea3c7')
+      .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#8ea3c7')
 
     if (!nodes.length) return
 
-    // Build working copies with spatial state (d3 mutates these)
     const simNodes = nodes.map(n => Object.assign({}, n))
     const simEdges = edges.map(e => Object.assign({}, e))
 
@@ -76,17 +82,18 @@ function TopologyGraph({ nodes, edges, onSelectNode }) {
       .force('collide', d3.forceCollide(36))
       .alpha(0.9)
 
-    const linkG = sel.append('g').attr('stroke', '#8ea3c7').attr('stroke-opacity', 0.6)
+    const linkG = g.append('g').attr('stroke', '#8ea3c7').attr('stroke-opacity', 0.6)
     const link = linkG.selectAll('line')
       .data(simEdges).enter().append('line')
       .attr('stroke-width', d => Math.max(1, Math.min(4, Math.log10((Number(d.cpm) || 1) + 1) * 1.6)))
       .attr('marker-end', 'url(#fx-topo-arrow)')
+      .style('cursor', 'pointer')
+      .on('click', (_event, d) => onSelectEdge && onSelectEdge(d))
 
-    const linkLabelG = sel.append('g').attr('font-size', 10).attr('fill', '#66758d')
+    const linkLabelG = g.append('g').attr('font-size', 10).attr('fill', '#66758d')
     const linkLabel = linkLabelG.selectAll('text')
       .data(simEdges).enter().append('text')
-      .attr('text-anchor', 'middle')
-      .attr('pointer-events', 'none')
+      .attr('text-anchor', 'middle').attr('pointer-events', 'none')
       .text(d => {
         const parts = []
         if (d.cpm !== undefined && d.cpm !== null) parts.push(d.cpm + ' cpm')
@@ -94,51 +101,43 @@ function TopologyGraph({ nodes, edges, onSelectNode }) {
         return parts.join(' · ')
       })
 
-    const nodeG = sel.append('g')
+    const nodeG = g.append('g')
     const node = nodeG.selectAll('g')
       .data(simNodes).enter().append('g')
       .style('cursor', 'pointer')
       .on('click', (_event, d) => onSelectNode && onSelectNode(d))
+      .on('contextmenu', (event, d) => { event.preventDefault(); onContextMenu && onContextMenu(event, d) })
       .call(d3.drag()
         .on('start', (event, d) => { if (!event.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
         .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y })
         .on('end', (event, d) => { if (!event.active) sim.alphaTarget(0); d.fx = null; d.fy = null }))
 
-    node.append('circle')
-      .attr('r', 20)
-      .attr('fill', d => d.isReal ? '#1769ff' : '#bad3ff')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2)
-
-    node.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 34)
-      .attr('font-size', 11)
-      .attr('fill', '#17233c')
+    node.append('circle').attr('r', 20).attr('fill', d => d.isReal ? '#1769ff' : '#bad3ff').attr('stroke', '#fff').attr('stroke-width', 2)
+    node.append('text').attr('text-anchor', 'middle').attr('dy', 34).attr('font-size', 11).attr('fill', '#17233c')
       .text(d => (d.name || d.id).length > 18 ? (d.name || d.id).slice(0, 17) + '…' : (d.name || d.id))
-
     node.append('title').text(d => (d.name || d.id) + ' · ' + (d.layer || ''))
 
     sim.on('tick', () => {
-      link
-        .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
-      linkLabel
-        .attr('x', d => ((d.source.x || 0) + (d.target.x || 0)) / 2)
-        .attr('y', d => ((d.source.y || 0) + (d.target.y || 0)) / 2 - 4)
+      link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+      linkLabel.attr('x', d => ((d.source.x || 0) + (d.target.x || 0)) / 2).attr('y', d => ((d.source.y || 0) + (d.target.y || 0)) / 2 - 4)
       node.attr('transform', d => 'translate(' + d.x + ',' + d.y + ')')
     })
 
     return () => { sim.stop() }
-  }, [nodes, edges, onSelectNode])
+  }, [nodes, edges, onSelectNode, onSelectEdge, onContextMenu])
 
   return (
     <div className='fx-tracing-topology-canvas' ref={containerRef}>
       <svg ref={svgRef} preserveAspectRatio='xMidYMid meet' />
+      <div className='fx-tracing-topology-controls'>
+        <button type='button' onClick={zoomIn} title='放大'>+</button>
+        <button type='button' onClick={zoomOut} title='缩小'>−</button>
+        <button type='button' onClick={zoomReset} title='重置'>⟲</button>
+      </div>
       <div className='fx-tracing-topology-legend'>
         <LegendSwatch color='#1769ff' label='真实服务节点' />
         <LegendSwatch color='#bad3ff' label='未识别/Conjectural' />
-        <div style={{ marginTop: 4 }}>边宽表示 CPM · 箭头指向被调用方</div>
+        <div style={{ marginTop: 4 }}>边宽表示 CPM · 箭头指向被调用方 · 滚轮缩放 · 拖拽平移</div>
       </div>
     </div>
   )
@@ -157,11 +156,25 @@ export function TopologySection({ query, onNavigate }) {
   const [blocked, setBlocked] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedNode, setSelectedNode] = useState(null)
+  const [selectedEdge, setSelectedEdge] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null)
 
   const patch = (key, value) => setFilters(prev => Object.assign({}, prev, { [key]: value }))
 
+  const handleContextMenu = useCallback((event, node) => {
+    setContextMenu({ x: event.clientX, y: event.clientY, node })
+  }, [])
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), [])
+
+  useEffect(() => {
+    const handler = () => closeContextMenu()
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [closeContextMenu])
+
   const load = useCallback(async () => {
-    setLoading(true); setError(''); setBlocked(''); setSelectedNode(null)
+    setLoading(true); setError(''); setBlocked(''); setSelectedNode(null); setSelectedEdge(null)
     try {
       const raw = await tracingApi.topology({
         layer: filters.layer,
@@ -223,10 +236,32 @@ export function TopologySection({ query, onNavigate }) {
       </div>
 
       {nodeCount > 0 ? (
-        <TopologyGraph nodes={graph.nodes} edges={graph.edges} onSelectNode={setSelectedNode} />
+        <TopologyGraph nodes={graph.nodes} edges={graph.edges} onSelectNode={setSelectedNode} onSelectEdge={setSelectedEdge} onContextMenu={handleContextMenu} />
       ) : (
         <div className='fx-tracing-topology-canvas'>
           <div className='fx-tracing-topology-empty'>{blocked || (loading ? '加载拓扑...' : BLOCKED_HINT)}</div>
+        </div>
+      )}
+
+      {contextMenu && (
+        <div className='fx-tracing-context-menu' style={{ left: contextMenu.x, top: contextMenu.y }}>
+          <button type='button' onClick={() => { setSelectedNode(contextMenu.node); closeContextMenu() }}>查看详情</button>
+          <button type='button' onClick={() => { onNavigate({ section: 'traces', serviceId: contextMenu.node.id }); closeContextMenu() }}>查看 Trace</button>
+          <button type='button' onClick={() => { onNavigate({ section: 'services', q: contextMenu.node.name }); closeContextMenu() }}>查看指标</button>
+        </div>
+      )}
+
+      {selectedEdge && (
+        <div className='fx-tracing-edge-panel'>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>调用详情: {displayText(selectedEdge.source?.name || selectedEdge.source)} → {displayText(selectedEdge.target?.name || selectedEdge.target)}</h3>
+            <button type='button' onClick={() => setSelectedEdge(null)} style={{ border: '1px solid var(--fx-border)', borderRadius: 6, background: '#fff', padding: '4px 10px', cursor: 'pointer' }}>关闭</button>
+          </header>
+          <div className='fx-edge-metrics'>
+            <div className='fx-edge-metric'><span className='fx-label'>调用次数 (CPM)</span><span className='fx-value'>{selectedEdge.cpm ?? '-'}</span></div>
+            <div className='fx-edge-metric'><span className='fx-label'>平均耗时</span><span className='fx-value'>{selectedEdge.latency ? selectedEdge.latency + ' ms' : '-'}</span></div>
+            <div className='fx-edge-metric'><span className='fx-label'>检测点</span><span className='fx-value'>{displayText(selectedEdge.detectPoint || '-')}</span></div>
+          </div>
         </div>
       )}
 

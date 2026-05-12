@@ -110,3 +110,47 @@
 @media (max-width: 1200px) { .fx-tracing-trace-layout { grid-template-columns: 1fr; } .fx-tracing-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1100px) { .fx-tracing-grid, .fx-tracing-split { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fx-tracing-filter, .fx-tracing-filter.is-wide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .fx-tracing-head, .fx-tracing-banner { flex-direction: column; align-items: stretch; } .fx-tracing-tabs { justify-content: flex-start; } .fx-tracing-grid, .fx-tracing-split, .fx-tracing-filter, .fx-tracing-filter.is-wide, .fx-tracing-form, .fx-tracing-metric-grid { grid-template-columns: 1fr; } .fx-tracing-waterfall__header, .fx-tracing-waterfall__row { grid-template-columns: minmax(120px, 2fr) 60px minmax(140px, 3fr); } .fx-tracing-waterfall__service, .fx-tracing-waterfall__status { display: none; } }
+
+/* Metric charts grid (DEGRADE-042) */
+.fx-metric-charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.fx-metric-chart { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); padding: 10px 12px; overflow: hidden; }
+.fx-metric-chart__title { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--fx-ink, #17233c); }
+.fx-metric-chart__canvas { width: 100%; min-height: 160px; }
+
+/* Topology zoom controls (DEGRADE-043) */
+.fx-tracing-topology-controls { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+.fx-tracing-topology-controls button { width: 32px; height: 32px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 6px; background: var(--fx-panel, #fff); color: var(--fx-ink, #25324a); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.fx-tracing-topology-controls button:hover { background: var(--fx-blue-soft, #f8fbff); }
+
+/* Context menu (DEGRADE-043) */
+.fx-tracing-context-menu { position: fixed; z-index: 100; min-width: 140px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 8px; background: var(--fx-panel, #fff); box-shadow: 0 8px 24px rgba(23, 35, 60, .15); padding: 4px 0; }
+.fx-tracing-context-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 14px; font-size: 13px; color: var(--fx-ink, #25324a); cursor: pointer; }
+.fx-tracing-context-menu button:hover { background: var(--fx-blue-soft, #f5faff); }
+
+/* Edge detail panel (DEGRADE-043) */
+.fx-tracing-edge-panel { border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-panel, #fff); padding: 12px 14px; margin-top: 12px; }
+.fx-tracing-edge-panel h3 { margin: 0 0 8px; font-size: 14px; color: var(--fx-ink, #17233c); }
+.fx-tracing-edge-panel .fx-edge-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fx-tracing-edge-panel .fx-edge-metric { text-align: center; }
+.fx-tracing-edge-panel .fx-edge-metric .fx-label { display: block; font-size: 11px; color: var(--fx-muted, #66758d); margin-bottom: 4px; }
+.fx-tracing-edge-panel .fx-edge-metric .fx-value { display: block; font-size: 18px; font-weight: 700; color: var(--fx-ink, #17233c); }
+
+/* Tags structured filter (DEGRADE-044) */
+.fx-tracing-tags-filter { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.fx-tracing-tag-row { display: flex; gap: 6px; align-items: center; }
+.fx-tracing-tag-row input, .fx-tracing-tag-row select { min-height: 32px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 6px; padding: 4px 8px; font: inherit; color: var(--fx-ink, #25324a); }
+.fx-tracing-tag-row .fx-tag-key { flex: 1; min-width: 100px; }
+.fx-tracing-tag-row .fx-tag-op { width: 50px; text-align: center; }
+.fx-tracing-tag-row .fx-tag-value { flex: 2; min-width: 120px; }
+.fx-tracing-tag-row button { min-height: 32px; border: 1px solid var(--fx-border, #d8e1ee); border-radius: 6px; background: var(--fx-panel, #fff); padding: 0 10px; cursor: pointer; font-size: 14px; }
+
+/* Span detail tabs (DEGRADE-045) */
+.fx-span-detail-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--fx-border, #e3e8f1); margin: 10px 0 0; }
+.fx-span-detail-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--fx-muted, #66758d); cursor: pointer; margin-bottom: -2px; }
+.fx-span-detail-tabs button.is-active { color: var(--fx-blue, #1769ff); border-bottom-color: var(--fx-blue, #1769ff); }
+.fx-span-detail-content { padding: 10px 0; }
+.fx-span-detail-content table { width: 100%; border-collapse: collapse; }
+.fx-span-detail-content th, .fx-span-detail-content td { border-bottom: 1px solid var(--fx-border, #eef2f8); padding: 6px 8px; text-align: left; font-size: 12px; }
+.fx-span-detail-content th { color: var(--fx-muted, #66758d); font-weight: 700; background: var(--fx-blue-soft, #f8fbff); }
+
+@media (max-width: 1100px) { .fx-metric-charts-grid { grid-template-columns: 1fr; } }
