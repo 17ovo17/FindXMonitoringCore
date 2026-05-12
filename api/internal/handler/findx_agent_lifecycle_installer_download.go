@@ -64,6 +64,7 @@ func blockFindXAgentInstallerDownload(c *gin.Context, installer, platform string
 		"safe": gin.H{
 			"executable_script": false,
 			"credential_echo":   false,
+			"safe_to_retry":     false,
 		},
 	})
 }

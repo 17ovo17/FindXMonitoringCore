@@ -60,7 +60,7 @@ func TestTrustChainBlocksProductionLikeInstallerDownload(t *testing.T) {
 	}
 }
 
-func TestTrustChainVerifiedEvidenceAllowsDownloads(t *testing.T) {
+func TestTrustChainEvidenceDoesNotAllowDownloadsWithoutVerifier(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := t.TempDir()
 	writeInstallerDownloadPackageEvidenceFiles(t, repo)
@@ -75,15 +75,28 @@ func TestTrustChainVerifiedEvidenceAllowsDownloads(t *testing.T) {
 		"/api/v1/findx-agents/package-downloads/host-collector?artifact=artifacts%2Fhost-collector-linux.tar.gz",
 		"host-collector",
 	)
-	if artifact.Code != http.StatusOK {
-		t.Fatalf("verified trust chain should allow artifact download, got %d body=%s", artifact.Code, artifact.Body.String())
-	}
+	assertTrustChainVerifierBlocked(t, "artifact download", artifact.Code, artifact.Body.String())
+
 	installer := performAgentLifecycleGet(
 		"/api/v1/findx-agents/installers/linux.sh?package=host-collector",
 		DownloadFindXAgentLinuxInstaller,
 	)
-	if installer.Code != http.StatusOK {
-		t.Fatalf("verified trust chain should allow installer script, got %d body=%s", installer.Code, installer.Body.String())
+	assertTrustChainVerifierBlocked(t, "installer download", installer.Code, installer.Body.String())
+}
+
+func assertTrustChainVerifierBlocked(t *testing.T, name string, code int, body string) {
+	t.Helper()
+	if code != http.StatusConflict {
+		t.Fatalf("%s must stay blocked without production verifier, got %d body=%s", name, code, body)
+	}
+	for _, want := range []string{
+		"BLOCKED_BY_CONTRACT",
+		"TRUST_CHAIN_VERIFICATION_NOT_IMPLEMENTED",
+		"TRUST_CHAIN_BLOCKED_BY_CONTRACT",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("%s blocker should include %q, body=%s", name, want, body)
+		}
 	}
 }
 

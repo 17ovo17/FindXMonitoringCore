@@ -56,6 +56,7 @@ func blockFindXAgentPackageDownload(c *gin.Context, blockers []string) {
 		"safe": gin.H{
 			"credential_echo": false,
 			"path_traversal":  false,
+			"safe_to_retry":   false,
 		},
 	})
 }

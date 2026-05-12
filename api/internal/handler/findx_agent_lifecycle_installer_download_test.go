@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -112,6 +113,7 @@ func TestInstallerDownloadBlocksProductionLikeReadyEnvironment(t *testing.T) {
 				}
 			}
 			assertInstallerScriptDoesNotEchoSensitiveQuery(t, body)
+			assertInstallerDownloadDoesNotExposeFakeState(t, body)
 			assertInstallerDownloadContentType(t, w.Header().Get("Content-Type"))
 		})
 	}
@@ -158,6 +160,7 @@ func TestInstallerDownloadDoesNotEchoSensitiveQuery(t *testing.T) {
 		}
 	}
 	assertInstallerDownloadContentType(t, w.Header().Get("Content-Type"))
+	assertInstallerDownloadDoesNotExposeFakeState(t, body)
 }
 
 func TestInstallerDownloadBlocksTestOnlyRepositoryEvidence(t *testing.T) {
@@ -357,10 +360,32 @@ func installerDownloadToolEvidence(bundled bool) []packageRepositoryToolEvidence
 
 func assertInstallerScriptDoesNotEchoSensitiveQuery(t *testing.T, body string) {
 	t.Helper()
-	for _, forbidden := range []string{"secret-token", "secret-password", "secret-cookie"} {
+	for _, forbidden := range []string{"secret-token", "secret-password", "secret-cookie", "<TOKEN>", "<PASSWORD>", "<COOKIE>", "<PRIVATE_KEY>", "<DB_DSN>"} {
 		if strings.Contains(body, forbidden) {
 			t.Fatalf("installer script must not echo sensitive query %q: %s", forbidden, body)
 		}
+	}
+}
+
+func assertInstallerDownloadDoesNotExposeFakeState(t *testing.T, body string) {
+	t.Helper()
+	for _, forbidden := range []string{"queued", "running", "succeeded", "success", "applied", "rolled-back"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("installer block response must not include fake execution state %q: %s", forbidden, body)
+		}
+	}
+	var payload struct {
+		Safe struct {
+			ExecutableScript bool `json:"executable_script"`
+			CredentialEcho   bool `json:"credential_echo"`
+			SafeToRetry      bool `json:"safe_to_retry"`
+		} `json:"safe"`
+	}
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("installer block response should be JSON: %v body=%s", err, body)
+	}
+	if payload.Safe.ExecutableScript || payload.Safe.CredentialEcho || payload.Safe.SafeToRetry {
+		t.Fatalf("installer safe flags must stay false for blocked contracts: %s", body)
 	}
 }
 

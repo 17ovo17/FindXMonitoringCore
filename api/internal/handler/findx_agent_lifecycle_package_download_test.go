@@ -202,6 +202,19 @@ func assertPackageDownloadBlocked(t *testing.T, w *httptest.ResponseRecorder) {
 			t.Fatalf("package download block response must not include fake success state %q: %s", forbidden, body)
 		}
 	}
+	var payload struct {
+		Safe struct {
+			CredentialEcho bool `json:"credential_echo"`
+			PathTraversal  bool `json:"path_traversal"`
+			SafeToRetry    bool `json:"safe_to_retry"`
+		} `json:"safe"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("package download block response should be JSON: %v body=%s", err, body)
+	}
+	if payload.Safe.CredentialEcho || payload.Safe.PathTraversal || payload.Safe.SafeToRetry {
+		t.Fatalf("package download safe flags must stay false for blocked contracts: %s", body)
+	}
 }
 
 func assertPackageDownloadBlockers(t *testing.T, w *httptest.ResponseRecorder, wants ...string) {
@@ -209,9 +222,15 @@ func assertPackageDownloadBlockers(t *testing.T, w *httptest.ResponseRecorder, w
 	var payload struct {
 		Blockers         []string `json:"blockers"`
 		MissingContracts []string `json:"missing_contracts"`
+		Safe             struct {
+			SafeToRetry bool `json:"safe_to_retry"`
+		} `json:"safe"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("package download block response should be JSON: %v body=%s", err, w.Body.String())
+	}
+	if payload.Safe.SafeToRetry {
+		t.Fatalf("package download block response must not mark contract gaps safe to retry: %s", w.Body.String())
 	}
 	for _, want := range wants {
 		if !stringSliceContains(payload.Blockers, want) {
