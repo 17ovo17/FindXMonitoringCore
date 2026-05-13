@@ -121,10 +121,30 @@ type LogLiveDiscoveryState struct {
 	Blocker string `json:"blocker"`
 }
 
+type LogCapabilityState struct {
+	Status           string   `json:"status"`
+	ContractGapID    string   `json:"contract_gap_id,omitempty"`
+	MissingContracts []string `json:"missing_contracts,omitempty"`
+	SafeToRetry      bool     `json:"safe_to_retry"`
+}
+
 type LogFieldsResponse struct {
-	Categories    []LogFieldCategory    `json:"categories"`
-	Fields        []LogField            `json:"fields"`
-	LiveDiscovery LogLiveDiscoveryState `json:"live_discovery"`
+	Status        string                        `json:"status"`
+	Categories    []LogFieldCategory            `json:"categories"`
+	Fields        []LogField                    `json:"fields"`
+	LiveDiscovery LogLiveDiscoveryState         `json:"live_discovery"`
+	Capabilities  map[string]LogCapabilityState `json:"capabilities"`
+}
+
+type LogsBlockedEnvelope struct {
+	Code             string   `json:"code"`
+	Status           string   `json:"status"`
+	ContractID       string   `json:"contract_id,omitempty"`
+	ContractGapID    string   `json:"contract_gap_id,omitempty"`
+	MissingContracts []string `json:"missing_contracts"`
+	SafeToRetry      bool     `json:"safe_to_retry"`
+	Error            string   `json:"error"`
+	Blocker          string   `json:"blocker"`
 }
 
 type LogPipeline struct {

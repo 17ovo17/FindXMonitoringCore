@@ -67,6 +67,90 @@ func sanitizeLogContextResponse(resp model.LogContextResponse) model.LogContextR
 	return resp
 }
 
+func sanitizeUserFacingLogQueryResponse(resp model.LogQueryResponse) model.LogQueryResponse {
+	resp = sanitizeLogQueryResponse(resp)
+	resp.SourceName = sanitizeUserFacingLogString(resp.SourceName)
+	resp.Meta = sanitizeUserFacingLogValue(resp.Meta).(map[string]any)
+	for idx := range resp.Items {
+		resp.Items[idx] = sanitizeUserFacingLogRecord(resp.Items[idx])
+	}
+	return resp
+}
+
+func sanitizeUserFacingLogAggregateResponse(resp model.LogAggregateResponse) model.LogAggregateResponse {
+	resp.SourceName = sanitizeUserFacingLogString(resp.SourceName)
+	resp.GroupBy = sanitizeUserFacingLogString(resp.GroupBy)
+	resp.Meta = sanitizeUserFacingLogValue(resp.Meta).(map[string]any)
+	for idx := range resp.Buckets {
+		resp.Buckets[idx].Key = sanitizeUserFacingLogString(resp.Buckets[idx].Key)
+		resp.Buckets[idx].Label = sanitizeUserFacingLogString(resp.Buckets[idx].Label)
+	}
+	return resp
+}
+
+func sanitizeUserFacingLogContextResponse(resp model.LogContextResponse) model.LogContextResponse {
+	resp = sanitizeLogContextResponse(resp)
+	resp.SourceName = sanitizeUserFacingLogString(resp.SourceName)
+	resp.Meta = sanitizeUserFacingLogValue(resp.Meta).(map[string]any)
+	if resp.Center != nil {
+		item := sanitizeUserFacingLogRecord(*resp.Center)
+		resp.Center = &item
+	}
+	for idx := range resp.Before {
+		resp.Before[idx] = sanitizeUserFacingLogRecord(resp.Before[idx])
+	}
+	for idx := range resp.After {
+		resp.After[idx] = sanitizeUserFacingLogRecord(resp.After[idx])
+	}
+	for idx := range resp.Items {
+		resp.Items[idx] = sanitizeUserFacingLogRecord(resp.Items[idx])
+	}
+	return resp
+}
+
+func sanitizeUserFacingLogRecord(item model.LogRecord) model.LogRecord {
+	item.SourceName = sanitizeUserFacingLogString(item.SourceName)
+	item.ServiceName = sanitizeUserFacingLogString(item.ServiceName)
+	item.Body = sanitizeUserFacingLogString(item.Body)
+	item.Attributes = sanitizeUserFacingLogValue(item.Attributes).(map[string]any)
+	return item
+}
+
+func sanitizeUserFacingLogValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := map[string]any{}
+		for key, val := range typed {
+			out[key] = sanitizeUserFacingLogValue(val)
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, val := range typed {
+			out = append(out, sanitizeUserFacingLogValue(val))
+		}
+		return out
+	case string:
+		return sanitizeUserFacingLogString(typed)
+	default:
+		return typed
+	}
+}
+
+func sanitizeUserFacingLogString(value string) string {
+	value = sanitizeLogString(value)
+	if strings.TrimSpace(value) == "" {
+		return value
+	}
+	if userFacingLogPrivateKeyPattern.MatchString(value) {
+		return "REDACTED"
+	}
+	for _, item := range userFacingLogBrandReplacements {
+		value = strings.ReplaceAll(value, item.from, item.to)
+	}
+	return value
+}
+
 func sanitizeLogJSON(raw json.RawMessage) json.RawMessage {
 	if len(raw) == 0 {
 		return raw
@@ -134,4 +218,21 @@ var (
 	logSecretLinePattern  = regexp.MustCompile(`(?i)\b(authorization|token|api[-_]?key|password|cookie|dsn|secret)\s*[:=]\s*(bearer\s+)?[^,\s&;]+`)
 	logSecretQueryPattern = regexp.MustCompile(`(?i)[?&](token|access_token|refresh_token|api[-_]?key|apikey|password|cookie|dsn|secret)=`)
 	logBearerPattern      = regexp.MustCompile(`(?i)\bbearer\s+[^,\s]+`)
+
+	userFacingLogPrivateKeyPattern = regexp.MustCompile(`(?i)\bprivate\s+key\b`)
+	userFacingLogBrandReplacements = []struct {
+		from string
+		to   string
+	}{
+		{"prometheus-default", "findx-datasource-default"},
+		{"Prometheus", "FindX datasource"},
+		{"prometheus", "findx-datasource"},
+		{"Nightingale", "FindX"},
+		{"SkyWalking", "FindX tracing"},
+		{"SigNoZ", "FindX logs"},
+		{"AutoOps", "FindX ops"},
+		{"Categraf", "FindX Agent"},
+		{"Catpaw", "FindX Agent"},
+		{"Grafana", "FindX dashboard"},
+	}
 )

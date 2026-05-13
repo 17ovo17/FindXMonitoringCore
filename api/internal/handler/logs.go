@@ -23,8 +23,18 @@ func ListLogPipelines(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"items":   sanitizeLogPipelines(items),
-		"blocker": model.LogsContractBlocked + ": 生产接入管道生效、远程下发和回滚契约尚未接入",
+		"items":  sanitizeLogPipelines(items),
+		"status": "partial",
+		"capabilities": gin.H{
+			"list":     logsCapabilityOK(),
+			"save":     logsCapabilityOK(),
+			"preview":  logsCapabilityOK(),
+			"deploy":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", "logs.pipeline.deploy"),
+			"rollback": logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", "logs.pipeline.rollback"),
+			"update":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", "logs.pipeline.update"),
+			"delete":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", "logs.pipeline.delete"),
+		},
+		"blocker": model.LogsContractBlocked + ": log pipeline deployment, rollback, and index mutation contracts are not connected",
 	})
 }
 
@@ -53,10 +63,26 @@ func PreviewLogPipeline(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func UpdateLogPipelineBlocked(c *gin.Context) {
+	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", []string{"logs.pipeline.update", "logs.pipeline.deploy", "logs.pipeline.versioning"}, "log pipeline update requires SigNoZ pipeline mutation and deployment contracts")
+}
+
+func DeleteLogPipelineBlocked(c *gin.Context) {
+	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", []string{"logs.pipeline.delete", "logs.pipeline.deploy", "logs.pipeline.audit"}, "log pipeline delete requires SigNoZ pipeline mutation and deployment contracts")
+}
+
+func DeployLogPipelineBlocked(c *gin.Context) {
+	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", []string{"logs.pipeline.deploy", "logs.pipeline.executor", "logs.pipeline.evidence"}, "saved pipeline config is not a deployed processing pipeline")
+}
+
+func RollbackLogPipelineBlocked(c *gin.Context) {
+	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", []string{"logs.pipeline.rollback", "logs.pipeline.history", "logs.pipeline.evidence"}, "log pipeline rollback requires version history and executor contracts")
+}
+
 func ListLogsBlocked(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
 	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusServiceUnavailable, "通用 OTel 日志查询数据源契约未接入；当前仅 FindX 审计日志可查询")
+		blockLogsContract(c, http.StatusServiceUnavailable, "FX-CONTRACT-SIGNOZ-LOGS-QUERY", []string{"logs.query", "logs.query_service", "logs.clickhouse.datasource"}, "generic logs query datasource contract is not connected; only findx_audit is queryable")
 		return
 	}
 	resp, err := store.QueryFindXAuditLogs(logQueryRequest(c, source))
@@ -64,13 +90,13 @@ func ListLogsBlocked(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log query failed"})
 		return
 	}
-	c.JSON(http.StatusOK, sanitizeLogQueryResponse(resp))
+	c.JSON(http.StatusOK, sanitizeUserFacingLogQueryResponse(resp))
 }
 
 func AggregateLogsBlocked(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
 	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusConflict, "通用 OTel 日志聚合数据源契约未接入；当前仅 FindX 审计日志可聚合")
+		blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-AGGREGATE", []string{"logs.aggregate", "logs.query_builder", "logs.clickhouse.datasource"}, "generic logs aggregate datasource contract is not connected; only findx_audit can aggregate")
 		return
 	}
 	resp, err := store.AggregateFindXAuditLogs(logAggregateRequest(c, source))
@@ -78,13 +104,13 @@ func AggregateLogsBlocked(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log aggregate failed"})
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, sanitizeUserFacingLogAggregateResponse(resp))
 }
 
 func GetLogContext(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
 	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusConflict, "通用 OTel 日志上下文数据源契约未接入；当前仅 FindX 审计日志可查询上下文")
+		blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-CONTEXT", []string{"logs.context", "logs.trace_correlation", "logs.query_service"}, "generic logs context datasource contract is not connected; only findx_audit context is queryable")
 		return
 	}
 	req := logContextRequest(c, source)
@@ -97,11 +123,11 @@ func GetLogContext(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log context failed"})
 		return
 	}
-	c.JSON(http.StatusOK, sanitizeLogContextResponse(resp))
+	c.JSON(http.StatusOK, sanitizeUserFacingLogContextResponse(resp))
 }
 
 func RealtimeLogsBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusServiceUnavailable, "realtime log backend is not connected")
+	blockLogsContract(c, http.StatusServiceUnavailable, "FX-CONTRACT-SIGNOZ-LOGS-LIVE", []string{"logs.live_tail", "logs.websocket", "logs.query_service"}, "realtime log backend is not connected")
 }
 
 func ListExplorerViews(c *gin.Context) {
@@ -218,13 +244,34 @@ func explorerViewFromInput(input model.ExplorerSavedViewInput) model.ExplorerSav
 	}
 }
 
-func blockLogsContract(c *gin.Context, status int, reason string) {
-	c.JSON(status, gin.H{
-		"code":    status,
-		"error":   model.LogsContractBlocked + ": " + reason,
-		"status":  "blocked",
-		"blocker": model.LogsContractBlocked,
-	})
+func blockLogsContract(c *gin.Context, status int, contractGapID string, missingContracts []string, reason string) {
+	c.JSON(status, logsBlockedEnvelope(contractGapID, missingContracts, reason))
+}
+
+func logsBlockedEnvelope(contractGapID string, missingContracts []string, reason string) model.LogsBlockedEnvelope {
+	return model.LogsBlockedEnvelope{
+		Code:             model.LogsContractBlocked,
+		Status:           "blocked",
+		ContractID:       contractGapID,
+		ContractGapID:    contractGapID,
+		MissingContracts: missingContracts,
+		SafeToRetry:      false,
+		Error:            model.LogsContractBlocked + ": " + sanitizeLogString(reason),
+		Blocker:          model.LogsContractBlocked,
+	}
+}
+
+func logsCapabilityOK() model.LogCapabilityState {
+	return model.LogCapabilityState{Status: "ready", SafeToRetry: true}
+}
+
+func logsCapabilityBlocked(contractGapID string, missingContracts ...string) model.LogCapabilityState {
+	return model.LogCapabilityState{
+		Status:           "blocked",
+		ContractGapID:    contractGapID,
+		MissingContracts: missingContracts,
+		SafeToRetry:      false,
+	}
 }
 
 func normalizeLogSource(source string) string {
@@ -319,11 +366,23 @@ func builtinLogFields() model.LogFieldsResponse {
 		fields = append(fields, category.Fields...)
 	}
 	return model.LogFieldsResponse{
+		Status:     "partial",
 		Categories: categories,
 		Fields:     fields,
 		LiveDiscovery: model.LogLiveDiscoveryState{
 			Status:  "blocked",
 			Blocker: model.LogsContractBlocked + ": live field discovery requires a connected log datasource contract",
+		},
+		Capabilities: map[string]model.LogCapabilityState{
+			"builtin_fields":     logsCapabilityOK(),
+			"live_discovery":     logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-FIELD-DISCOVERY", "logs.fields.discovery", "logs.query_service"),
+			"field_values":       logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-FIELD-VALUES", "logs.fields.values", "logs.query_service"),
+			"index_mutation":     logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-INDEX-MUTATION", "logs.index.create", "logs.index.delete", "logs.index.sync"),
+			"query_service":      logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-QUERY", "logs.query_service", "logs.clickhouse.datasource"),
+			"pipeline_deploy":    logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", "logs.pipeline.deploy", "logs.pipeline.executor"),
+			"pipeline_rollback":  logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", "logs.pipeline.rollback", "logs.pipeline.history"),
+			"trace_linkage":      logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-TRACE-LINK", "logs.trace_link", "apm.trace_detail"),
+			"agent_data_arrival": logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-AGENT-LINKAGE", "logs.agent_linkage", "findx_agent.data_arrival.logs"),
 		},
 	}
 }

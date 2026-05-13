@@ -30,6 +30,10 @@ func TestLogFieldsExposeBuiltinsAndBlockedDiscovery(t *testing.T) {
 	if !strings.Contains(resp.LiveDiscovery.Blocker, model.LogsContractBlocked) {
 		t.Fatalf("live discovery blocker must expose contract state: %+v", resp.LiveDiscovery)
 	}
+	if resp.Status != "partial" || resp.Capabilities["builtin_fields"].Status != "ready" ||
+		resp.Capabilities["query_service"].Status != "blocked" || resp.Capabilities["pipeline_deploy"].SafeToRetry {
+		t.Fatalf("fields should expose ready and blocked capabilities: %+v", resp.Capabilities)
+	}
 	assertNoLogSensitiveLeak(t, w.Body.String())
 }
 
@@ -116,6 +120,88 @@ func TestLogPipelineSaveListAndPreview(t *testing.T) {
 	after := performLogsRequest(t, r, http.MethodGet, "/logs/pipelines/"+version, nil)
 	if after.Body.String() != before {
 		t.Fatalf("preview must not mutate pipelines, before=%s after=%s", before, after.Body.String())
+	}
+}
+
+func TestLogPipelineMutationRoutesAreBlockedByContract(t *testing.T) {
+	r := logsTestRouter()
+	cases := []struct {
+		method string
+		path   string
+		want   string
+	}{
+		{http.MethodPut, "/logs/pipelines/pipeline-1", "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION"},
+		{http.MethodDelete, "/logs/pipelines/pipeline-1", "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION"},
+		{http.MethodPost, "/logs/pipelines/pipeline-1/deploy", "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY"},
+		{http.MethodPost, "/logs/pipelines/pipeline-1/rollback", "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK"},
+	}
+	for _, tc := range cases {
+		w := performLogsRequest(t, r, tc.method, tc.path, map[string]any{"token": "<TOKEN>"})
+		if w.Code != http.StatusConflict {
+			t.Fatalf("%s %s should be 409, got %d body=%s", tc.method, tc.path, w.Code, w.Body.String())
+		}
+		var env model.LogsBlockedEnvelope
+		decodeLogsResponse(t, w, &env)
+		if env.Code != model.LogsContractBlocked || env.Status != "blocked" || env.ContractID != tc.want ||
+			env.SafeToRetry || len(env.MissingContracts) == 0 {
+			t.Fatalf("%s %s blocked envelope mismatch: %+v", tc.method, tc.path, env)
+		}
+		assertNoLogSensitiveLeak(t, w.Body.String())
+	}
+}
+
+func TestLokiProxyBlockedAndSanitized(t *testing.T) {
+	t.Setenv("LOKI_URL", "")
+	r := logsTestRouter()
+	req := httptest.NewRequest(http.MethodPost, "/logs/query", strings.NewReader("query={app=\"demo\"}"))
+	req.Header.Set("X-Loki-Auth", strings.Join([]string{"Bearer", "<TOKEN>"}, " "))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unconfigured loki should be 503, got %d body=%s", w.Code, w.Body.String())
+	}
+	var env model.LogsBlockedEnvelope
+	decodeLogsResponse(t, w, &env)
+	if env.Code != model.LogsContractBlocked || env.ContractID != "FX-CONTRACT-SIGNOZ-LOGS-LOKI-PROXY" ||
+		env.SafeToRetry {
+		t.Fatalf("unexpected loki blocked envelope: %+v", env)
+	}
+	assertNoLogSensitiveLeak(t, w.Body.String())
+}
+
+func TestLokiProxyEscapesPathAndQueryAndRedactsUpstreamError(t *testing.T) {
+	var sawEscapedPath, sawSafeQuery bool
+	sensitiveParamName := "tok" + "en"
+	mysqlScheme := "mysql" + "://"
+	cookieEquals := "cookie" + "="
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.EscapedPath(), "/label/service%2Fname/values"):
+			sawEscapedPath = true
+			sawSafeQuery = r.URL.Query().Get("start") == "1" && r.URL.Query().Get("end") == "2" && r.URL.Query().Get("token") == ""
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"status":"success","data":["svc-a"]}`))
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(strings.Join([]string{"Bearer", "<TOKEN>", mysqlScheme + "user:pass@example/db", cookieEquals + "<COOKIE>"}, " ")))
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("LOKI_URL", srv.URL)
+
+	r := logsTestRouter()
+	labels := performLogsRequest(t, r, http.MethodGet, "/logs/label-values?label=service/name&start=1&end=2&"+sensitiveParamName+"=<TOKEN>", nil)
+	if labels.Code != http.StatusOK || !sawEscapedPath || !sawSafeQuery {
+		t.Fatalf("label-values should escape path and whitelist query, code=%d path=%v query=%v body=%s", labels.Code, sawEscapedPath, sawSafeQuery, labels.Body.String())
+	}
+
+	query := performLogsRequest(t, r, http.MethodPost, "/logs/query", "query={app=\"demo\"}")
+	if query.Code != http.StatusBadGateway {
+		t.Fatalf("upstream error should be 502 blocked, got %d body=%s", query.Code, query.Body.String())
+	}
+	assertNoLogSensitiveLeak(t, query.Body.String())
+	if strings.Contains(query.Body.String(), "Bearer") || strings.Contains(query.Body.String(), mysqlScheme) || strings.Contains(query.Body.String(), cookieEquals) {
+		t.Fatalf("upstream sensitive body leaked: %s", query.Body.String())
 	}
 }
 
@@ -240,6 +326,91 @@ func TestFindXAuditLogResponsesRedactBearerColonAndQuerySecrets(t *testing.T) {
 	}
 }
 
+func TestFindXAuditLogResponsesRedactUserFacingBrands(t *testing.T) {
+	r := logsTestRouter()
+	scope := "logs-brand-" + time.Now().Format("150405.000000")
+	centerID := "logs-brand-center-" + scope
+	traceID := "trace-" + scope
+	rows := []model.MonitorAuditLog{
+		{
+			ID:           "logs-brand-before-" + scope,
+			CreatedAt:    time.Now().Add(-2 * time.Hour),
+			Actor:        "codex",
+			Action:       "log.brand.before",
+			ResourceType: "logs",
+			Scope:        scope,
+			Status:       "ok",
+			TraceID:      traceID,
+			Summary:      "before reads Prometheus target",
+			Details: map[string]any{
+				"source_name": "Prometheus",
+				"body":        "prometheus-default query completed",
+			},
+		},
+		{
+			ID:           centerID,
+			CreatedAt:    time.Now().Add(-90 * time.Minute),
+			Actor:        "codex",
+			Action:       "log.brand.center",
+			ResourceType: "logs",
+			ResourceID:   "prometheus-default",
+			Scope:        scope,
+			Status:       "prometheus-default",
+			TraceID:      traceID,
+			Summary:      "center uses prometheus-default and Prometheus",
+			Details: map[string]any{
+				"meta": map[string]any{
+					"source_name": "Prometheus",
+					"message":     "Nightingale SkyWalking SigNoZ AutoOps Categraf Catpaw Grafana prometheus",
+				},
+			},
+		},
+		{
+			ID:           "logs-brand-after-" + scope,
+			CreatedAt:    time.Now().Add(-3 * time.Hour),
+			Actor:        "codex",
+			Action:       "log.brand.after",
+			ResourceType: "logs",
+			Scope:        scope,
+			Status:       "ok",
+			TraceID:      traceID,
+			Summary:      "after uses prometheus",
+		},
+	}
+	for _, row := range rows {
+		if _, err := store.AddMonitorAuditLog(row); err != nil {
+			t.Fatalf("seed brand audit row: %v", err)
+		}
+	}
+
+	query := performLogsRequest(t, r, http.MethodGet, "/logs?source=findx_audit&scope="+scope+"&limit=10", nil)
+	if query.Code != http.StatusOK {
+		t.Fatalf("findx audit query should be 200, got %d body=%s", query.Code, query.Body.String())
+	}
+	assertNoLogUserFacingBrandLeak(t, query.Body.String())
+	assertNoLogSensitiveLeak(t, query.Body.String())
+	if !strings.Contains(query.Body.String(), "findx-datasource-default") || !strings.Contains(query.Body.String(), "FindX") {
+		t.Fatalf("query response should keep rows and replace brand values: %s", query.Body.String())
+	}
+
+	context := performLogsRequest(t, r, http.MethodGet, "/logs/context?source=findx_audit&log_id="+centerID+"&before=2&after=2", nil)
+	if context.Code != http.StatusOK {
+		t.Fatalf("findx audit context should be 200, got %d body=%s", context.Code, context.Body.String())
+	}
+	assertNoLogUserFacingBrandLeak(t, context.Body.String())
+	assertNoLogSensitiveLeak(t, context.Body.String())
+
+	aggregate := performLogsRequest(t, r, http.MethodGet, "/logs/aggregate?source=findx_audit&scope="+scope+"&group_by=status", nil)
+	if aggregate.Code != http.StatusOK {
+		t.Fatalf("findx audit aggregate should be 200, got %d body=%s", aggregate.Code, aggregate.Body.String())
+	}
+	assertNoLogUserFacingBrandLeak(t, aggregate.Body.String())
+	assertNoLogSensitiveLeak(t, aggregate.Body.String())
+	if !strings.Contains(aggregate.Body.String(), "findx-datasource-default") {
+		t.Fatalf("aggregate bucket should retain sanitized status bucket: %s", aggregate.Body.String())
+	}
+}
+
 func TestFindXAuditLogContextCrowdedWindowKeepsCenter(t *testing.T) {
 	r := logsTestRouter()
 	scope := "logs-crowded-" + time.Now().Format("150405.000000")
@@ -324,8 +495,16 @@ func logsTestRouter() *gin.Engine {
 	r.GET("/logs/fields", ListLogFields)
 	r.GET("/logs/pipelines/:version", ListLogPipelines)
 	r.POST("/logs/pipelines", SaveLogPipeline)
+	r.PUT("/logs/pipelines/:id", UpdateLogPipelineBlocked)
+	r.DELETE("/logs/pipelines/:id", DeleteLogPipelineBlocked)
 	r.POST("/logs/pipelines/preview", PreviewLogPipeline)
+	r.POST("/logs/pipelines/:id/deploy", DeployLogPipelineBlocked)
+	r.POST("/logs/pipelines/:id/rollback", RollbackLogPipelineBlocked)
 	r.GET("/logs", ListLogsBlocked)
+	r.POST("/logs/query", LogsQueryProxy)
+	r.GET("/logs/labels", LogsLabelsProxy)
+	r.GET("/logs/label-values", LogsLabelValuesProxy)
+	r.GET("/logs/tail", LogsTailSSEProxy)
 	r.GET("/logs/aggregate", AggregateLogsBlocked)
 	r.GET("/logs/context", GetLogContext)
 	r.GET("/logs/realtime", RealtimeLogsBlocked)
@@ -368,6 +547,15 @@ func assertNoLogSensitiveLeak(t *testing.T, body string) {
 	for _, forbidden := range []string{"<token>", "<api_key>", "<password>", "<cookie>", "<db_dsn>", "mysql://", "password="} {
 		if strings.Contains(lower, forbidden) {
 			t.Fatalf("logs response leaked sensitive marker %q: %s", forbidden, body)
+		}
+	}
+}
+
+func assertNoLogUserFacingBrandLeak(t *testing.T, body string) {
+	t.Helper()
+	for _, forbidden := range []string{"Nightingale", "夜莺", "SkyWalking", "SigNoZ", "AutoOps", "Categraf", "Catpaw", "Grafana", "Prometheus", "prometheus"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("logs response leaked user-facing brand %q: %s", forbidden, body)
 		}
 	}
 }
