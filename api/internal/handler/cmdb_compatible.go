@@ -166,30 +166,6 @@ func GetCmdbInstanceDetailCompatible(c *gin.Context) {
 	})
 }
 
-// GetCmdbInstanceTopologyBlocked 明确阻断未接入的拓扑契约，避免返回假拓扑。
-func GetCmdbInstanceTopologyBlocked(c *gin.Context) {
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.instance.topology.v1",
-		[]string{"cmdb_relation_graph_contract", "cmdb_topology_view_contract", "cmdb_instance_relation_store"},
-	))
-}
-
-// GetCmdbMonitorBindingsBlocked 明确阻断未接入的监控绑定查询契约。
-func GetCmdbMonitorBindingsBlocked(c *gin.Context) {
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.monitor_bindings.read.v1",
-		[]string{"monitor_host_binding_contract", "monitor_template_contract", "cmdb_monitor_binding_store"},
-	))
-}
-
-// CreateCmdbMonitorBindingsBlocked 明确阻断未接入的监控绑定写入契约。
-func CreateCmdbMonitorBindingsBlocked(c *gin.Context) {
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.monitor_bindings.write.v1",
-		[]string{"monitor_host_binding_contract", "monitor_template_contract", "binding_audit_contract"},
-	))
-}
-
 func cmdbPageAndLimit(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
@@ -507,31 +483,4 @@ func isSensitiveCmdbKey(key string) bool {
 		}
 	}
 	return false
-}
-
-func anyToString(value any) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case json.Number:
-		return v.String()
-	default:
-		b, err := json.Marshal(v)
-		if err != nil {
-			return ""
-		}
-		return string(b)
-	}
-}
-
-func cmdbBlockedContractEnvelope(contractID string, missing []string) gin.H {
-	return gin.H{
-		"code":              cmdbBlockedByContract,
-		"status":            strings.ToLower(cmdbBlockedByContract),
-		"message":           "CMDB 兼容契约尚未接入，当前接口不会返回伪造成功数据",
-		"contract_id":       contractID,
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"meta":              cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
-	}
 }

@@ -158,6 +158,128 @@ func TestCmdbCompatibleBlockedGates(t *testing.T) {
 	}
 }
 
+func TestCmdbInstanceTopologyBlockedContractFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/api/v1/cmdb/instances/:id/topology", GetCmdbInstanceTopologyBlocked)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cmdb/instances/inst-1/topology", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d, body=%s", w.Code, http.StatusConflict, w.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["contract_id"] != "cmdb.instance.topology.v1" {
+		t.Fatalf("contract_id = %v", body["contract_id"])
+	}
+	if body["safe_to_retry"] != false {
+		t.Fatalf("safe_to_retry = %v, want false", body["safe_to_retry"])
+	}
+	assertCmdbTestStringContainsAll(t, w.Body.String(), []string{
+		"cmdb_topology_field_mapping_contract",
+		"expected_schema",
+		"field_matrix",
+		"source_evidence",
+		"object_id",
+		"instances",
+		"children",
+		"relation_id",
+		"asst_id",
+		"asst_name",
+		"direction",
+		"location",
+	})
+	assertCmdbTestStringExcludesAll(t, w.Body.String(), []string{`"nodes"`, `"edges"`})
+}
+
+func TestCmdbMonitorBindingsReadBlockedContractFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/api/v1/cmdb/monitor-bindings/*path", GetCmdbMonitorBindingsBlocked)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cmdb/monitor-bindings/inst-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d, body=%s", w.Code, http.StatusConflict, w.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["contract_id"] != "cmdb.monitor_bindings.read.v1" {
+		t.Fatalf("contract_id = %v", body["contract_id"])
+	}
+	assertCmdbTestStringContainsAll(t, w.Body.String(), []string{
+		"cmdb_monitor_binding_field_mapping_contract",
+		"host",
+		"hostid",
+		"templateid",
+		"server_object_id",
+		"server_platform_id",
+		"cmdb_object_id",
+		"group",
+		"tags",
+		"active_status",
+		"hosttype",
+		"subtype",
+	})
+}
+
+func TestCmdbMonitorBindingsWriteBlockedContractAvoidsFakeStateAndSensitiveEcho(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.POST("/api/v1/cmdb/monitor-bindings/*path", CreateCmdbMonitorBindingsBlocked)
+
+	payload := `{"host":"srv-1","password":"secret-marker","token":"token-marker","status":"success"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cmdb/monitor-bindings/inst-1", strings.NewReader(payload))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d, body=%s", w.Code, http.StatusConflict, w.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["contract_id"] != "cmdb.monitor_bindings.write.v1" {
+		t.Fatalf("contract_id = %v", body["contract_id"])
+	}
+	if body["safe_to_retry"] != false {
+		t.Fatalf("safe_to_retry = %v, want false", body["safe_to_retry"])
+	}
+	assertCmdbTestStringContainsAll(t, w.Body.String(), []string{
+		"binding_audit_contract",
+		"binding_rollback_contract",
+		"cmdb_monitor_binding_write_receipt_contract",
+		"expected_schema",
+		"field_matrix",
+	})
+	assertCmdbTestStringExcludesAll(t, w.Body.String(), []string{
+		"secret-marker",
+		"token-marker",
+		`"success"`,
+		`"queued"`,
+		`"running"`,
+		`"applied"`,
+		`"installed"`,
+		`"data_arrived"`,
+		`"service_registered"`,
+		`"rolled_back"`,
+		`"uninstalled"`,
+	})
+}
+
 func createCmdbCompatibleFixture(t *testing.T, objectID string) string {
 	t.Helper()
 	err := store.CreateCmdbObject(&model.CmdbObject{
@@ -210,4 +332,22 @@ func assertCmdbColumnHasContractFields(t *testing.T, columns []any, attr string)
 		return
 	}
 	t.Fatalf("column attr %s missing in %#v", attr, columns)
+}
+
+func assertCmdbTestStringContainsAll(t *testing.T, text string, wants []string) {
+	t.Helper()
+	for _, want := range wants {
+		if !strings.Contains(text, want) {
+			t.Fatalf("response missing %q: %s", want, text)
+		}
+	}
+}
+
+func assertCmdbTestStringExcludesAll(t *testing.T, text string, blocked []string) {
+	t.Helper()
+	for _, token := range blocked {
+		if strings.Contains(text, token) {
+			t.Fatalf("response contains forbidden token %q: %s", token, text)
+		}
+	}
 }
