@@ -9,6 +9,14 @@ const defaultSettings = {
   otherMetricsDataTTL: '',
 }
 
+const isBlockedResponse = resp => {
+  if (!resp || typeof resp !== 'object') return false
+  const code = String(resp.code || resp.error_code || '').toUpperCase()
+  const status = String(resp.status || '').toLowerCase()
+  const message = String(resp.message || resp.error || resp.reason || '')
+  return code === 'BLOCKED_BY_CONTRACT' || status === 'blocked' || /BLOCKED_BY_CONTRACT/i.test(message)
+}
+
 export function SettingsSection() {
   const [draft, setDraft] = useState(defaultSettings)
   const [nodes, setNodes] = useState([])
@@ -37,7 +45,9 @@ export function SettingsSection() {
       }
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('BLOCKED_BY_CONTRACT') || [404, 405, 501].includes(err?.status)) {
+      if (msg.startsWith('BLOCKED_BY_CONTRACT')) {
+        setBlocked(msg)
+      } else if ([404, 405, 501].includes(err?.status)) {
         setBlocked('BLOCKED_BY_CONTRACT: 需要后端实现 /apm/settings GET API')
       } else { setError(msg) }
     } finally { setLoading(false) }
@@ -47,15 +57,21 @@ export function SettingsSection() {
   const save = async () => {
     setSaving(true); setSaveMsg(''); setError(''); setBlocked('')
     try {
-      await tracingApi.settings.save({
+      const resp = await tracingApi.settings.save({
         recordDataTTL: Number(draft.recordDataTTL) || undefined,
         metricsDataTTL: Number(draft.metricsDataTTL) || undefined,
         otherMetricsDataTTL: Number(draft.otherMetricsDataTTL) || undefined,
       })
-      setSaveMsg('保存成功')
+      if (isBlockedResponse(resp)) {
+        setBlocked(formatTracingError(new Error(resp.message || resp.error || 'BLOCKED_BY_CONTRACT: 链路查询服务设置保存被契约阻断')))
+        return
+      }
+      setSaveMsg('设置已保存')
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('BLOCKED_BY_CONTRACT') || [404, 405, 501].includes(err?.status)) {
+      if (msg.startsWith('BLOCKED_BY_CONTRACT')) {
+        setBlocked(msg)
+      } else if ([404, 405, 501].includes(err?.status)) {
         setBlocked('BLOCKED_BY_CONTRACT: 需要后端实现 /apm/settings PUT API')
       } else { setError(msg) }
     } finally { setSaving(false) }
@@ -91,8 +107,8 @@ export function SettingsSection() {
               <tr key={node.id || node.name || idx}>
                 <td>{displayText(node.name || node.host || node.id)}</td>
                 <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{displayText(node.address || node.host || '-')}</td>
-                <td>{displayText(node.role || node.type || 'OAP')}</td>
-                <td>{displayText(node.status || node.state || 'RUNNING')}</td>
+                <td>{displayText(node.role || node.type || '链路查询节点')}</td>
+                <td>{displayText(node.status || node.state || '未知')}</td>
               </tr>
             ))}
           </tbody>

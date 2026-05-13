@@ -41,7 +41,7 @@
 .fx-tracing-modal__body h2 { margin: 0; font-size: 18px; color: var(--fx-ink, #17233c); }
 .fx-tracing-modal__body pre { white-space: pre-wrap; word-break: break-word; }
 
-/* SkyWalking-style condition bar: single horizontal row inline layout */
+/* Source-compatible condition bar: single horizontal row inline layout */
 .fx-tracing-condition-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--fx-border, #e3e8f1); border-radius: 8px; background: var(--fx-blue-soft, #f8fbff); }
 .fx-tracing-condition-bar .fx-tracing-field { min-width: 130px; flex: 0 0 auto; }
 .fx-tracing-condition-bar .fx-tracing-field.is-flex { flex: 1 1 180px; }

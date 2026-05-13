@@ -8,7 +8,7 @@ const blockedRows = {
   ],
   'tracing-alarms': [
     ['告警名称', '服务', '实例/端点', 'Trace 关联', '拓扑节点', '状态', '最近触发', '操作'],
-    ['OAP rule', 'service selector', 'endpoint binding', 'trace backlink', 'topology node', 'mute/ack/recover', 'review evidence'],
+    ['tracing rule', 'service selector', 'endpoint binding', 'trace backlink', 'topology node', 'mute/ack/recover', 'review evidence'],
   ],
   mutes: [
     ['规则名称', '屏蔽对象', '数据源', '标签条件', '时间窗口', '状态', '更新人', '操作'],

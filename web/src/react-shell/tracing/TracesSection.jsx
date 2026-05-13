@@ -6,11 +6,11 @@ import { TraceWaterfall } from './TraceWaterfall.jsx'
 import { TagsFilter } from './TagsFilter.jsx'
 
 const CONNECTION_HINT = [
-  '暂无 Trace 数据。请确认 SkyWalking OAP 已启动并有应用接入。',
+  '暂无 Trace 数据。请确认链路监控上游服务已启动并有应用接入。',
   '',
   '接入步骤:',
-  '1. 确认 SkyWalking OAP 地址已在平台设置中配置',
-  '2. 在目标应用中集成 SkyWalking Agent 并配置 collector 地址',
+  '1. 确认链路查询服务地址已在平台设置中配置',
+  '2. 在目标应用中集成 FindX Agent 并配置采集地址',
   '3. 对应用发起请求后, Trace 数据将在数秒内出现',
 ].join('\n')
 

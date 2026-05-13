@@ -40,7 +40,7 @@ export const noDataPolicies = [
 
 export const blockedContracts = {
   job: 'BLOCKED_BY_CONTRACT: 缺少告警自愈模板、任务列表、执行参数、审批、审计、回滚和执行记录契约。',
-  'tracing-alarms': 'BLOCKED_BY_CONTRACT: 缺少链路告警规则、OAP 告警事件、服务/实例/端点关联、Trace 反查和复盘证据契约。',
+  'tracing-alarms': 'BLOCKED_BY_CONTRACT: 缺少链路告警规则、链路告警事件、服务/实例/端点关联、Trace 反查和复盘证据契约。',
   mutes: 'BLOCKED_BY_CONTRACT: 缺少屏蔽规则列表、时间窗口、对象选择、启停、克隆、删除与审计契约。',
   subscriptions: 'BLOCKED_BY_CONTRACT: 缺少订阅规则列表、接收对象、级别重定义、过滤条件、启停、克隆、删除与投递记录契约。',
   'event-pipelines': 'BLOCKED_BY_CONTRACT: 缺少事件流水线列表、触发方式、用途、启停、编辑、克隆、删除、执行记录与调试契约。',

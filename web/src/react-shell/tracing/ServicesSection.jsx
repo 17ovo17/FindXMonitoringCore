@@ -5,15 +5,15 @@ import { AgentEvidenceNotice, AgentLinkActions, Blocked, Empty, ErrorBox, Field,
 import { ServiceMetricsCharts } from './ServiceMetricsCharts.jsx'
 
 const CONNECTION_HINT = [
-  '暂无服务数据。请确认 SkyWalking OAP 已启动并配置了正确的接入地址。',
+  '暂无服务数据。请确认链路监控上游服务已启动并配置了正确的接入地址。',
   '',
   '接入步骤:',
-  '1. 在 FindX 平台设置中配置 SkyWalking OAP 地址 (默认 http://localhost:12800)',
-  '2. 在目标应用中集成 SkyWalking Agent',
+  '1. 在 FindX 平台设置中配置链路查询服务地址',
+  '2. 在目标应用中集成 FindX Agent',
   '3. 启动应用后等待 1-2 分钟, 服务将自动注册',
 ].join('\n')
 
-// SkyWalking Layer concept: infrastructure dimension such as GENERAL/Kubernetes/VM/Service Mesh.
+// Upstream Layer concept: infrastructure dimension such as GENERAL/Kubernetes/VM/Service Mesh.
 const LAYER_GROUPS = [
   { group: '通用', layers: ['GENERAL', 'Service'] },
   { group: 'Kubernetes', layers: ['K8S_SERVICE', 'MESH', 'MESH_DP', 'MESH_CP'] },
@@ -72,8 +72,8 @@ function ServiceDetail({ service, onClose, onNavigate }) {
       setLoading(true); setError('')
       try {
         const [ep, inst] = await Promise.all([
-          tracingApi.selectors.endpoints({ serviceId }).catch(() => []),
-          tracingApi.selectors.instances({ serviceId }).catch(() => []),
+          tracingApi.selectors.endpoints({ serviceId }),
+          tracingApi.selectors.instances({ serviceId }),
         ])
         if (!cancelled) { setEndpoints(ep || []); setInstances(inst || []) }
       } catch (err) { if (!cancelled) setError(formatTracingError(err)) }
@@ -180,7 +180,7 @@ export function ServicesSection({ onNavigate }) {
 
   return (
     <section className='fx-tracing-work'>
-      {/* Condition bar with layer filter grouped like SkyWalking */}
+      {/* Layer concept follows upstream tracing source semantics. */}
       <div className='fx-tracing-condition-bar'>
         <Field label='时间范围'>
           <select value={filters.duration} onChange={e => setFilters(prev => Object.assign({}, prev, { duration: e.target.value }))}>

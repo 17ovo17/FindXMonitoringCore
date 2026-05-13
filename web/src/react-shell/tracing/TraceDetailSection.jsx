@@ -15,14 +15,15 @@ export function TraceDetailSection({ traceId, onNavigate }) {
     if (!traceId) { setBlocked('BLOCKED_BY_CONTRACT: Trace 详情需要 traceId 和详情查询契约。'); return }
     setLoading(true); setError(''); setBlocked('')
     try {
-      const [d, s] = await Promise.all([
-        tracingApi.traces.detail(traceId).catch(() => null),
-        tracingApi.traces.spans(traceId).catch(() => []),
-      ])
+      const d = await tracingApi.traces.detail(traceId)
+      const s = await tracingApi.traces.spans(traceId)
+      const nextSpans = s || []
       setDetail(d || null)
-      setSpans(s || [])
-      if (!s || !s.length) setBlocked(TRACING_BLOCKERS.traces)
+      setSpans(nextSpans)
+      if (!nextSpans.length) setBlocked(TRACING_BLOCKERS.traces)
     } catch (err) {
+      setDetail(null)
+      setSpans([])
       const msg = formatTracingError(err)
       if (msg.startsWith('BLOCKED_BY_CONTRACT')) setBlocked(msg); else setError(msg)
     } finally { setLoading(false) }
@@ -44,7 +45,7 @@ export function TraceDetailSection({ traceId, onNavigate }) {
       </div>
 
       <ErrorBox>{error}</ErrorBox>{blocked && <Blocked>{blocked}</Blocked>}
-      <AgentEvidenceNotice>Trace 详情需要从 Span 的服务、实例和端点回查进程 agentId, 再关联主机 Agent、心跳、数据到达和配置版本; 当前契约缺失时只提供可追踪入口, 不伪造探针状态。</AgentEvidenceNotice>
+      <AgentEvidenceNotice>Trace 详情需要从 Span 的服务、实例和端点回查进程 agentId, 再关联主机 FindX Agent、心跳、数据到达和配置版本; 当前契约缺失时只提供可追踪入口, 不伪造探针状态。</AgentEvidenceNotice>
       <AgentLinkActions onNavigate={onNavigate} q={traceId} />
 
       <div className='fx-tracing-trace-detail'>
