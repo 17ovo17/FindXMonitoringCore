@@ -170,6 +170,10 @@ func pluginConfigSpec(templateID, pluginID, reloadStrategy string) *model.FindXA
 		CredentialRefRequired: true,
 		AuditEvent:            "findx_agent.plugin_config.remote_mutation.requested",
 		SourceEvidence:        pluginSourceEvidence(templateID),
+		PluginSourceMap:       pluginSourceMapForTemplate(templateID),
+		PlatformMatrix:        pluginPlatformMatrixForTemplate(templateID),
+		SecurityProfile:       pluginSecurityProfileForTemplate(templateID),
+		Blockers:              pluginConfigContractBlockers(),
 	}
 }
 

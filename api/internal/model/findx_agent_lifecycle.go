@@ -16,22 +16,22 @@ const (
 )
 
 const (
-	FindXAgentExecutionStatePlanned            = "planned"
-	FindXAgentExecutionStatePreflightFailed    = "preflight_failed"
-	FindXAgentExecutionStateBlockedByContract  = "blocked_by_contract"
-	FindXAgentExecutionStateDispatching        = "dispatching"
-	FindXAgentExecutionStateRunning            = "running"
-	FindXAgentExecutionStateReceiptPending     = "receipt_pending"
-	FindXAgentExecutionStateServiceRegistered  = "service_registered"
-	FindXAgentExecutionStateHeartbeatSeen      = "heartbeat_seen"
-	FindXAgentExecutionStateDataArrivalSeen    = "data_arrival_seen"
-	FindXAgentExecutionStateFailed             = "failed"
-	FindXAgentExecutionStateRolledBack         = "rolled_back"
-	FindXAgentExecutionStateUninstalled        = "uninstalled"
+	FindXAgentExecutionStatePlanned           = "planned"
+	FindXAgentExecutionStatePreflightFailed   = "preflight_failed"
+	FindXAgentExecutionStateBlockedByContract = "blocked_by_contract"
+	FindXAgentExecutionStateDispatching       = "dispatching"
+	FindXAgentExecutionStateRunning           = "running"
+	FindXAgentExecutionStateReceiptPending    = "receipt_pending"
+	FindXAgentExecutionStateServiceRegistered = "service_registered"
+	FindXAgentExecutionStateHeartbeatSeen     = "heartbeat_seen"
+	FindXAgentExecutionStateDataArrivalSeen   = "data_arrival_seen"
+	FindXAgentExecutionStateFailed            = "failed"
+	FindXAgentExecutionStateRolledBack        = "rolled_back"
+	FindXAgentExecutionStateUninstalled       = "uninstalled"
 )
 
 type FindXAgentExecutionStateMachine struct {
-	CurrentState string   `json:"current_state"`
+	CurrentState  string   `json:"current_state"`
 	AllowedStates []string `json:"allowed_states"`
 	Terminal      bool     `json:"terminal"`
 	SafeToRetry   bool     `json:"safe_to_retry"`
@@ -52,9 +52,9 @@ type FindXAgentReceiptContract struct {
 }
 
 type FindXAgentReceiptContractMatrixRow struct {
-	Scope            string   `json:"scope"`
-	Platform         string   `json:"platform"`
-	ExecutionSurface string   `json:"execution_surface"`
+	Scope             string   `json:"scope"`
+	Platform          string   `json:"platform"`
+	ExecutionSurface  string   `json:"execution_surface"`
 	RequiredContracts []string `json:"required_contracts"`
 	MissingContracts  []string `json:"missing_contracts"`
 	Status            string   `json:"status"`
@@ -264,19 +264,62 @@ type FindXAgentConfigTemplate struct {
 }
 
 type FindXAgentPluginConfigSpec struct {
-	PluginID              string   `json:"plugin_id"`
-	PluginVersion         string   `json:"plugin_version"`
-	ConfigFormat          string   `json:"config_format"`
-	ConfigSnippetRef      string   `json:"config_snippet_ref"`
-	ProviderModes         []string `json:"provider_modes"`
-	ReloadStrategy        string   `json:"reload_strategy"`
-	RestartStrategy       string   `json:"restart_strategy"`
-	RemoteMutation        bool     `json:"remote_mutation"`
-	RemoteMutationStatus  string   `json:"remote_mutation_status"`
-	RolloutMetadata       []string `json:"rollout_metadata"`
-	CredentialRefRequired bool     `json:"credential_ref_required"`
-	AuditEvent            string   `json:"audit_event"`
-	SourceEvidence        []string `json:"source_evidence"`
+	PluginID              string                          `json:"plugin_id"`
+	PluginVersion         string                          `json:"plugin_version"`
+	ConfigFormat          string                          `json:"config_format"`
+	ConfigSnippetRef      string                          `json:"config_snippet_ref"`
+	ProviderModes         []string                        `json:"provider_modes"`
+	ReloadStrategy        string                          `json:"reload_strategy"`
+	RestartStrategy       string                          `json:"restart_strategy"`
+	RemoteMutation        bool                            `json:"remote_mutation"`
+	RemoteMutationStatus  string                          `json:"remote_mutation_status"`
+	RolloutMetadata       []string                        `json:"rollout_metadata"`
+	CredentialRefRequired bool                            `json:"credential_ref_required"`
+	AuditEvent            string                          `json:"audit_event"`
+	SourceEvidence        []string                        `json:"source_evidence"`
+	PluginSourceMap       []FindXAgentPluginSourceSpec    `json:"plugin_source_map"`
+	PlatformMatrix        []FindXAgentPluginPlatformSpec  `json:"platform_matrix"`
+	SecurityProfile       FindXAgentPluginSecurityProfile `json:"security_profile"`
+	Blockers              []string                        `json:"blockers,omitempty"`
+}
+
+type FindXAgentPluginSourceSpec struct {
+	PluginID                 string   `json:"plugin_id"`
+	PluginCategory           string   `json:"plugin_category"`
+	SourceDirectories        []string `json:"source_directories"`
+	ConfigPaths              []string `json:"config_paths"`
+	ConfigFormat             string   `json:"config_format"`
+	SupportedPlatforms       []string `json:"supported_platforms"`
+	SecurityLevel            string   `json:"security_level"`
+	UnsafePlugin             bool     `json:"unsafe_plugin"`
+	UnsafePluginPolicyRef    string   `json:"unsafe_plugin_policy_ref,omitempty"`
+	RemoteMutationStatus     string   `json:"remote_mutation_status"`
+	Blockers                 []string `json:"blockers,omitempty"`
+	SourceEvidence           []string `json:"source_evidence"`
+	SourceEvidenceSummaryRef string   `json:"source_evidence_summary_ref,omitempty"`
+}
+
+type FindXAgentPluginPlatformSpec struct {
+	Platform            string   `json:"platform"`
+	ConfigPath          string   `json:"config_path"`
+	ConfigFormat        string   `json:"config_format"`
+	ReloadSupport       string   `json:"reload_support"`
+	ReloadReceiptRef    string   `json:"reload_receipt_ref,omitempty"`
+	RestartReceiptRef   string   `json:"restart_receipt_ref,omitempty"`
+	Selectors           []string `json:"selectors,omitempty"`
+	ReceiptRefs         []string `json:"receipt_refs,omitempty"`
+	ReceiptRequirements []string `json:"receipt_requirements,omitempty"`
+	Status              string   `json:"status"`
+	Blockers            []string `json:"blockers,omitempty"`
+}
+
+type FindXAgentPluginSecurityProfile struct {
+	SecurityLevel         string   `json:"security_level"`
+	UnsafePluginPolicyRef string   `json:"unsafe_plugin_policy_ref,omitempty"`
+	UnsafePluginIDs       []string `json:"unsafe_plugin_ids,omitempty"`
+	BlockedPluginIDs      []string `json:"blocked_plugin_ids,omitempty"`
+	Blockers              []string `json:"blockers,omitempty"`
+	EvidenceRefs          []string `json:"evidence_refs,omitempty"`
 }
 
 type FindXAgentConfigRolloutRequest struct {

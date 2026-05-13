@@ -21,14 +21,14 @@ func baseFindXAgentPackageDefs() []agentPackageDef {
 			osList: []string{"Linux", "Windows"}, shape: "collector plugins / service",
 			telemetryKinds: []string{"metrics", "process", "host"}, configKeys: []string{"scrape_interval", "plugin_set", "plugin_id", "plugin_version", "config_snippet_ref", "provider_mode", "reload_strategy", "global_labels", "credential_ref"},
 			configTemplateIDs: []string{"metrics", "host-plugin"},
-			pluginConfig:      pluginConfigSpec("host-plugin", "input.cpu / input.mem / input.disk / input.net", "local-reload"),
+			pluginConfig:      pluginConfigSpec("host-plugin", pluginIDForTemplate("host-plugin"), "local-reload"),
 		},
 		{
 			id: "container-collector", name: "容器采集能力包", domain: "基础采集", runtime: "Container",
 			osList: []string{"Linux", "Kubernetes"}, shape: "daemonset / sidecar / container plugin",
 			telemetryKinds: []string{"metrics", "container", "workload"}, configKeys: []string{"cluster_ref", "namespace_selector", "workload_selector", "plugin_id", "config_snippet_ref", "provider_mode", "restart_strategy", "credential_ref"},
 			configTemplateIDs: []string{"metrics", "container-plugin"},
-			pluginConfig:      pluginConfigSpec("container-plugin", "input.docker / input.cadvisor / input.kubernetes", "rolling-restart"),
+			pluginConfig:      pluginConfigSpec("container-plugin", pluginIDForTemplate("container-plugin"), "rolling-restart"),
 		},
 		{
 			id: "log-collector", name: "日志采集能力包", domain: "日志采集", runtime: "Logs",
@@ -64,7 +64,7 @@ func edgeFindXAgentPackageDefs() []agentPackageDef {
 			osList: []string{"Linux", "Kubernetes"}, shape: "gateway plugin / reverse proxy module",
 			telemetryKinds: []string{"tracing", "topology", "logs"}, configKeys: []string{"gateway_id", "route_selector", "collector_endpoint", "sampling", "reload_policy"},
 			configTemplateIDs: []string{"gateway-plugin", "tracing", "logs"},
-			pluginConfig:      pluginConfigSpec("gateway-plugin", "gateway module / reverse proxy plugin", "reload"),
+			pluginConfig:      pluginConfigSpec("gateway-plugin", pluginIDForTemplate("gateway-plugin"), "reload"),
 		},
 		{
 			id: "browser-client", name: "前端体验能力包", domain: "前端体验", runtime: "Web",
@@ -190,11 +190,11 @@ func pluginTemplate(id, name, scope string, packages ...string) agentConfigTempl
 func pluginIDForTemplate(id string) string {
 	switch id {
 	case "host-plugin":
-		return "input.cpu / input.mem / input.disk / input.net"
+		return "findx-agent.host-plugin-source-map"
 	case "container-plugin":
-		return "input.docker / input.cadvisor / input.kubernetes"
+		return "findx-agent.container-plugin-source-map"
 	default:
-		return "gateway module / reverse proxy plugin"
+		return "findx-agent.gateway-plugin-source-map"
 	}
 }
 
