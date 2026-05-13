@@ -37,7 +37,7 @@ func newBlockedFindXAgentInstallPlan(req model.FindXAgentInstallPlanRequest, pkg
 		Blocker:              packageInstallBlocker(pkg),
 		Audit:                "findx_agent.install_plan.requested",
 		CredentialRefPresent: strings.TrimSpace(req.CredentialRef) != "",
-		Metadata:             safeAgentLifecycleMetadata(req.Metadata),
+		Metadata:             safeLinuxInstallerMetadata(req.Metadata),
 	}
 }
 
@@ -101,10 +101,20 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 		"script_manifest_ref",
 		"executor_ref",
 		"safety_policy_path",
+		"systemd_unit_ref",
+		"curl_installer_ref",
+		"env_template_ref",
 		"service_receipt_ref",
 		"heartbeat_validator_ref",
 		"data_arrival_validator_ref",
 		"audit_ref_or_evidence_chain_ref",
+		"runner_whitelist_ref",
+		"systemd_mode",
+		"systemd_unit_name_ref_or_systemd_unit_path_ref",
+		"curl_command_ref",
+		"curl_manifest_ref",
+		"reload_receipt_ref",
+		"service_status_receipt_ref",
 		"credential_ref",
 	} {
 		if strings.Contains(reason, key) {
@@ -130,18 +140,58 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 func linuxInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.LinuxInstallerPrerequisites {
 	metadata := req.Metadata
 	return security.LinuxInstallerPrerequisites{
-		PackageRepositoryRef: installerMetadataValue(metadata, "package_repository_ref"),
-		SignatureRef:         installerMetadataValue(metadata, "signature_ref"),
-		Checksum:             installerMetadataValue(metadata, "checksum"),
-		ScriptManifestRef:    installerMetadataValue(metadata, "script_manifest_ref"),
-		ExecutorRef:          installerMetadataValue(metadata, "executor_ref"),
-		SafetyPolicyPath:     installerMetadataValue(metadata, "safety_policy_path"),
-		Runner:               installerMetadataValue(metadata, "runner"),
-		SSHHostKey:           installerMetadataValue(metadata, "ssh_host_key"),
-		SSHFingerprint:       installerMetadataValue(metadata, "ssh_fingerprint"),
-		SystemdUnitRef:       installerMetadataValue(metadata, "systemd_unit_ref"),
-		CurlInstallerRef:     installerMetadataValue(metadata, "curl_installer_ref"),
-		EnvTemplateRef:       installerMetadataValue(metadata, "env_template_ref"),
+		PackageRepositoryRef:    installerMetadataValue(metadata, "package_repository_ref"),
+		SignatureRef:            installerMetadataValue(metadata, "signature_ref"),
+		Checksum:                installerMetadataValue(metadata, "checksum"),
+		ScriptManifestRef:       installerMetadataValue(metadata, "script_manifest_ref"),
+		ExecutorRef:             installerMetadataValue(metadata, "executor_ref"),
+		SafetyPolicyPath:        installerMetadataValue(metadata, "safety_policy_path"),
+		Runner:                  installerMetadataValue(metadata, "runner"),
+		SSHHostKey:              installerMetadataValue(metadata, "ssh_host_key"),
+		SSHFingerprint:          installerMetadataValue(metadata, "ssh_fingerprint"),
+		SystemdUnitRef:          installerMetadataValue(metadata, "systemd_unit_ref"),
+		SystemdUnitNameRef:      installerMetadataValue(metadata, "systemd_unit_name_ref"),
+		SystemdUnitPathRef:      installerMetadataValue(metadata, "systemd_unit_path_ref"),
+		SystemdMode:             installerMetadataValue(metadata, "systemd_mode"),
+		CurlInstallerRef:        installerMetadataValue(metadata, "curl_installer_ref"),
+		CurlCommandRef:          installerMetadataValue(metadata, "curl_command_ref"),
+		CurlManifestRef:         installerMetadataValue(metadata, "curl_manifest_ref"),
+		EnvTemplateRef:          installerMetadataValue(metadata, "env_template_ref"),
+		ServiceReceiptRef:       installerMetadataValue(metadata, "service_receipt_ref"),
+		HeartbeatValidatorRef:   installerMetadataValue(metadata, "heartbeat_validator_ref"),
+		DataArrivalValidatorRef: installerMetadataValue(metadata, "data_arrival_validator_ref"),
+		AuditRef:                installerMetadataValue(metadata, "audit_ref"),
+		EvidenceChainRef:        installerMetadataValue(metadata, "evidence_chain_ref"),
+		RunnerWhitelistRef:      installerMetadataValue(metadata, "runner_whitelist_ref"),
+		ReloadReceiptRef:        installerMetadataValue(metadata, "reload_receipt_ref"),
+		ServiceStatusReceiptRef: installerMetadataValue(metadata, "service_status_receipt_ref"),
+	}
+}
+
+func safeLinuxInstallerMetadata(input map[string]string) map[string]string {
+	out := safeAgentLifecycleMetadata(input)
+	if runner, ok := out["runner"]; ok {
+		switch normalizeSafeLinuxInstallerRunner(runner) {
+		case "local", "systemd", "ssh":
+			out["runner"] = normalizeSafeLinuxInstallerRunner(runner)
+		default:
+			delete(out, "runner")
+		}
+	}
+	return out
+}
+
+func normalizeSafeLinuxInstallerRunner(value string) string {
+	clean := strings.ToLower(strings.TrimSpace(value))
+	switch clean {
+	case "ssh":
+		return "ssh"
+	case "local", "controlled-local":
+		return "local"
+	case "systemd", "local-systemd", "linux-systemd":
+		return "systemd"
+	default:
+		return ""
 	}
 }
 
