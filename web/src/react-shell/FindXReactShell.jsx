@@ -11,6 +11,7 @@ import { NotificationsPage } from './base-monitoring/notifications/Notifications
 import { LogsPage } from './logs/LogsPage.jsx'
 import { OrgPage } from './org/OrgPage.jsx'
 import { PlatformPage } from './platform/PlatformPage.jsx'
+import { BusinessProbePage } from './probes/BusinessProbePage.jsx'
 import { TracingPage } from './tracing/TracingPage.jsx'
 import { NotFoundPage } from './system/NotFoundPage.jsx'
 import { AuthBoundaryProvider, ThemeBoundaryProvider } from './contexts.jsx'
@@ -58,6 +59,7 @@ const getRoute = (path) => {
   if (path === '/integrations') return { name: 'integrations' }
   if (path === '/tracing') return { name: 'tracing', params: {} }
   if (path === '/logs') return { name: 'logs' }
+  if (path === '/status') return { name: 'status' }
   if (path === '/agents') return { name: 'agents' }
   if (path === '/aiops') return { name: 'aiops' }
   if (path === '/org') return { name: 'org' }
@@ -159,6 +161,7 @@ function renderPage(route, query, navigate, openTrace, openAgent) {
   if (route.name === 'integrations') return <IntegrationsPage {...props} />
   if (route.name === 'tracing') return <TracingPage {...props} params={route.params || {}} />
   if (route.name === 'logs') return <LogsPage {...props} onOpenTrace={openTrace} onOpenAgent={openAgent} />
+  if (route.name === 'status') return <BusinessProbePage {...props} />
   if (route.name === 'agents') return <AgentPage {...props} />
   if (route.name === 'aiops') return <AiSrePage {...props} />
   if (route.name === 'org') return <OrgPage {...props} />

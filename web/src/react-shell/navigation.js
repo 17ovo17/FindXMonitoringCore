@@ -147,6 +147,19 @@ export const navGroups = [
     ],
   },
   {
+    key: 'business-probes',
+    label: '业务拨测',
+    path: '/status',
+    defaultSection: 'public',
+    children: [
+      { section: 'public', label: '状态页' },
+      { section: 'config', label: '拨测配置' },
+    ],
+    hiddenChildren: [
+      { section: 'incidents', label: '事故维护', to: to('/status', 'incidents') },
+    ],
+  },
+  {
     key: 'organization',
     label: '人员组织',
     path: '/org',

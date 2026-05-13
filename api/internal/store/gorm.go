@@ -55,6 +55,13 @@ func autoMigrateCmdb() {
 		&model.CmdbInstanceRelation{},
 		&model.McpServer{},
 		&model.MonitorAlertEventRecord{},
+		&model.ProbeCheck{},
+		&model.ProbeCheckResult{},
+		&model.ProbeStatusPage{},
+		&model.ProbeIncident{},
+		&model.ProbeSubscription{},
+		&model.ProbeNotificationBinding{},
+		&model.ProbeAlertBinding{},
 	)
 	if err != nil {
 		logrus.WithError(err).Error("gorm: auto migrate cmdb failed")

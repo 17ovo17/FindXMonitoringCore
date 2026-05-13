@@ -138,6 +138,8 @@ const directRedirects = {
   '/embedded-products': ['/integrations', 'systems'],
   '/metric/explorer': ['/query', 'metrics'],
   '/log/explorer': ['/logs', 'query'],
+  '/business-probes': ['/status', 'config'],
+  '/status-page': ['/status', 'public'],
   '/metrics-built-in': ['/query', 'built-in-metrics'],
   '/object/explorer': ['/query', 'objects'],
   '/recording-rules': ['/query', 'recording-rules'],

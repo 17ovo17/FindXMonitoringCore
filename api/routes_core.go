@@ -105,6 +105,7 @@ func registerAssetsAndLogsRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.PUT("/host-assets/:id/resource-group", mw.roleAdminRequired, handler.UpdateHostAssetResourceGroup)
 	v1.PUT("/host-assets/:id/workspace", mw.roleAdminRequired, handler.UpdateHostAssetWorkspace)
 	registerLogRoutes(v1, mw)
+	registerProbeRoutes(v1, mw)
 }
 
 func registerLogRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {

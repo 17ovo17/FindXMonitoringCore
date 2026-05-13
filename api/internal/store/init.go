@@ -37,6 +37,12 @@ var (
 	findxAgentConfigRollouts      = map[string]*model.FindXAgentConfigRollout{}
 	findxAgentExecutionTasks      = map[string]*model.FindXAgentExecutionTask{}
 	findxAgentDataArrivalEvidence = map[string]*model.FindXAgentDataArrivalEvidence{}
+	probeChecks                   = map[string]*model.ProbeCheck{}
+	probeCheckResults             = map[string]*model.ProbeCheckResult{}
+	probeStatusPages              = map[string]*model.ProbeStatusPage{}
+	probeIncidents                = map[string]*model.ProbeIncident{}
+	probeNotificationBindings     = map[string]*model.ProbeNotificationBinding{}
+	probeAlertBindings            = map[string]*model.ProbeAlertBinding{}
 	contractMatrixEntries         = map[string]*model.ContractMatrixEntry{}
 	monitorDashboards             = map[string]*model.MonitorDashboard{}
 	monitorBuiltinComponents      = map[string]*model.MonitoringBuiltinComponent{}
