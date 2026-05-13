@@ -153,8 +153,12 @@ func CreateFindXAgentConfigRollout(c *gin.Context) {
 		"code":              http.StatusConflict,
 		"error":             saved.Blocker,
 		"status":            "blocked",
+		"state_machine":     blockedExecutionStateMachine(saved.Blocker),
+		"receipt_contract":  configRolloutReceiptContract(req, metadata, saved.CredentialRefPresent, missing),
+		"receipt_matrix":    configRolloutReceiptContractMatrix(),
 		"blockers":          configRolloutResponseBlockers(missing),
 		"missing_contracts": missing,
+		"safe_to_retry":     false,
 		"data":              saved,
 	})
 }
@@ -462,7 +466,7 @@ func looksSensitive(value string) bool {
 	for _, marker := range []string{
 		"credential", "password", "passwd", "secret", "token", "cookie",
 		"authorization", "bearer", "api_key", "apikey", "access_key",
-		"private_key", "session", "dsn",
+		"private_key", "session", "dsn", "marker", "sensitive",
 	} {
 		if strings.Contains(normalized, marker) {
 			return true

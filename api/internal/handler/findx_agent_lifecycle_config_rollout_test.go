@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"ai-workbench-api/internal/model"
 	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -126,10 +127,67 @@ func TestFindXAgentConfigRolloutPluginRequiresReloadRefs(t *testing.T) {
 	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
 		t.Fatalf("plugin missing reload refs should persist blocked 409, code=%d payload=%#v", w.Code, payload)
 	}
-	for _, want := range []string{"drift_check_ref", "evidence_chain_ref", "plugin_config_writer_ref", "reload_command_ref", "reload_receipt_ref", "rollback_receipt_ref"} {
+	for _, want := range []string{"data_arrival_validator_ref", "drift_check_ref", "evidence_chain_ref", "plugin_config_writer_ref", "reload_command_ref", "reload_receipt_ref", "rollback_receipt_ref"} {
 		if !strings.Contains(payload.Error, want) || !strings.Contains(payload.Data.Blocker, want) {
 			t.Fatalf("plugin reload blocker should include %q, payload=%#v", want, payload)
 		}
+	}
+}
+
+func TestFindXAgentConfigRolloutWindowsHUPRequiresRestartReceiptRefs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"local","plugin_id":"input.cpu","reload_strategy":"hup","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"target_os":"windows","transport":"windows_service"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("windows hup rollout should stay blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	for _, want := range []string{"data_arrival_validator_ref", "restart_strategy_ref", "service_restart_receipt_ref"} {
+		if !containsLifecycleTestString(payload.MissingContracts, want) {
+			t.Fatalf("windows hup missing_contracts should include %q, payload=%#v", want, payload)
+		}
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutWindowsServiceTransportRequiresRestartReceiptRefs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"local","plugin_id":"input.cpu","reload_strategy":"local-reload","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"executor_ref":"executor-ref",` + completeRemotePreflightMetadataWithoutTargetOSAndTransport() + `,` + completePluginConfigRolloutMetadata() + `,"transport":"windows_service"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("windows_service transport rollout should stay blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	for _, want := range []string{"data_arrival_validator_ref", "restart_strategy_ref", "service_restart_receipt_ref"} {
+		if !containsLifecycleTestString(payload.MissingContracts, want) {
+			t.Fatalf("windows_service transport missing_contracts should include %q, payload=%#v", want, payload)
+		}
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutUnsafeExecPluginBlocked(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, pluginID := range []string{"inputs.exec", "input.exec", "exec"} {
+		t.Run(pluginID, func(t *testing.T) {
+			resetAgentLifecycleRecordsForTest(t)
+			body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"local","plugin_id":"` + pluginID + `","reload_strategy":"hup","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"data_arrival_validator_ref":"validator-ref"}}`)
+			w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+			payload := decodeConfigRolloutEnvelope(t, w)
+			if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+				t.Fatalf("unsafe exec plugin should stay blocked, code=%d payload=%#v", w.Code, payload)
+			}
+			if !containsLifecycleTestString(payload.Blockers, "UNSAFE_PLUGIN_BLOCKED_BY_CONTRACT") ||
+				!containsLifecycleTestString(payload.MissingContracts, "unsafe_plugin_policy_ref") {
+				t.Fatalf("unsafe exec plugin should expose unsafe policy blocker, payload=%#v", payload)
+			}
+			assertNoConfigRolloutExecutionStates(t, w.Body.String())
+			assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+		})
 	}
 }
 
@@ -292,7 +350,7 @@ func TestFindXAgentConfigRolloutCompleteRefsStillBlockedByExecutorGate(t *testin
 func TestFindXAgentConfigRolloutResponseIncludesSafeContractEnvelope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	resetAgentLifecycleRecordsForTest(t)
-	body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"remote_mutation":true}`)
+	body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"remote_mutation":true,"metadata":{"marker":"marker-secret","sensitive":"sensitive-secret"}}`)
 	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
 	payload := decodeConfigRolloutEnvelope(t, w)
 	if w.Code != http.StatusConflict || payload.Status != "blocked" {
@@ -308,7 +366,50 @@ func TestFindXAgentConfigRolloutResponseIncludesSafeContractEnvelope(t *testing.
 			t.Fatalf("missing_contracts should include %q, payload=%#v", want, payload)
 		}
 	}
+	if payload.ReceiptContract.ID == "" ||
+		payload.ReceiptContract.Scope != "categraf_plugin_config_rollout" ||
+		payload.ReceiptContract.Status != "blocked_by_contract" ||
+		!payload.ReceiptContract.CredentialRequired ||
+		payload.ReceiptContract.CredentialProvided {
+		t.Fatalf("blocked envelope should include config rollout receipt_contract, payload=%#v", payload)
+	}
+	for _, want := range []string{"writer_receipt", "reload_receipt", "restart_receipt", "drift_receipt", "rollback_receipt", "data_arrival_receipt", "evidence_chain"} {
+		if !containsLifecycleTestString(payload.ReceiptContract.RequiredReceipts, want) {
+			t.Fatalf("receipt_contract required_receipts should include %q, payload=%#v", want, payload)
+		}
+	}
+	if !containsLifecycleTestString(payload.ReceiptContract.MissingContracts, "config_snippet_ref") ||
+		!containsLifecycleTestString(payload.ReceiptContract.MissingContracts, "credential_ref") {
+		t.Fatalf("receipt_contract missing_contracts should mirror missing refs, payload=%#v", payload)
+	}
+	assertConfigRolloutReceiptMatrixBlocked(t, payload.ReceiptMatrix)
 	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutReceiptScopeRejectsUnknownMetadataScope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, scope := range []string{"../token", "business group", "custom", "agent-token", "   "} {
+		t.Run(scope, func(t *testing.T) {
+			resetAgentLifecycleRecordsForTest(t)
+			body := strings.NewReader(`{"template_id":"host-plugin","target_ids":["target-a"],"remote_mutation":true,"metadata":{"scope":"` + scope + `"}}`)
+			w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+			payload := decodeConfigRolloutEnvelope(t, w)
+			if w.Code != http.StatusConflict || payload.Status != "blocked" {
+				t.Fatalf("unknown scope should stay blocked, code=%d payload=%#v", w.Code, payload)
+			}
+			if payload.ReceiptContract.Scope != "categraf_plugin_config_rollout" {
+				t.Fatalf("unknown scope must not be echoed into receipt contract, scope=%q payload=%#v", scope, payload)
+			}
+			if strings.Contains(payload.ReceiptContract.Scope, "token") ||
+				strings.Contains(payload.ReceiptContract.Scope, "..") ||
+				strings.Contains(payload.ReceiptContract.Scope, "business group") ||
+				strings.Contains(payload.ReceiptContract.Scope, "custom") {
+				t.Fatalf("receipt contract scope contains unsafe metadata scope: %#v", payload.ReceiptContract)
+			}
+			assertNoConfigRolloutExecutionStates(t, w.Body.String())
+			assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+		})
+	}
 }
 
 func TestFindXAgentConfigRolloutPluginClassScopeAndStrategyMatrixStaysBlocked(t *testing.T) {
@@ -355,11 +456,49 @@ func TestFindXAgentConfigRolloutCompleteRefsEnvelopeStillExecutorDisabled(t *tes
 	if w.Code != http.StatusConflict || len(payload.MissingContracts) != 0 {
 		t.Fatalf("complete refs should only hit executor disabled gate, code=%d payload=%#v", w.Code, payload)
 	}
+	if payload.SafeToRetry || !payload.StateMachine.Terminal ||
+		payload.StateMachine.CurrentState != "blocked_by_contract" ||
+		len(payload.StateMachine.AllowedStates) != 1 ||
+		payload.StateMachine.AllowedStates[0] != "blocked_by_contract" {
+		t.Fatalf("complete refs should expose terminal blocked state machine, payload=%#v", payload)
+	}
 	if !containsLifecycleTestString(payload.Blockers, "EXECUTOR_DISABLED_BY_CONTRACT") {
 		t.Fatalf("complete refs should expose executor disabled blocker, payload=%#v", payload)
 	}
+	if payload.ReceiptContract.Status != "blocked_by_contract" ||
+		len(payload.ReceiptContract.MissingContracts) != 1 ||
+		payload.ReceiptContract.MissingContracts[0] != "executor_disabled_contract" ||
+		!payload.ReceiptContract.CredentialProvided {
+		t.Fatalf("complete refs should expose only executor-disabled receipt contract, payload=%#v", payload)
+	}
+	assertConfigRolloutReceiptMatrixBlocked(t, payload.ReceiptMatrix)
 	assertNoConfigRolloutExecutionStates(t, w.Body.String())
 	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func assertConfigRolloutReceiptMatrixBlocked(t *testing.T, matrix []model.FindXAgentReceiptContractMatrixRow) {
+	t.Helper()
+	if len(matrix) == 0 {
+		t.Fatalf("receipt_matrix is required")
+	}
+	wantScopes := []string{"writer", "reload", "restart", "drift", "rollback", "data_arrival", "evidence_chain"}
+	for _, want := range wantScopes {
+		found := false
+		for _, row := range matrix {
+			if row.Status != "blocked_by_contract" {
+				t.Fatalf("receipt_matrix row must stay blocked_by_contract: %#v", row)
+			}
+			if containsLifecycleTestString(row.MissingContracts, "executor_disabled_contract") {
+				t.Fatalf("receipt_matrix must not expose success or executor-disabled shortcut: %#v", row)
+			}
+			if row.Scope == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("receipt_matrix missing scope %q: %#v", want, matrix)
+		}
+	}
 }
 
 func TestFindXAgentPackagesExposePluginConfigMetadataIncludesHTTPProviderRefs(t *testing.T) {

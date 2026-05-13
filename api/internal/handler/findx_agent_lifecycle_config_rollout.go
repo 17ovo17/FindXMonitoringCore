@@ -85,6 +85,9 @@ func configRolloutResponseBlockers(missing []string) []string {
 		return []string{agentBlocked, "EXECUTOR_DISABLED_BY_CONTRACT"}
 	}
 	values := append([]string{agentBlocked, "MISSING_CONTRACTS"}, missing...)
+	if containsConfigRolloutRef(missing, "unsafe_plugin_policy_ref") {
+		values = append(values, "UNSAFE_PLUGIN_BLOCKED_BY_CONTRACT")
+	}
 	return uniquePackageRepositoryBlockers(values)
 }
 
@@ -113,6 +116,14 @@ func missingConfigRolloutRefs(req model.FindXAgentConfigRolloutRequest, metadata
 			missingSet[key] = true
 		}
 	}
+	if isUnsafeCategrafPlugin(req.PluginID) {
+		missingSet["unsafe_plugin_policy_ref"] = true
+	}
+	if requiresWindowsServiceRestartRefs(values) {
+		missingSet["data_arrival_validator_ref"] = true
+		missingSet["restart_strategy_ref"] = true
+		missingSet["service_restart_receipt_ref"] = true
+	}
 	missing := make([]string, 0, len(missingSet))
 	for key := range missingSet {
 		missing = append(missing, key)
@@ -128,6 +139,7 @@ func requiredConfigRolloutRefs(req model.FindXAgentConfigRolloutRequest) []strin
 			"config_format",
 			"drift_check_ref",
 			"evidence_chain_ref",
+			"data_arrival_validator_ref",
 			"plugin_config_writer_ref",
 			"plugin_id",
 			"provider_mode",
@@ -257,13 +269,16 @@ func sanitizedConfigRolloutRefs(req model.FindXAgentConfigRolloutRequest, metada
 		"reload_interval_ref":           strings.TrimSpace(metadata["reload_interval_ref"]),
 		"reload_receipt_ref":            strings.TrimSpace(metadata["reload_receipt_ref"]),
 		"reload_strategy":               sanitizeRemoteMutationValue("reload_strategy", req.ReloadStrategy),
+		"restart_strategy_ref":          strings.TrimSpace(metadata["restart_strategy_ref"]),
 		"rollback_ref":                  sanitizeRemoteMutationValue("rollback_ref", req.RollbackRef),
 		"rollback_receipt_ref":          strings.TrimSpace(metadata["rollback_receipt_ref"]),
 		"rollout_receipt_ref":           strings.TrimSpace(metadata["rollout_receipt_ref"]),
 		"rollout_strategy_ref":          strings.TrimSpace(metadata["rollout_strategy_ref"]),
+		"service_restart_receipt_ref":   strings.TrimSpace(metadata["service_restart_receipt_ref"]),
 		"target_os":                     strings.TrimSpace(metadata["target_os"]),
 		"timeout_ref":                   strings.TrimSpace(metadata["timeout_ref"]),
 		"timeout_policy_ref":            strings.TrimSpace(metadata["timeout_policy_ref"]),
+		"transport":                     normalizeInstallPlanTransport(metadata["transport"]),
 		"workload_selector_ref":         strings.TrimSpace(metadata["workload_selector_ref"]),
 	}
 }
@@ -291,4 +306,30 @@ func isCategrafPluginTemplate(templateID string) bool {
 
 func isHTTPProviderConfigRollout(req model.FindXAgentConfigRolloutRequest) bool {
 	return strings.EqualFold(strings.TrimSpace(req.ProviderMode), "http")
+}
+
+func containsConfigRolloutRef(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func isUnsafeCategrafPlugin(pluginID string) bool {
+	clean := strings.ToLower(strings.TrimSpace(pluginID))
+	clean = strings.TrimPrefix(clean, "inputs.")
+	clean = strings.TrimPrefix(clean, "input.")
+	return clean == "exec"
+}
+
+func requiresWindowsServiceRestartRefs(values map[string]string) bool {
+	targetOS := strings.ToLower(strings.TrimSpace(values["target_os"]))
+	transport := strings.ToLower(strings.TrimSpace(values["transport"]))
+	reloadStrategy := strings.ToLower(strings.TrimSpace(values["reload_strategy"]))
+	if targetOS != "windows" && !strings.Contains(transport, "windows_service") {
+		return false
+	}
+	return reloadStrategy == "hup" || strings.Contains(transport, "windows_service")
 }
