@@ -425,11 +425,19 @@ type FindXAgentArtifactMetadata struct {
 }
 
 type FindXAgentDataArrival struct {
-	Kind          string    `json:"kind"`
-	Name          string    `json:"name"`
-	Status        string    `json:"status"`
-	AgentCount    int       `json:"agent_count"`
-	LastSeen      time.Time `json:"last_seen,omitempty"`
-	Blocker       string    `json:"blocker,omitempty"`
-	EvidenceCount int       `json:"evidence_count"`
+	Kind            string    `json:"kind"`
+	Name            string    `json:"name"`
+	Status          string    `json:"status"`
+	AgentCount      int       `json:"agent_count"`
+	SourceAgent     string    `json:"source_agent,omitempty"`
+	PackageVersion  string    `json:"package_version,omitempty"`
+	ConfigVersion   string    `json:"config_version,omitempty"`
+	FirstSeen       time.Time `json:"first_seen_at,omitempty"`
+	LastSeen        time.Time `json:"last_seen,omitempty"`
+	LastSeenAt      time.Time `json:"last_seen_at,omitempty"`
+	SampleEvidence  string    `json:"sample_evidence,omitempty"`
+	BackendReceiver string    `json:"backend_receiver,omitempty"`
+	RelatedIDs      []string  `json:"related_ids,omitempty"`
+	Blocker         string    `json:"blocker,omitempty"`
+	EvidenceCount   int       `json:"evidence_count"`
 }

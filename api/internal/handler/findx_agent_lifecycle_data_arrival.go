@@ -15,8 +15,16 @@ func mergeDataArrivalEvidence(items []model.FindXAgentDataArrival, evidence map[
 		}
 		items[i].EvidenceCount = current.EvidenceCount
 		items[i].Status = current.Status
+		items[i].FirstSeen = current.FirstSeen
+		items[i].SourceAgent = current.SourceAgent
+		items[i].PackageVersion = current.PackageVersion
+		items[i].ConfigVersion = current.ConfigVersion
+		items[i].SampleEvidence = current.SampleEvidence
+		items[i].BackendReceiver = current.BackendReceiver
+		items[i].RelatedIDs = append([]string{}, current.RelatedIDs...)
 		if current.LastSeen.After(items[i].LastSeen) {
 			items[i].LastSeen = current.LastSeen
+			items[i].LastSeenAt = current.LastSeenAt
 		}
 		if current.Status == model.FindXAgentDataArrivalStatusReported {
 			items[i].Blocker = ""
@@ -30,12 +38,20 @@ func mergeDataArrivalEvidence(items []model.FindXAgentDataArrival, evidence map[
 			continue
 		}
 		items = append(items, model.FindXAgentDataArrival{
-			Kind:          current.Kind,
-			Name:          receiverBackedDataArrivalName(current.Kind),
-			Status:        current.Status,
-			LastSeen:      current.LastSeen,
-			Blocker:       current.Blocker,
-			EvidenceCount: current.EvidenceCount,
+			Kind:            current.Kind,
+			Name:            receiverBackedDataArrivalName(current.Kind),
+			Status:          current.Status,
+			SourceAgent:     current.SourceAgent,
+			PackageVersion:  current.PackageVersion,
+			ConfigVersion:   current.ConfigVersion,
+			FirstSeen:       current.FirstSeen,
+			LastSeen:        current.LastSeen,
+			LastSeenAt:      current.LastSeenAt,
+			SampleEvidence:  current.SampleEvidence,
+			BackendReceiver: current.BackendReceiver,
+			RelatedIDs:      append([]string{}, current.RelatedIDs...),
+			Blocker:         current.Blocker,
+			EvidenceCount:   current.EvidenceCount,
 		})
 	}
 	return items
