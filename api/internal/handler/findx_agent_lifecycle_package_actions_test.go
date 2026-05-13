@@ -45,7 +45,7 @@ func TestFindXAgentPackageActionsPersistBlockedTasks(t *testing.T) {
 				!strings.Contains(payload.Data.Blocker, tt.missingRef) {
 				t.Fatalf("%s blocker should name missing %s: %s", tt.action, tt.missingRef, payload.Data.Blocker)
 			}
-			for _, forbidden := range []string{"queued", "running", "succeeded"} {
+			for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {
 				if strings.Contains(w.Body.String(), forbidden) {
 					t.Fatalf("%s must not fake execution state %s: %s", tt.action, forbidden, w.Body.String())
 				}

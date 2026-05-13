@@ -62,12 +62,69 @@ func createBlockedFindXAgentInstallExecution(c *gin.Context, req model.FindXAgen
 		return
 	}
 	auditEvent(c, "findx_agent.install_execution.blocked", saved.ID, "high", saved.Status, saved.ErrorSummary, c.GetHeader("X-Test-Batch-Id"))
+	scope := linuxInstallExecutionReceiptScope(saved.Runner)
+	missing := installExecutionMissingContracts(scope, gate.Reason)
 	c.JSON(http.StatusConflict, gin.H{
-		"code":      http.StatusConflict,
-		"error":     saved.ErrorSummary,
-		"data":      plan,
-		"execution": saved,
+		"code":              http.StatusConflict,
+		"error":             saved.ErrorSummary,
+		"status":            "blocked",
+		"state_machine":     blockedExecutionStateMachine(saved.ErrorSummary),
+		"receipt_contract":  installReceiptContract(scope, req, saved.Runner, missing),
+		"receipt_matrix":    findXAgentReceiptContractMatrix(),
+		"missing_contracts": missing,
+		"safe_to_retry":     false,
+		"data":              plan,
+		"execution":         saved,
 	})
+}
+
+func linuxInstallExecutionReceiptScope(runner string) string {
+	if strings.EqualFold(strings.TrimSpace(runner), "ssh") {
+		return "ssh"
+	}
+	return "linux_local"
+}
+
+func installExecutionMissingContracts(scope string, reason string) []string {
+	missing := []string{
+		"executor_contract",
+		"execution_receipt_contract",
+		"service_receipt_contract",
+		"heartbeat_receipt_contract",
+		"data_arrival_receipt_contract",
+		"evidence_chain_contract",
+	}
+	for _, key := range []string{
+		"package_repository_ref",
+		"signature_ref",
+		"checksum",
+		"script_manifest_ref",
+		"executor_ref",
+		"safety_policy_path",
+		"service_receipt_ref",
+		"heartbeat_validator_ref",
+		"data_arrival_validator_ref",
+		"audit_ref_or_evidence_chain_ref",
+		"credential_ref",
+	} {
+		if strings.Contains(reason, key) {
+			missing = append(missing, key)
+		}
+	}
+	switch scope {
+	case "windows_local", "windows_service":
+		missing = append(missing, "windows_service_contract")
+	case "kubernetes", "helm", "operator", "daemonset", "sidecar", "initcontainer":
+		missing = append(missing, "cluster_rbac_contract", "rollout_receipt_contract", "workload_status_receipt_contract")
+		if scope != "kubernetes" {
+			missing = append(missing, scope+"_receipt_contract")
+		}
+	case "ssh":
+		missing = append(missing, "ssh_runner_contract", "host_key_contract")
+	default:
+		missing = append(missing, "systemd_unit_contract")
+	}
+	return uniquePackageRepositoryBlockers(missing)
 }
 
 func linuxInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.LinuxInstallerPrerequisites {

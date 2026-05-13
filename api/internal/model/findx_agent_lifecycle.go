@@ -16,6 +16,52 @@ const (
 )
 
 const (
+	FindXAgentExecutionStatePlanned            = "planned"
+	FindXAgentExecutionStatePreflightFailed    = "preflight_failed"
+	FindXAgentExecutionStateBlockedByContract  = "blocked_by_contract"
+	FindXAgentExecutionStateDispatching        = "dispatching"
+	FindXAgentExecutionStateRunning            = "running"
+	FindXAgentExecutionStateReceiptPending     = "receipt_pending"
+	FindXAgentExecutionStateServiceRegistered  = "service_registered"
+	FindXAgentExecutionStateHeartbeatSeen      = "heartbeat_seen"
+	FindXAgentExecutionStateDataArrivalSeen    = "data_arrival_seen"
+	FindXAgentExecutionStateFailed             = "failed"
+	FindXAgentExecutionStateRolledBack         = "rolled_back"
+	FindXAgentExecutionStateUninstalled        = "uninstalled"
+)
+
+type FindXAgentExecutionStateMachine struct {
+	CurrentState string   `json:"current_state"`
+	AllowedStates []string `json:"allowed_states"`
+	Terminal      bool     `json:"terminal"`
+	SafeToRetry   bool     `json:"safe_to_retry"`
+	Blocker       string   `json:"blocker"`
+}
+
+type FindXAgentReceiptContract struct {
+	ID                 string   `json:"id"`
+	Scope              string   `json:"scope"`
+	Transport          string   `json:"transport"`
+	Runner             string   `json:"runner"`
+	RequiredReceipts   []string `json:"required_receipts"`
+	MissingContracts   []string `json:"missing_contracts"`
+	CredentialRequired bool     `json:"credential_required"`
+	CredentialProvided bool     `json:"credential_provided"`
+	Status             string   `json:"status"`
+	Blocker            string   `json:"blocker"`
+}
+
+type FindXAgentReceiptContractMatrixRow struct {
+	Scope            string   `json:"scope"`
+	Platform         string   `json:"platform"`
+	ExecutionSurface string   `json:"execution_surface"`
+	RequiredContracts []string `json:"required_contracts"`
+	MissingContracts  []string `json:"missing_contracts"`
+	Status            string   `json:"status"`
+	Blocker           string   `json:"blocker"`
+}
+
+const (
 	FindXAgentDataArrivalKindHeartbeat    = "heartbeat"
 	FindXAgentDataArrivalKindMetrics      = "metrics"
 	FindXAgentDataArrivalKindLogs         = "logs"
@@ -182,7 +228,17 @@ func IsFindXAgentInstallExecutionStatus(status string) bool {
 		FindXAgentExecutionStatusFailed,
 		FindXAgentExecutionStatusCancelled,
 		FindXAgentExecutionStatusRollbackRequired,
-		FindXAgentExecutionStatusUninstallVerified:
+		FindXAgentExecutionStatusUninstallVerified,
+		FindXAgentExecutionStatePlanned,
+		FindXAgentExecutionStatePreflightFailed,
+		FindXAgentExecutionStateBlockedByContract,
+		FindXAgentExecutionStateDispatching,
+		FindXAgentExecutionStateReceiptPending,
+		FindXAgentExecutionStateServiceRegistered,
+		FindXAgentExecutionStateHeartbeatSeen,
+		FindXAgentExecutionStateDataArrivalSeen,
+		FindXAgentExecutionStateRolledBack,
+		FindXAgentExecutionStateUninstalled:
 		return true
 	default:
 		return false

@@ -39,7 +39,7 @@ func TestFindXAgentInstallPlanWindowsPowerShellExecuteCreatesBlockedExecution(t 
 			t.Fatalf("expected missing ref %s in response, body=%s", want, w.Body.String())
 		}
 	}
-	for _, forbidden := range []string{"secret", "token", "<CREDENTIAL_REF>", "queued", "running", "succeeded", "success", "applied", "rolled-back", "failed", "cancelled"} {
+	for _, forbidden := range []string{"secret", "token", "<CREDENTIAL_REF>", `"status":"queued"`, `"status":"running"`, `"status":"succeeded"`, `"status":"success"`, `"status":"applied"`, `"status":"rolled-back"`, `"status":"failed"`, `"status":"cancelled"`} {
 		if strings.Contains(w.Body.String(), forbidden) {
 			t.Fatalf("blocked execution must not expose %s, body=%s", forbidden, w.Body.String())
 		}

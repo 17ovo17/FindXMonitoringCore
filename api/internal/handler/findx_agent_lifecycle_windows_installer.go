@@ -43,12 +43,33 @@ func createBlockedFindXAgentWindowsInstallExecution(c *gin.Context, req model.Fi
 		return
 	}
 	auditEvent(c, "findx_agent.install_execution.blocked", saved.ID, "high", saved.Status, saved.ErrorSummary, c.GetHeader("X-Test-Batch-Id"))
+	scope := windowsInstallExecutionReceiptScope(req)
+	missing := installExecutionMissingContracts(scope, gate.Reason)
 	c.JSON(http.StatusConflict, gin.H{
-		"code":      http.StatusConflict,
-		"error":     saved.ErrorSummary,
-		"data":      plan,
-		"execution": saved,
+		"code":              http.StatusConflict,
+		"error":             saved.ErrorSummary,
+		"status":            "blocked",
+		"state_machine":     blockedExecutionStateMachine(saved.ErrorSummary),
+		"receipt_contract":  installReceiptContract(scope, req, saved.Runner, missing),
+		"receipt_matrix":    findXAgentReceiptContractMatrix(),
+		"missing_contracts": missing,
+		"safe_to_retry":     false,
+		"data":              plan,
+		"execution":         saved,
 	})
+}
+
+func windowsInstallExecutionReceiptScope(req model.FindXAgentInstallPlanRequest) string {
+	text := strings.ToLower(strings.TrimSpace(req.Method))
+	for _, key := range []string{"service_manifest_ref", "windows_service_name_ref", "windows_service_policy_ref", "service_receipt_ref", "service_status_receipt_ref"} {
+		if strings.TrimSpace(req.Metadata[key]) != "" {
+			return "windows_service"
+		}
+	}
+	if strings.Contains(text, "service") {
+		return "windows_service"
+	}
+	return "windows_local"
 }
 
 func windowsInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.WindowsInstallerPrerequisites {

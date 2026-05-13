@@ -47,12 +47,35 @@ func createBlockedFindXAgentKubernetesInstallExecution(c *gin.Context, req model
 		return
 	}
 	auditEvent(c, "findx_agent.install_execution.blocked", saved.ID, "high", saved.Status, saved.ErrorSummary, c.GetHeader("X-Test-Batch-Id"))
+	scope := kubernetesInstallExecutionReceiptScope(saved.Runner)
+	missing := installExecutionMissingContracts(scope, gate.Reason)
 	c.JSON(http.StatusConflict, gin.H{
-		"code":      http.StatusConflict,
-		"error":     responseError,
-		"data":      plan,
-		"execution": saved,
+		"code":              http.StatusConflict,
+		"error":             responseError,
+		"status":            "blocked",
+		"state_machine":     blockedExecutionStateMachine(responseError),
+		"receipt_contract":  installReceiptContract(scope, req, saved.Runner, missing),
+		"receipt_matrix":    findXAgentReceiptContractMatrix(),
+		"missing_contracts": missing,
+		"safe_to_retry":     false,
+		"data":              plan,
+		"execution":         saved,
 	})
+}
+
+func kubernetesInstallExecutionReceiptScope(runner string) string {
+	switch strings.ToLower(strings.TrimSpace(runner)) {
+	case "helm":
+		return "helm"
+	case "kubernetes-daemonset":
+		return "daemonset"
+	case "kubernetes-sidecar":
+		return "sidecar"
+	case "kubernetes-initcontainer":
+		return "initcontainer"
+	default:
+		return "kubernetes"
+	}
 }
 
 func kubernetesInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.KubernetesInstallerPrerequisites {

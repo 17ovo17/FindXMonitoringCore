@@ -135,7 +135,7 @@ func TestFindXAgentTaskCompleteRefsStillBlocked(t *testing.T) {
 			if payload.Data.Status != "blocked" || payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
 				t.Fatalf("%s complete refs should still honest-block, got %#v", tt.action, payload.Data)
 			}
-			for _, forbidden := range []string{"queued", "running", "succeeded"} {
+			for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {
 				if strings.Contains(w.Body.String(), forbidden) {
 					t.Fatalf("%s must not fake execution state %s: %s", tt.action, forbidden, w.Body.String())
 				}
@@ -200,7 +200,7 @@ func TestFindXAgentTaskKubernetesCompleteRefsStillExecutorBlocked(t *testing.T) 
 	if payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
 		t.Fatalf("complete kubernetes refs should still executor-block, got %#v", payload.Data)
 	}
-	for _, forbidden := range []string{"queued", "running", "succeeded"} {
+	for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {
 		if strings.Contains(w.Body.String(), forbidden) {
 			t.Fatalf("kubernetes task must not fake execution state %s: %s", forbidden, w.Body.String())
 		}

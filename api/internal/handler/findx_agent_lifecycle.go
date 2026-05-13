@@ -181,10 +181,229 @@ func CreateFindXAgentTask(c *gin.Context) {
 		"code":              http.StatusConflict,
 		"error":             task.Blocker,
 		"status":            "blocked",
+		"state_machine":     blockedExecutionStateMachine(task.Blocker),
+		"receipt_contract":  taskReceiptContract(action, task.Metadata, task.CredentialRefPresent, missing),
+		"receipt_matrix":    findXAgentReceiptContractMatrix(),
 		"blockers":          agentTaskResponseBlockers(missing),
 		"missing_contracts": missing,
-		"data":              task,
+		"safe_to_retry":     false,
+		"data":              taskResponseWithSafeExecutionMetadata(task),
 	})
+}
+
+func blockedExecutionStateMachine(blocker string) model.FindXAgentExecutionStateMachine {
+	return model.FindXAgentExecutionStateMachine{
+		CurrentState: model.FindXAgentExecutionStateBlockedByContract,
+		AllowedStates: []string{
+			model.FindXAgentExecutionStatePlanned,
+			model.FindXAgentExecutionStatePreflightFailed,
+			model.FindXAgentExecutionStateBlockedByContract,
+			model.FindXAgentExecutionStateDispatching,
+			model.FindXAgentExecutionStateRunning,
+			model.FindXAgentExecutionStateReceiptPending,
+			model.FindXAgentExecutionStateServiceRegistered,
+			model.FindXAgentExecutionStateHeartbeatSeen,
+			model.FindXAgentExecutionStateDataArrivalSeen,
+			model.FindXAgentExecutionStateFailed,
+			model.FindXAgentExecutionStateRolledBack,
+			model.FindXAgentExecutionStateUninstalled,
+		},
+		Terminal:    true,
+		SafeToRetry: false,
+		Blocker:     sanitizeInstallExecutionSummary(blocker),
+	}
+}
+
+func installReceiptContract(scope string, req model.FindXAgentInstallPlanRequest, runner string, missing []string) model.FindXAgentReceiptContract {
+	return model.FindXAgentReceiptContract{
+		ID:                 scope + "_install_receipt_contract",
+		Scope:              scope,
+		Transport:          installPlanTransport(req),
+		Runner:             runner,
+		RequiredReceipts:   requiredReceiptNamesForScope(scope),
+		MissingContracts:   uniquePackageRepositoryBlockers(missing),
+		CredentialRequired: credentialRequiredForScope(scope),
+		CredentialProvided: strings.TrimSpace(req.CredentialRef) != "",
+		Status:             model.FindXAgentExecutionStateBlockedByContract,
+		Blocker:            agentBlocked + ": executor, receipt, service, heartbeat, data-arrival and evidence contracts are not open",
+	}
+}
+
+func taskReceiptContract(action string, metadata map[string]string, credentialProvided bool, missing []string) model.FindXAgentReceiptContract {
+	return model.FindXAgentReceiptContract{
+		ID:                 action + "_task_receipt_contract",
+		Scope:              taskReceiptScope(metadata),
+		Transport:          taskReceiptTransport(metadata),
+		Runner:             taskReceiptRunner(metadata),
+		RequiredReceipts:   []string{"execution_receipt", "service_receipt", "heartbeat_receipt", "data_arrival_receipt", "evidence_chain"},
+		MissingContracts:   uniquePackageRepositoryBlockers(missing),
+		CredentialRequired: true,
+		CredentialProvided: credentialProvided,
+		Status:             model.FindXAgentExecutionStateBlockedByContract,
+		Blocker:            agentBlocked + ": task executor and receipt protocol are not open",
+	}
+}
+
+func findXAgentReceiptContractMatrix() []model.FindXAgentReceiptContractMatrixRow {
+	baseMissing := []string{"executor_contract", "execution_receipt_contract", "service_receipt_contract", "heartbeat_receipt_contract", "data_arrival_receipt_contract", "evidence_chain_contract"}
+	return []model.FindXAgentReceiptContractMatrixRow{
+		receiptMatrixRow("linux_local", "linux", "local curl -kfsSL + systemd", baseMissing),
+		receiptMatrixRow("windows_local", "windows", "certutil / PowerShell + Windows Service", baseMissing),
+		receiptMatrixRow("ssh", "linux", "SSH remote execution", append(baseMissing, "ssh_runner_contract", "host_key_contract")),
+		receiptMatrixRow("winrm", "windows", "WinRM remote execution", append(baseMissing, "winrm_transport_contract")),
+		receiptMatrixRow("systemd", "linux", "systemd service lifecycle", append(baseMissing, "systemd_unit_contract")),
+		receiptMatrixRow("windows_service", "windows", "Windows Service lifecycle", append(baseMissing, "windows_service_contract")),
+		receiptMatrixRow("iis", "windows", "IIS site and app pool lifecycle", append(baseMissing, "iis_receipt_contract")),
+		receiptMatrixRow("docker", "linux/windows", "Docker container lifecycle", append(baseMissing, "container_receipt_contract")),
+		receiptMatrixRow("helm", "kubernetes", "Helm release lifecycle", append(baseMissing, "helm_release_contract", "cluster_rbac_contract")),
+		receiptMatrixRow("operator", "kubernetes", "Operator and CRD reconciliation", append(baseMissing, "operator_controller_contract", "crd_contract")),
+		receiptMatrixRow("daemonset", "kubernetes", "DaemonSet rollout", append(baseMissing, "daemonset_rollout_contract")),
+		receiptMatrixRow("sidecar", "kubernetes", "Sidecar injection", append(baseMissing, "sidecar_injection_contract")),
+		receiptMatrixRow("initcontainer", "kubernetes", "InitContainer injection", append(baseMissing, "init_container_contract")),
+	}
+}
+
+func receiptMatrixRow(scope, platform, surface string, missing []string) model.FindXAgentReceiptContractMatrixRow {
+	return model.FindXAgentReceiptContractMatrixRow{
+		Scope:             scope,
+		Platform:          platform,
+		ExecutionSurface:  surface,
+		RequiredContracts: []string{"executor", "receipt", "service", "heartbeat", "data_arrival", "evidence"},
+		MissingContracts:  uniquePackageRepositoryBlockers(missing),
+		Status:            model.FindXAgentExecutionStateBlockedByContract,
+		Blocker:           agentBlocked + ": " + scope + " executor receipt contract is not open",
+	}
+}
+
+func installPlanTransport(req model.FindXAgentInstallPlanRequest) string {
+	metadata := req.Metadata
+	if transport := normalizeInstallPlanTransport(metadata["transport"]); transport != "" {
+		return transport
+	}
+	method := strings.ToLower(strings.TrimSpace(req.Method))
+	switch {
+	case strings.Contains(method, "ssh"):
+		return "ssh"
+	case strings.Contains(method, "winrm"):
+		return "winrm"
+	case isKubernetesInstallerInstallPlan(req):
+		return "kubernetes"
+	default:
+		return "local"
+	}
+}
+
+func normalizeInstallPlanTransport(value string) string {
+	transport := strings.ToLower(strings.TrimSpace(removeControlRunes(value)))
+	transport = strings.NewReplacer("-", "_", " ", "_").Replace(transport)
+	switch transport {
+	case "ssh", "winrm", "kubernetes", "local", "helm", "operator", "daemonset", "sidecar", "initcontainer", "docker", "iis", "systemd", "windows_service":
+		return transport
+	default:
+		return ""
+	}
+}
+
+func taskReceiptScope(metadata map[string]string) string {
+	text := agentTaskMatrixText(metadata)
+	for _, scope := range []string{"winrm", "ssh", "systemd", "windows-service", "iis", "docker", "helm", "operator", "daemonset", "sidecar", "initcontainer", "init-container"} {
+		if strings.Contains(text, scope) {
+			return strings.ReplaceAll(scope, "-", "_")
+		}
+	}
+	if strings.EqualFold(strings.TrimSpace(metadata["target_os"]), "windows") {
+		return "windows_local"
+	}
+	if strings.Contains(strings.ToLower(strings.TrimSpace(metadata["target_os"])), "k8s") ||
+		strings.Contains(strings.ToLower(strings.TrimSpace(metadata["target_os"])), "kubernetes") {
+		return "kubernetes"
+	}
+	return "linux_local"
+}
+
+func taskReceiptTransport(metadata map[string]string) string {
+	if transport := normalizeInstallPlanTransport(metadata["transport"]); transport != "" {
+		return transport
+	}
+	if runner := normalizeInstallPlanTransport(metadata["runner"]); runner != "" {
+		return runner
+	}
+	switch taskReceiptScope(metadata) {
+	case "ssh":
+		return "ssh"
+	case "winrm":
+		return "winrm"
+	case "systemd":
+		return "systemd"
+	case "windows_service":
+		return "windows_service"
+	case "iis":
+		return "iis"
+	case "docker":
+		return "docker"
+	case "helm":
+		return "helm"
+	case "operator":
+		return "operator"
+	case "daemonset":
+		return "daemonset"
+	case "sidecar":
+		return "sidecar"
+	case "initcontainer":
+		return "initcontainer"
+	case "kubernetes":
+		return "kubernetes"
+	default:
+		return "local"
+	}
+}
+
+func taskReceiptRunner(metadata map[string]string) string {
+	return normalizeInstallPlanTransport(metadata["runner"])
+}
+
+func taskResponseWithSafeExecutionMetadata(task model.FindXAgentExecutionTask) model.FindXAgentExecutionTask {
+	task.Metadata = safeTaskResponseExecutionMetadata(task.Metadata)
+	return task
+}
+
+func safeTaskResponseExecutionMetadata(input map[string]string) map[string]string {
+	out := map[string]string{}
+	for key, value := range input {
+		switch strings.TrimSpace(key) {
+		case "transport":
+			if transport := normalizeInstallPlanTransport(value); transport != "" {
+				out[key] = transport
+			}
+		case "runner":
+			if runner := normalizeInstallPlanTransport(value); runner != "" {
+				out[key] = runner
+			}
+		default:
+			out[key] = value
+		}
+	}
+	return out
+}
+
+func requiredReceiptNamesForScope(scope string) []string {
+	switch scope {
+	case "kubernetes", "helm", "operator", "daemonset", "sidecar", "initcontainer":
+		return []string{"rollout_receipt", "service_account_receipt", "workload_status_receipt", "data_arrival_receipt", "evidence_chain"}
+	case "windows_local", "windows_service", "iis":
+		return []string{"install_receipt", "windows_service_receipt", "service_status_receipt", "heartbeat_receipt", "data_arrival_receipt", "evidence_chain"}
+	default:
+		return []string{"install_receipt", "systemd_receipt", "service_status_receipt", "heartbeat_receipt", "data_arrival_receipt", "evidence_chain"}
+	}
+}
+
+func credentialRequiredForScope(scope string) bool {
+	switch scope {
+	case "linux_local", "windows_local":
+		return false
+	default:
+		return true
+	}
 }
 
 func sanitizedConfigRolloutMetadata(req model.FindXAgentConfigRolloutRequest) gin.H {
