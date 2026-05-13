@@ -5,6 +5,8 @@ export const sections = [
   { value: 'business', label: '业务组', desc: '按业务边界管理主机、端点、负责人和状态。' },
   { value: 'cmdb', label: 'CMDB', desc: '按资源组树和主机表管理资产关系。' },
   { value: 'hosts', label: '主机资产', desc: '按业务空间、资源组、标签、在线状态筛选和绑定主机。' },
+  { value: 'databases', label: '数据库资产', desc: '管理数据库资产记录、类型筛选、详情、创建删除和连接测试阻断态。' },
+  { value: 'deploy-tasks', label: '部署任务', desc: '创建部署预检记录并查看契约阻断、缺失契约和进度状态。' },
   { value: 'resource-groups', label: '资源组', desc: '维护分层资源组树和主机关联边界。' },
   { value: 'agents', label: 'FindX Agent', desc: '查看 Agent 在线、心跳、版本、能力和生命周期状态。' },
   { value: 'model-detail', label: '模型详情', desc: '查看和编辑模型属性定义。' },

@@ -2,6 +2,7 @@ package store
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"ai-workbench-api/internal/model"
@@ -11,10 +12,13 @@ import (
 
 // 内存回退（GormOK() == false 时使用）
 var (
-	cmdbCategories []model.CmdbCategory
-	cmdbObjects    []model.CmdbObject
-	cmdbAttributes []model.CmdbAttribute
-	cmdbInstances  []model.CmdbInstance
+	cmdbCategories        []model.CmdbCategory
+	cmdbObjects           []model.CmdbObject
+	cmdbAttributes        []model.CmdbAttribute
+	cmdbInstances         []model.CmdbInstance
+	cmdbDeployTasks       []model.CmdbDeployTask
+	cmdbDeployMigrateOnce sync.Once
+	cmdbDeployMigrateErr  error
 )
 
 func ListCmdbCategories() []model.CmdbCategory {
@@ -133,7 +137,6 @@ func DeleteCmdbObject(id string) error {
 	mu.Unlock()
 	return nil
 }
-// PLACEHOLDER_CMDB_PART3
 
 func ListCmdbAttributes(objectID string) []model.CmdbAttribute {
 	if GormOK() {
@@ -196,7 +199,6 @@ func DeleteCmdbAttribute(id string) error {
 	mu.Unlock()
 	return nil
 }
-// PLACEHOLDER_CMDB_PART4
 
 func ListCmdbInstances(objectID string, page, limit int) ([]model.CmdbInstance, int64) {
 	if GormOK() {
@@ -320,4 +322,93 @@ func CountCmdbInstancesByObject() map[string]int64 {
 		m[inst.ObjectID]++
 	}
 	return m
+}
+
+func CreateCmdbDeployTask(task *model.CmdbDeployTask) error {
+	if task.ID == "" {
+		task.ID = "deploy-" + NewID()
+	}
+	now := time.Now()
+	task.CreatedAt = now
+	task.UpdatedAt = now
+	if GormOK() {
+		if err := ensureCmdbDeployTaskMigrated(); err != nil {
+			return err
+		}
+		return GetDB().Create(task).Error
+	}
+	mu.Lock()
+	cmdbDeployTasks = append(cmdbDeployTasks, *task)
+	mu.Unlock()
+	return nil
+}
+
+func ListCmdbDeployTasks(page, limit int) ([]model.CmdbDeployTask, int64) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if page < 1 {
+		page = 1
+	}
+	if GormOK() {
+		if err := ensureCmdbDeployTaskMigrated(); err != nil {
+			logrus.WithError(err).Warn("cmdb: migrate deploy tasks failed")
+			return nil, 0
+		}
+		var rows []model.CmdbDeployTask
+		var total int64
+		q := GetDB().Model(&model.CmdbDeployTask{})
+		q.Count(&total)
+		offset := (page - 1) * limit
+		if err := q.Order("created_at desc").Offset(offset).Limit(limit).Find(&rows).Error; err != nil {
+			logrus.WithError(err).Warn("cmdb: list deploy tasks failed")
+			return nil, 0
+		}
+		return rows, total
+	}
+	mu.RLock()
+	defer mu.RUnlock()
+	out := make([]model.CmdbDeployTask, len(cmdbDeployTasks))
+	copy(out, cmdbDeployTasks)
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	total := int64(len(out))
+	start := (page - 1) * limit
+	if start >= len(out) {
+		return nil, total
+	}
+	end := start + limit
+	if end > len(out) {
+		end = len(out)
+	}
+	return out[start:end], total
+}
+
+func GetCmdbDeployTask(id string) (*model.CmdbDeployTask, bool) {
+	if GormOK() {
+		if err := ensureCmdbDeployTaskMigrated(); err != nil {
+			logrus.WithError(err).Warn("cmdb: migrate deploy tasks failed")
+			return nil, false
+		}
+		var task model.CmdbDeployTask
+		if err := GetDB().Where("id = ?", id).First(&task).Error; err != nil {
+			return nil, false
+		}
+		return &task, true
+	}
+	mu.RLock()
+	defer mu.RUnlock()
+	for i := range cmdbDeployTasks {
+		if cmdbDeployTasks[i].ID == id {
+			cp := cmdbDeployTasks[i]
+			return &cp, true
+		}
+	}
+	return nil, false
+}
+
+func ensureCmdbDeployTaskMigrated() error {
+	cmdbDeployMigrateOnce.Do(func() {
+		cmdbDeployMigrateErr = GetDB().AutoMigrate(&model.CmdbDeployTask{})
+	})
+	return cmdbDeployMigrateErr
 }

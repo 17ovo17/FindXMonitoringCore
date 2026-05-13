@@ -34,7 +34,7 @@ type CmdbAttribute struct {
 	Discovery  bool   `gorm:"default:false" json:"discovery"` // Agent 自动发现可填充
 	Sort       int    `gorm:"default:0" json:"sort"`
 	Unit       string `gorm:"size:16" json:"unit"`
-	Options    string `gorm:"type:text" json:"options"`    // enum 选项 JSON
+	Options    string `gorm:"type:text" json:"options"` // enum 选项 JSON
 	DefaultVal string `gorm:"size:256" json:"default_val"`
 }
 
@@ -63,4 +63,25 @@ type CmdbInstanceRelation struct {
 	TargetInstanceID string    `gorm:"size:32;index;not null" json:"target_instance_id"`
 	RelationTypeID   string    `gorm:"size:32;not null" json:"relation_type_id"`
 	CreatedAt        time.Time `json:"created_at"`
+}
+
+type CmdbDeployTask struct {
+	ID              string    `gorm:"primaryKey;size:64" json:"id"`
+	Name            string    `gorm:"size:128;not null" json:"name"`
+	TargetHostsJSON string    `gorm:"type:text" json:"-"`
+	ScriptLength    int       `json:"script_length"`
+	ScriptDigest    string    `gorm:"size:64" json:"script_digest"`
+	Status          string    `gorm:"size:64;index" json:"status"`
+	Progress        int       `json:"progress"`
+	Creator         string    `gorm:"size:64" json:"creator"`
+	LogsJSON        string    `gorm:"type:text" json:"-"`
+	Code            string    `gorm:"size:64" json:"code"`
+	ContractID      string    `gorm:"size:128" json:"contract_id"`
+	MissingJSON     string    `gorm:"type:text" json:"-"`
+	SafeToRetry     bool      `json:"safe_to_retry"`
+	AuditRef        string    `gorm:"size:256" json:"audit_ref"`
+	LogRef          string    `gorm:"size:256" json:"log_ref"`
+	MetaJSON        string    `gorm:"type:text" json:"-"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }

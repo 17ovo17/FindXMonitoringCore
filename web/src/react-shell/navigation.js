@@ -52,6 +52,8 @@ export const navGroups = [
       { section: 'business', label: '业务空间', to: to('/assets', 'business') },
       { section: 'cmdb', label: 'CMDB', to: to('/assets', 'cmdb') },
       { section: 'hosts', label: '主机资产', to: to('/assets', 'hosts') },
+      { section: 'databases', label: '数据库资产', to: to('/assets', 'databases') },
+      { section: 'deploy-tasks', label: '部署任务', to: to('/assets', 'deploy-tasks') },
       { section: 'packages', label: '能力包', to: to('/assets', 'packages') },
     ],
   },

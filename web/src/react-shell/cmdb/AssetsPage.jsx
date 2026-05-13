@@ -3,6 +3,8 @@ import { ASSET_BLOCKERS, assetsApi, formatAssetError } from '../api/assets.js'
 import { agentOnline, displayText, fmtTime, hostIp, hostKey, hostName, isHostOnline, sectionSet, sections } from './assetsModel.js'
 import { AgentsSection } from './AgentsSection.jsx'
 import { BusinessSection } from './BusinessSection.jsx'
+import { DatabaseSection } from './DatabaseSection.jsx'
+import { DeployTasksSection } from './DeployTasksSection.jsx'
 import { HostsSection } from './HostsSection.jsx'
 import { ModelDetailSection } from './ModelDetailSection.jsx'
 import { ModelTreeSection } from './ModelTreeSection.jsx'
@@ -64,6 +66,8 @@ export function AssetsPage({ query, onNavigate }) {
       {section === 'resource-groups' && <ResourceGroupsSection rows={groups} workspaces={workspaces} error={errors.groups} q={query.q || ''} onRefresh={refresh} />}
       {section === 'hosts' && <HostsSection groups={groups} workspaces={workspaces} initialQuery={query} onRefreshAll={refresh} />}
       {section === 'agents' && <AgentsSection rows={agents} hosts={hosts} error={errors.agents} q={query.q || ''} onRefresh={refresh} />}
+      {section === 'databases' && <DatabaseSection onRefresh={refresh} />}
+      {section === 'deploy-tasks' && <DeployTasksSection />}
       {section === 'models' && <ModelTreeSection onNavigate={onNavigate} />}
       {section === 'model-detail' && <ModelDetailSection query={query} onNavigate={onNavigate} />}
       {section === 'cmdb' && <CmdbSection groups={groups} workspaces={workspaces} initialQuery={query} onRefreshAll={refresh} />}
@@ -76,7 +80,13 @@ function OverviewSection({ rows, errors, loading, onNavigate, onRefresh }) {
   const cards = [['业务组', rows.workspaces.length], ['资源组', rows.groups.length], ['主机资产', rows.hosts.length], ['在线 FindX Agent', `${onlineAgents}/${rows.agents.length}`]]
   return (
     <section className='fx-assets-work'>
-      <div className='fx-assets-toolbar'><button type='button' onClick={onRefresh}>{loading ? '刷新中...' : '刷新'}</button><button type='button' onClick={() => onNavigate({ section: 'cmdb' })}>进入 CMDB</button><button type='button' onClick={() => onNavigate({ section: 'agents' })}>Agent 管理中心</button></div>
+      <div className='fx-assets-toolbar'>
+        <button type='button' onClick={onRefresh}>{loading ? '刷新中...' : '刷新'}</button>
+        <button type='button' onClick={() => onNavigate({ section: 'cmdb' })}>进入 CMDB</button>
+        <button type='button' onClick={() => onNavigate({ section: 'databases' })}>数据库资产</button>
+        <button type='button' onClick={() => onNavigate({ section: 'deploy-tasks' })}>部署任务</button>
+        <button type='button' onClick={() => onNavigate({ section: 'agents' })}>Agent 管理中心</button>
+      </div>
       <div className='fx-assets-grid'>{cards.map(([label, value]) => <article className='fx-assets-card' key={label}><strong>{value}</strong><span>{label}</span></article>)}</div>
       {Object.values(errors).map(error => <ErrorBox key={error}>{error}</ErrorBox>)}
       <Blocked>{ASSET_BLOCKERS.terminal}</Blocked><Blocked>{ASSET_BLOCKERS.agentLifecycle}</Blocked>
