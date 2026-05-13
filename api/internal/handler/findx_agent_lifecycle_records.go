@@ -182,7 +182,7 @@ func requiredAgentTaskExecutorReceiptRefs(metadata map[string]string) []string {
 		refs = append(refs, "local_executor_ref", "windows_installer_ref", "service_receipt_ref")
 	}
 	addAgentTaskRefsIf(&refs, text, []string{"local-service"}, "service_manifest_ref", "service_receipt_ref")
-	addAgentTaskRefsIf(&refs, text, []string{"ssh"}, "ssh_runner_ref", "ssh_host_key", "ssh_fingerprint", "remote_executor_ref")
+	addAgentTaskRefsIf(&refs, text, []string{"ssh"}, "ssh_runner_ref", "remote_executor_ref")
 	addAgentTaskRefsIf(&refs, text, []string{"winrm"}, "winrm_endpoint_ref", "winrm_transport_ref", "remote_executor_ref")
 	addAgentTaskRefsIf(&refs, text, []string{"systemd"}, "systemd_unit_ref", "systemd_receipt_ref")
 	addAgentTaskRefsIf(&refs, text, []string{"windows-service", "windows service"}, "windows_service_ref", "windows_service_receipt_ref")
@@ -234,6 +234,10 @@ func missingRemoteExecutionChoiceRefs(metadata map[string]string) []string {
 	}
 	if strings.TrimSpace(metadata["audit_ref"]) == "" && strings.TrimSpace(metadata["evidence_chain_ref"]) == "" {
 		missing = append(missing, "audit_ref_or_evidence_chain_ref")
+	}
+	if strings.Contains(text, "ssh") && strings.TrimSpace(metadata["ssh_host_key"]) == "" && strings.TrimSpace(metadata["ssh_fingerprint"]) == "" {
+		missing = append(missing, "ssh_host_key_or_fingerprint")
+		missing = append(missing, "ssh_host_key", "ssh_fingerprint")
 	}
 	return missing
 }

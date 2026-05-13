@@ -100,6 +100,10 @@ func CreateFindXAgentInstallPlan(c *gin.Context) {
 	}
 	auditEvent(c, "findx_agent.install_plan.requested", saved.ID, "medium", "blocked", saved.Blocker, c.GetHeader("X-Test-Batch-Id"))
 	if mode == "execute" {
+		if isRemoteInstallerInstallPlan(req) {
+			createBlockedFindXAgentRemoteInstallExecution(c, req, saved)
+			return
+		}
 		if isKubernetesInstallerInstallPlan(req) {
 			createBlockedFindXAgentKubernetesInstallExecution(c, req, saved)
 			return
@@ -196,24 +200,11 @@ func CreateFindXAgentTask(c *gin.Context) {
 
 func blockedExecutionStateMachine(blocker string) model.FindXAgentExecutionStateMachine {
 	return model.FindXAgentExecutionStateMachine{
-		CurrentState: model.FindXAgentExecutionStateBlockedByContract,
-		AllowedStates: []string{
-			model.FindXAgentExecutionStatePlanned,
-			model.FindXAgentExecutionStatePreflightFailed,
-			model.FindXAgentExecutionStateBlockedByContract,
-			model.FindXAgentExecutionStateDispatching,
-			model.FindXAgentExecutionStateRunning,
-			model.FindXAgentExecutionStateReceiptPending,
-			model.FindXAgentExecutionStateServiceRegistered,
-			model.FindXAgentExecutionStateHeartbeatSeen,
-			model.FindXAgentExecutionStateDataArrivalSeen,
-			model.FindXAgentExecutionStateFailed,
-			model.FindXAgentExecutionStateRolledBack,
-			model.FindXAgentExecutionStateUninstalled,
-		},
-		Terminal:    true,
-		SafeToRetry: false,
-		Blocker:     sanitizeInstallExecutionSummary(blocker),
+		CurrentState:  model.FindXAgentExecutionStateBlockedByContract,
+		AllowedStates: []string{model.FindXAgentExecutionStateBlockedByContract},
+		Terminal:      true,
+		SafeToRetry:   false,
+		Blocker:       sanitizeInstallExecutionSummary(blocker),
 	}
 }
 
@@ -362,7 +353,17 @@ func taskReceiptTransport(metadata map[string]string) string {
 }
 
 func taskReceiptRunner(metadata map[string]string) string {
-	return normalizeInstallPlanTransport(metadata["runner"])
+	if runner := normalizeInstallPlanTransport(metadata["runner"]); runner != "" {
+		return runner
+	}
+	switch taskReceiptScope(metadata) {
+	case "ssh":
+		return "ssh"
+	case "winrm":
+		return "winrm"
+	default:
+		return ""
+	}
 }
 
 func taskResponseWithSafeExecutionMetadata(task model.FindXAgentExecutionTask) model.FindXAgentExecutionTask {

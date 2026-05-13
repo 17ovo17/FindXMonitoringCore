@@ -116,6 +116,15 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 		"reload_receipt_ref",
 		"service_status_receipt_ref",
 		"credential_ref",
+		"remote_executor_ref",
+		"ssh_runner_ref",
+		"ssh_host_key_or_fingerprint",
+		"winrm_endpoint_ref",
+		"winrm_transport_ref",
+		"timeout_policy_ref",
+		"idempotency_key",
+		"install_receipt_ref",
+		"execution_receipt_ref",
 	} {
 		if strings.Contains(reason, key) {
 			missing = append(missing, key)
@@ -131,6 +140,8 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 		}
 	case "ssh":
 		missing = append(missing, "ssh_runner_contract", "host_key_contract")
+	case "winrm":
+		missing = append(missing, "winrm_transport_contract")
 	default:
 		missing = append(missing, "systemd_unit_contract")
 	}

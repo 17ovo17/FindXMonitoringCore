@@ -301,23 +301,11 @@ func assertBlockedExecutionMatrixEnvelope(t *testing.T, payload blockedExecution
 
 func assertStateMachine121States(t *testing.T, stateMachine model.FindXAgentExecutionStateMachine) {
 	t.Helper()
-	for _, state := range []string{
-		model.FindXAgentExecutionStatePlanned,
-		model.FindXAgentExecutionStatePreflightFailed,
-		model.FindXAgentExecutionStateBlockedByContract,
-		model.FindXAgentExecutionStateDispatching,
-		model.FindXAgentExecutionStateRunning,
-		model.FindXAgentExecutionStateReceiptPending,
-		model.FindXAgentExecutionStateServiceRegistered,
-		model.FindXAgentExecutionStateHeartbeatSeen,
-		model.FindXAgentExecutionStateDataArrivalSeen,
-		model.FindXAgentExecutionStateFailed,
-		model.FindXAgentExecutionStateRolledBack,
-		model.FindXAgentExecutionStateUninstalled,
-	} {
-		if !containsLifecycleTestString(stateMachine.AllowedStates, state) {
-			t.Fatalf("state machine missing %s: %#v", state, stateMachine)
-		}
+	if stateMachine.CurrentState != model.FindXAgentExecutionStateBlockedByContract {
+		t.Fatalf("blocked response should expose only blocked current state, got %#v", stateMachine)
+	}
+	if len(stateMachine.AllowedStates) != 1 || stateMachine.AllowedStates[0] != model.FindXAgentExecutionStateBlockedByContract {
+		t.Fatalf("blocked response must not expose unopened lifecycle states, got %#v", stateMachine)
 	}
 }
 
