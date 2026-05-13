@@ -55,7 +55,7 @@ func TestWindowsInstallerPrerequisitesRequirePowerShellAndCertutilRefs(t *testin
 		AuditRef:                "audit-ref",
 		EvidenceChainRef:        "evidence-chain-ref",
 		ReceiverEndpointRef:     "receiver-ref",
-		Method:                  "windows-powershell",
+		Method:                  "Invoke-WebRequest -UseBasicParsing",
 	})
 	if powershell.Allowed || powershell.Status != "blocked" || powershell.Runner != "windows-powershell" {
 		t.Fatalf("expected blocked PowerShell gate, got %#v", powershell)
@@ -88,7 +88,7 @@ func TestWindowsInstallerPrerequisitesRequirePowerShellAndCertutilRefs(t *testin
 		AuditRef:                "audit-ref",
 		EvidenceChainRef:        "evidence-chain-ref",
 		ReceiverEndpointRef:     "receiver-ref",
-		Method:                  "certutil",
+		Method:                  "CERTUTIL.EXE",
 	})
 	if certutil.Allowed || certutil.Status != "blocked" || certutil.Runner != "windows-cmd" {
 		t.Fatalf("expected blocked certutil gate, got %#v", certutil)

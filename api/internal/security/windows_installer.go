@@ -110,7 +110,7 @@ func windowsInstallerMissingPrerequisites(input WindowsInstallerPrerequisites) [
 func normalizeWindowsInstallerRunner(method string) string {
 	clean := strings.ToLower(strings.TrimSpace(method))
 	switch {
-	case strings.Contains(clean, "powershell"):
+	case strings.Contains(clean, "powershell"), strings.Contains(clean, "invoke-webrequest"):
 		return "windows-powershell"
 	case strings.Contains(clean, "cmd"), strings.Contains(clean, "certutil"):
 		return "windows-cmd"

@@ -90,6 +90,9 @@ func CreateFindXAgentInstallPlan(c *gin.Context) {
 		return
 	}
 	plan := newBlockedFindXAgentInstallPlan(req, pkg, targetIDs)
+	if isWindowsInstallerInstallPlan(req) {
+		plan = safeWindowsInstallPlanResponse(plan)
+	}
 	saved, err := store.SaveFindXAgentInstallPlan(plan)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "install plan persistence unavailable"})

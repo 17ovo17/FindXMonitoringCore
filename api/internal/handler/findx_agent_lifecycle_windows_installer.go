@@ -18,6 +18,8 @@ func isWindowsInstallerInstallPlan(req model.FindXAgentInstallPlanRequest) bool 
 	}
 	method := strings.ToLower(strings.TrimSpace(req.Method))
 	return strings.Contains(method, "powershell") ||
+		strings.Contains(method, "invoke-webrequest") ||
+		strings.EqualFold(method, "cmd") ||
 		strings.Contains(method, "windows-cmd") ||
 		strings.Contains(method, "certutil")
 }
@@ -54,7 +56,7 @@ func createBlockedFindXAgentWindowsInstallExecution(c *gin.Context, req model.Fi
 		"receipt_matrix":    findXAgentReceiptContractMatrix(),
 		"missing_contracts": missing,
 		"safe_to_retry":     false,
-		"data":              plan,
+		"data":              safeWindowsInstallPlanResponse(plan),
 		"execution":         saved,
 	})
 }
@@ -70,6 +72,52 @@ func windowsInstallExecutionReceiptScope(req model.FindXAgentInstallPlanRequest)
 		return "windows_service"
 	}
 	return "windows_local"
+}
+
+func safeWindowsInstallPlanResponse(plan model.FindXAgentInstallPlan) model.FindXAgentInstallPlan {
+	out := plan
+	if looksSuspiciousWindowsInstallerMethod(out.Method) {
+		out.Method = ""
+	}
+	out.Metadata = safeWindowsInstallerMetadata(out.Metadata)
+	return out
+}
+
+func safeWindowsInstallerMetadata(input map[string]string) map[string]string {
+	out := safeLinuxInstallerMetadata(input)
+	delete(out, "custom_runner")
+	for _, key := range []string{"runner", "transport", "method"} {
+		value := out[key]
+		if value == "" {
+			continue
+		}
+		if looksSuspiciousWindowsInstallerMethod(value) || !isAllowedWindowsInstallerMetadataValue(value) {
+			delete(out, key)
+		}
+	}
+	return out
+}
+
+func isAllowedWindowsInstallerMetadataValue(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(removeControlRunes(value))) {
+	case "windows-powershell", "windows-cmd", "windows-installer", "local", "windows_local", "windows_service":
+		return true
+	default:
+		return false
+	}
+}
+
+func looksSuspiciousWindowsInstallerMethod(value string) bool {
+	clean := strings.ToLower(strings.TrimSpace(removeControlRunes(value)))
+	if clean == "" {
+		return false
+	}
+	for _, marker := range []string{"&&", "||", ";", "`", "|", ">", "<", "$(", "%comspec%", "cmd /c", "powershell -", " start-process ", " invoke-expression "} {
+		if strings.Contains(clean, marker) {
+			return true
+		}
+	}
+	return looksSensitive(clean)
 }
 
 func windowsInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.WindowsInstallerPrerequisites {
