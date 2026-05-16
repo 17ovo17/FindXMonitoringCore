@@ -1,0 +1,403 @@
+/* FindX Login Background - NOC/SOC Operations Center Theme */
+/* Pure CSS animated background - no canvas, no JS animations */
+
+.fx-login-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0a0e1a 0%, #0d1117 40%, #0a0f1e 100%);
+}
+
+/* === Grid Layer === */
+.fx-login-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 59px,
+      rgba(23, 105, 255, 0.04) 59px,
+      rgba(23, 105, 255, 0.04) 60px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 59px,
+      rgba(23, 105, 255, 0.04) 59px,
+      rgba(23, 105, 255, 0.04) 60px
+    );
+  animation: fx-grid-pulse 4s ease-in-out infinite;
+}
+
+.fx-login-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 179px,
+      rgba(23, 105, 255, 0.08) 179px,
+      rgba(23, 105, 255, 0.08) 180px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 179px,
+      rgba(23, 105, 255, 0.08) 179px,
+      rgba(23, 105, 255, 0.08) 180px
+    );
+}
+
+.fx-login-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 50%,
+    transparent 0%,
+    rgba(10, 14, 26, 0.4) 50%,
+    rgba(10, 14, 26, 0.85) 100%
+  );
+}
+
+@keyframes fx-grid-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* === Hexagonal Pattern Overlay === */
+.fx-login-hex {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='%231769ff' stroke-width='1'/%3E%3Cpath d='M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34' fill='none' stroke='%2300d4ff' stroke-width='0.5'/%3E%3C/svg%3E");
+  background-size: 56px 100px;
+  animation: fx-hex-drift 20s linear infinite;
+}
+
+@keyframes fx-hex-drift {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100px); }
+}
+
+/* === Data Nodes === */
+.fx-login-nodes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fx-login-node {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1769ff;
+  box-shadow:
+    0 0 6px 2px rgba(23, 105, 255, 0.6),
+    0 0 20px 4px rgba(23, 105, 255, 0.2);
+  animation: fx-node-pulse 3s ease-in-out infinite;
+}
+
+.fx-login-node:nth-child(1) { top: 12%; left: 18%; animation-delay: 0s; }
+.fx-login-node:nth-child(2) { top: 25%; left: 72%; animation-delay: 0.4s; background: #00d4ff; box-shadow: 0 0 6px 2px rgba(0, 212, 255, 0.6), 0 0 20px 4px rgba(0, 212, 255, 0.2); }
+.fx-login-node:nth-child(3) { top: 45%; left: 8%; animation-delay: 0.8s; }
+.fx-login-node:nth-child(4) { top: 68%; left: 85%; animation-delay: 1.2s; background: #6366f1; box-shadow: 0 0 6px 2px rgba(99, 102, 241, 0.6), 0 0 20px 4px rgba(99, 102, 241, 0.2); }
+.fx-login-node:nth-child(5) { top: 82%; left: 22%; animation-delay: 1.6s; background: #00d4ff; box-shadow: 0 0 6px 2px rgba(0, 212, 255, 0.6), 0 0 20px 4px rgba(0, 212, 255, 0.2); }
+.fx-login-node:nth-child(6) { top: 35%; left: 42%; animation-delay: 2.0s; }
+.fx-login-node:nth-child(7) { top: 58%; left: 62%; animation-delay: 2.4s; background: #6366f1; box-shadow: 0 0 6px 2px rgba(99, 102, 241, 0.6), 0 0 20px 4px rgba(99, 102, 241, 0.2); }
+.fx-login-node:nth-child(8) { top: 15%; left: 48%; animation-delay: 0.6s; background: #00d4ff; box-shadow: 0 0 6px 2px rgba(0, 212, 255, 0.6), 0 0 20px 4px rgba(0, 212, 255, 0.2); }
+.fx-login-node:nth-child(9) { top: 75%; left: 45%; animation-delay: 1.8s; }
+.fx-login-node:nth-child(10) { top: 90%; left: 70%; animation-delay: 2.2s; background: #00d4ff; box-shadow: 0 0 6px 2px rgba(0, 212, 255, 0.6), 0 0 20px 4px rgba(0, 212, 255, 0.2); }
+
+.fx-login-node::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(23, 105, 255, 0.3);
+  animation: fx-node-ring 3s ease-in-out infinite;
+  animation-delay: inherit;
+}
+
+@keyframes fx-node-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+
+@keyframes fx-node-ring {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* === Scanning Line Effect === */
+.fx-login-scan {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fx-login-scan::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 212, 255, 0.1) 15%,
+    rgba(0, 212, 255, 0.8) 50%,
+    rgba(0, 212, 255, 0.1) 85%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 15px 3px rgba(0, 212, 255, 0.4),
+    0 0 40px 8px rgba(0, 212, 255, 0.15);
+  animation: fx-scan-v 6s linear infinite;
+}
+
+.fx-login-scan::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(23, 105, 255, 0.1) 15%,
+    rgba(23, 105, 255, 0.6) 50%,
+    rgba(23, 105, 255, 0.1) 85%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 12px 2px rgba(23, 105, 255, 0.3),
+    0 0 30px 6px rgba(23, 105, 255, 0.1);
+  animation: fx-scan-h 8s linear infinite;
+  animation-delay: 2s;
+}
+
+@keyframes fx-scan-v {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+
+@keyframes fx-scan-h {
+  0% { left: -2px; }
+  100% { left: 100%; }
+}
+
+/* === Connection Lines (SVG-based) === */
+.fx-login-connections {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.fx-login-connections svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fx-login-conn-line {
+  stroke: url(#fx-conn-gradient);
+  stroke-width: 1;
+  fill: none;
+  stroke-dasharray: 8 12;
+  animation: fx-conn-flow 3s linear infinite;
+}
+
+.fx-login-conn-line:nth-child(2) { animation-delay: 0.5s; stroke-dasharray: 6 14; }
+.fx-login-conn-line:nth-child(3) { animation-delay: 1s; stroke-dasharray: 10 10; }
+.fx-login-conn-line:nth-child(4) { animation-delay: 1.5s; stroke-dasharray: 4 16; }
+.fx-login-conn-line:nth-child(5) { animation-delay: 2s; stroke-dasharray: 12 8; }
+
+@keyframes fx-conn-flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -40; }
+}
+
+/* === Ambient Glow Effects === */
+.fx-login-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fx-login-glow::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(23, 105, 255, 0.08) 0%,
+    transparent 70%
+  );
+  animation: fx-glow-drift-1 12s ease-in-out infinite;
+}
+
+.fx-login-glow::after {
+  content: '';
+  position: absolute;
+  bottom: -15%;
+  right: -10%;
+  width: 45%;
+  height: 45%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.06) 0%,
+    transparent 70%
+  );
+  animation: fx-glow-drift-2 15s ease-in-out infinite;
+}
+
+@keyframes fx-glow-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(5%, 8%); }
+  66% { transform: translate(-3%, 4%); }
+}
+
+@keyframes fx-glow-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(-4%, -6%); }
+  66% { transform: translate(6%, -3%); }
+}
+
+/* === Data Stream Particles (pure CSS) === */
+.fx-login-streams {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fx-login-stream {
+  position: absolute;
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 212, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: fx-stream-fall linear infinite;
+  opacity: 0.4;
+}
+
+.fx-login-stream:nth-child(1) { left: 10%; animation-duration: 4s; animation-delay: 0s; height: 40px; }
+.fx-login-stream:nth-child(2) { left: 25%; animation-duration: 5s; animation-delay: 1s; height: 70px; }
+.fx-login-stream:nth-child(3) { left: 40%; animation-duration: 3.5s; animation-delay: 2s; height: 50px; }
+.fx-login-stream:nth-child(4) { left: 60%; animation-duration: 4.5s; animation-delay: 0.5s; height: 80px; }
+.fx-login-stream:nth-child(5) { left: 75%; animation-duration: 5.5s; animation-delay: 1.5s; height: 45px; }
+.fx-login-stream:nth-child(6) { left: 88%; animation-duration: 4s; animation-delay: 2.5s; height: 55px; }
+
+@keyframes fx-stream-fall {
+  0% { top: -80px; opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.4; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* === Radar Sweep === */
+.fx-login-radar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 600px;
+  height: 600px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.12;
+}
+
+.fx-login-radar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(23, 105, 255, 0.3);
+}
+
+.fx-login-radar::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 50%;
+  height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 212, 255, 0.8) 0%,
+    transparent 100%
+  );
+  animation: fx-radar-sweep 5s linear infinite;
+}
+
+@keyframes fx-radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .fx-login-radar {
+    width: 300px;
+    height: 300px;
+  }
+  .fx-login-node:nth-child(n+8) {
+    display: none;
+  }
+  .fx-login-stream:nth-child(n+5) {
+    display: none;
+  }
+}
+
+/* === Reduce motion for accessibility === */
+@media (prefers-reduced-motion: reduce) {
+  .fx-login-grid,
+  .fx-login-hex,
+  .fx-login-node,
+  .fx-login-node::before,
+  .fx-login-scan::before,
+  .fx-login-scan::after,
+  .fx-login-conn-line,
+  .fx-login-glow::before,
+  .fx-login-glow::after,
+  .fx-login-stream,
+  .fx-login-radar::after {
+    animation: none;
+  }
+}
