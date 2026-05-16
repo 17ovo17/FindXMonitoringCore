@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -23,6 +26,9 @@ const (
 var lokiHTTPClient = &http.Client{Timeout: lokiProxyTimeout}
 
 func getLokiURL() string {
+	if u := strings.TrimRight(strings.TrimSpace(viper.GetString("loki.url")), "/"); u != "" {
+		return u
+	}
 	return strings.TrimRight(strings.TrimSpace(os.Getenv("LOKI_URL")), "/")
 }
 
@@ -224,4 +230,140 @@ func copyLokiAuthHeaders(c *gin.Context, req *http.Request) {
 
 func lokiBlockedEnvelopeForTest(reason string) model.LogsBlockedEnvelope {
 	return logsBlockedEnvelope("FX-CONTRACT-SIGNOZ-LOGS-LOKI-PROXY", []string{"logs.datasource.loki", "logs.query_service", "logs.error_redaction"}, reason)
+}
+
+// LogsQueryFindX proxies to Loki query_range and transforms the response into FindX format.
+// GET /api/v1/logs/query
+// Params: query (LogQL), start, end, limit, direction
+func LogsQueryFindX(c *gin.Context) {
+	lokiURL := getLokiURL()
+	if lokiURL == "" {
+		blockLokiContract(c, http.StatusServiceUnavailable, "loki datasource is not configured")
+		return
+	}
+
+	query := strings.TrimSpace(c.Query("query"))
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter required"})
+		return
+	}
+
+	params := url.Values{}
+	params.Set("query", query)
+	if start := strings.TrimSpace(c.Query("start")); start != "" {
+		params.Set("start", start)
+	} else {
+		params.Set("start", strconv.FormatInt(time.Now().Add(-1*time.Hour).UnixNano(), 10))
+	}
+	if end := strings.TrimSpace(c.Query("end")); end != "" {
+		params.Set("end", end)
+	} else {
+		params.Set("end", strconv.FormatInt(time.Now().UnixNano(), 10))
+	}
+	if limit := strings.TrimSpace(c.Query("limit")); limit != "" {
+		params.Set("limit", limit)
+	} else {
+		params.Set("limit", "100")
+	}
+	if direction := strings.TrimSpace(c.Query("direction")); direction != "" {
+		params.Set("direction", direction)
+	} else {
+		params.Set("direction", "backward")
+	}
+
+	target := lokiURL + "/loki/api/v1/query_range?" + params.Encode()
+	ctx, cancel := context.WithTimeout(c.Request.Context(), lokiProxyTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create loki request failed"})
+		return
+	}
+	copyLokiAuthHeaders(c, req)
+
+	resp, err := lokiHTTPClient.Do(req)
+	if err != nil {
+		logrus.WithError(err).Warn("loki: findx query proxy failed")
+		blockLokiUpstream(c, http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		blockLokiUpstream(c, http.StatusBadGateway)
+		return
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		blockLokiUpstream(c, http.StatusBadGateway)
+		return
+	}
+
+	records := parseLokiQueryRangeResponse(data)
+	c.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+		"items":  records,
+		"total":  len(records),
+	})
+}
+
+// lokiQueryRangeResponse represents the Loki query_range JSON response structure.
+type lokiQueryRangeResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string              `json:"resultType"`
+		Result     []lokiStreamResult  `json:"result"`
+	} `json:"data"`
+}
+
+type lokiStreamResult struct {
+	Stream map[string]string `json:"stream"`
+	Values [][]string        `json:"values"` // [timestamp_ns, line]
+}
+
+type lokiFindXRecord struct {
+	Timestamp string            `json:"timestamp"`
+	Message   string            `json:"message"`
+	Level     string            `json:"level"`
+	Labels    map[string]string `json:"labels"`
+	Stream    string            `json:"stream"`
+}
+
+func parseLokiQueryRangeResponse(data []byte) []lokiFindXRecord {
+	var lokiResp lokiQueryRangeResponse
+	if err := json.Unmarshal(data, &lokiResp); err != nil {
+		logrus.WithError(err).Warn("loki: failed to parse query_range response")
+		return []lokiFindXRecord{}
+	}
+
+	records := make([]lokiFindXRecord, 0, 64)
+	for _, stream := range lokiResp.Data.Result {
+		streamName := ""
+		level := "info"
+		if v, ok := stream.Stream["stream"]; ok {
+			streamName = v
+		}
+		if v, ok := stream.Stream["level"]; ok {
+			level = v
+		} else if v, ok := stream.Stream["severity"]; ok {
+			level = v
+		}
+
+		for _, entry := range stream.Values {
+			if len(entry) < 2 {
+				continue
+			}
+			tsNano, _ := strconv.ParseInt(entry[0], 10, 64)
+			ts := time.Unix(0, tsNano).UTC().Format(time.RFC3339Nano)
+			records = append(records, lokiFindXRecord{
+				Timestamp: ts,
+				Message:   sanitizeLogString(entry[1]),
+				Level:     level,
+				Labels:    stream.Stream,
+				Stream:    streamName,
+			})
+		}
+	}
+	return records
 }

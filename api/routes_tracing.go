@@ -12,8 +12,25 @@ func registerTracingRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/tracing/selectors/endpoints", mw.readRequired, handler.TracingListEndpointsSW)
 	v1.GET("/tracing/selectors/instances", mw.readRequired, handler.TracingListInstancesSW)
 	v1.POST("/tracing/traces/query", mw.readRequired, handler.TracingQueryTracesSW)
-	v1.GET("/tracing/traces/:id/spans", mw.readRequired, handler.TracingGetTraceSpansSW)
+	v1.GET("/tracing/traces/:id/spans", mw.readRequired, handler.TracingTraceSpans)
 	v1.GET("/tracing/topology", mw.readRequired, handler.TracingGetTopologySW)
+
+	// D1: Service detail
+	v1.GET("/tracing/services/:name", mw.readRequired, handler.TracingServiceDetail)
+	v1.GET("/tracing/services/:name/instances", mw.readRequired, handler.TracingServiceInstances)
+	v1.GET("/tracing/services/:name/endpoints", mw.readRequired, handler.TracingServiceEndpoints)
+
+	// D2: Topology metrics
+	v1.GET("/tracing/topology/:service/metrics", mw.readRequired, handler.TracingTopologyMetrics)
+	v1.GET("/tracing/topology/:service/dependencies", mw.readRequired, handler.TracingTopologyDependencies)
+
+	// D4: Profiling
+	v1.GET("/tracing/profiling/tasks", mw.readRequired, handler.TracingListProfilingTasks)
+	v1.POST("/tracing/profiling/tasks", mw.readRequired, handler.TracingCreateProfilingTask)
+	v1.GET("/tracing/profiling/tasks/:id", mw.readRequired, handler.TracingGetProfilingTask)
+
+	// D5: Service metrics aggregation
+	v1.GET("/tracing/services/:name/metrics", mw.readRequired, handler.TracingServiceMetrics)
 
 	v1.GET("/apm/selectors/services", mw.readRequired, handler.TracingListServicesSW)
 	v1.GET("/apm/selectors/instances", mw.readRequired, handler.TracingListInstancesSW)
