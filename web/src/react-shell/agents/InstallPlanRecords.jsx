@@ -5,7 +5,6 @@ import { Blocked, Empty, ErrorBox, Status, Tags } from './AgentShared.jsx'
 
 const SENSITIVE_REF_RE = /(token|cookie|session|password|secret|dsn|private[_-]?key|credential|bearer|api[_-]?key|access[_-]?key)/i
 const VISUAL_REF_RE = /(?:_ref$|^checksum$|^ssh_(?:host_key|fingerprint)$)/i
-const BLOCKED_NOTE = 'install plan 只读审计面板仅展示被阻断的持久化记录，以及 safe refs、blocked reason 和 status；不会展示 credential、token 或其他敏感值。'
 
 const isBlockedPlan = record => String(record?.status || '').toLowerCase() === 'blocked'
 const normalizeRecords = rows => rows.filter(isBlockedPlan)
@@ -87,7 +86,6 @@ function Detail({ record }) {
   return (
     <div className='fx-agent-panel'>
       <h3>blocked install plan detail</h3>
-      <p>{BLOCKED_NOTE}</p>
       <div className='fx-agent-summary-row'>
         <Status ok={false}>{statusText(record)}</Status>
         <span>record {displayText(recordId(record))}</span>
@@ -152,7 +150,6 @@ export function InstallPlanRecords() {
   return (
     <section className='fx-agent-panel'>
       <h3>blocked install plans 审计记录</h3>
-      <p>{BLOCKED_NOTE}</p>
       <Summary records={displayRecords} loading={loading} onRefresh={load} />
       <ErrorBox>{error}</ErrorBox>
       <RecordsTable records={displayRecords} loadingDetail={loadingDetail} onSelect={openDetail} />

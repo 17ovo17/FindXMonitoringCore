@@ -1,8 +1,6 @@
 import React from 'react'
 import { installCommands, renderInstallCommand, resolveFindxOrigin } from './agentTemplateModel.js'
-import { Blocked, CopyBlock } from './AgentShared.jsx'
-
-const BLOCKED_TEXT = '当前内置包仓库和安装环境仍是测试证据，生产安装执行必须等包签名、一次性 token、审计和回滚契约开放后才能解除阻断。'
+import { CopyBlock } from './AgentShared.jsx'
 
 const kubernetesPreviewIds = new Set(['helm', 'kubernetes-daemonset', 'kubernetes-operator', 'kubernetes-sidecar', 'kubernetes-initcontainer'])
 
@@ -58,7 +56,6 @@ export function InstallCommandPreview({ packageId, selectedMethod, onSelectMetho
           </article>
         )
       })}
-      <Blocked>{BLOCKED_TEXT}</Blocked>
     </div>
   )
 }

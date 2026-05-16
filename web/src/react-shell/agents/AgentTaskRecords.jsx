@@ -7,7 +7,6 @@ const TASK_ACTION_RE = /(uninstall|upgrade|rollback|restart|package)/i
 const SENSITIVE_KEY_RE = /(token|cookie|session|password|passwd|secret|dsn|private[_-]?key|credential|bearer|api[_-]?key|access[_-]?key|authorization)/i
 const SAFE_REF_RE = /(^|_)(audit|evidence|receipt|checksum|fingerprint|ref|refs|safe_refs?)$/i
 const MAX_REF_LENGTH = 96
-const BLOCKED_NOTE = '任务审计面板只展示 status=blocked 的 uninstall / upgrade / rollback / restart / package 记录；真实执行仍为 PENDING。'
 
 const isBlocked = record => String(record?.status || '').toLowerCase() === 'blocked'
 const recordId = record => record?.id || record?.task_id || record?.record_id || ''
@@ -101,7 +100,6 @@ function Detail({ record }) {
   return (
     <div className='fx-agent-panel'>
       <h3>blocked task detail</h3>
-      <p>{BLOCKED_NOTE}</p>
       <div className='fx-agent-summary-row'><Status ok={false}>{statusText(record)}</Status><span>task {displayText(recordId(record))}</span></div>
       <div className='fx-agent-summary-row'><strong>action</strong><span>{displayText(actionText(record), 'PENDING')}</span></div>
       <div className='fx-agent-summary-row'><strong>target_ids</strong><span>{listText(record?.target_ids || pick(record, 'target_id', 'target'))}</span></div>
@@ -163,7 +161,6 @@ export function AgentTaskRecords() {
   return (
     <section className='fx-agent-panel'>
       <h3>blocked task 审计记录</h3>
-      <p>{BLOCKED_NOTE}</p>
       <Summary records={displayRecords} loading={loading} onRefresh={load} />
       <ErrorBox>{error}</ErrorBox>
       <RecordsTable records={displayRecords} loadingDetail={loadingDetail} onSelect={openDetail} />

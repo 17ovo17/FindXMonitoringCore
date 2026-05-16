@@ -3,60 +3,62 @@ import React from 'react'
 const iconPaths = {
   ai: (
     <>
-      <path d='M12 3.5v3' />
-      <path d='M8.5 5h7' />
-      <rect x='5' y='7' width='14' height='12' rx='4' />
-      <path d='M9 12h.01M15 12h.01' />
-      <path d='M9.5 16c1.4.7 3.6.7 5 0' />
-      <path d='M3.5 11.5h1.7M18.8 11.5h1.7' />
+      <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z' />
+      <path d='M9 8l1.5 3L9 14' />
+      <path d='M15 8l-1.5 3L15 14' />
+      <path d='M8 11h8' />
     </>
   ),
   'ai-assistant': (
     <>
-      <path d='M12 3.5v3' />
-      <path d='M8.5 5h7' />
-      <rect x='5' y='7' width='14' height='12' rx='4' />
-      <path d='M9 12h.01M15 12h.01' />
-      <path d='M9.5 16c1.4.7 3.6.7 5 0' />
-      <path d='M3.5 11.5h1.7M18.8 11.5h1.7' />
+      <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z' />
+      <path d='M14.5 7l-1 2.5L14.5 12' />
+      <path d='M9.5 7l1 2.5L9.5 12' />
+      <circle cx='8' cy='9.5' r='.5' fill='currentColor' stroke='none' />
+      <circle cx='16' cy='9.5' r='.5' fill='currentColor' stroke='none' />
     </>
   ),
   monitoring: (
     <>
-      <rect x='3' y='4' width='18' height='14' rx='2' />
-      <path d='M7 12l3-3 2 2 5-5' />
-      <path d='M8 20h8M12 18v2' />
+      <circle cx='12' cy='12' r='9' />
+      <path d='M12 12l3.5-3.5' />
+      <path d='M12 7v1' />
+      <path d='M17 12h-1' />
+      <path d='M12 17v-1' />
+      <path d='M7 12h1' />
+      <circle cx='12' cy='12' r='1.5' fill='currentColor' stroke='none' />
     </>
   ),
   agent: (
     <>
-      <circle cx='12' cy='8' r='4' />
-      <path d='M8 8V6M16 8V6' />
-      <path d='M6 16c0-3.3 2.7-6 6-6s6 2.7 6 6' />
-      <path d='M9 20h6M12 16v4' />
+      <rect x='6' y='8' width='12' height='10' rx='3' />
+      <path d='M12 4v4' />
+      <circle cx='12' cy='3.5' r='1.5' />
+      <circle cx='9.5' cy='12.5' r='1' fill='currentColor' stroke='none' />
+      <circle cx='14.5' cy='12.5' r='1' fill='currentColor' stroke='none' />
+      <path d='M9.5 15.5h5' />
+      <path d='M4 12h2M18 12h2' />
     </>
   ),
   knowledge: (
     <>
-      <path d='M4 5a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v2' />
-      <rect x='4' y='9' width='16' height='10' rx='2' />
-      <path d='M9 13h6M9 16h4' />
+      <path d='M2 4.5C2 3.7 2.7 3 3.5 3h5c1.1 0 2.1.5 2.8 1.2L12 5l.7-.8C13.4 3.5 14.4 3 15.5 3h5c.8 0 1.5.7 1.5 1.5V18c0 .8-.7 1.5-1.5 1.5h-5.7c-.8 0-1.5.3-2 .9l-.3.3-.3-.3c-.5-.6-1.2-.9-2-.9H3.5C2.7 19.5 2 18.8 2 18V4.5Z' />
+      <path d='M12 5v14.7' />
     </>
   ),
   alert: (
     <>
-      <path d='M12 3.2 21 19H3L12 3.2Z' />
-      <path d='M12 8.8v4.6' />
-      <path d='M12 16.7h.01' />
+      <path d='M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9Z' />
+      <path d='M13.7 21a2 2 0 0 1-3.4 0' />
+      <circle cx='18' cy='4' r='2.5' fill='currentColor' stroke='none' />
     </>
   ),
   cmdb: (
     <>
-      <rect x='4' y='4' width='7' height='7' rx='2' />
-      <rect x='13' y='4' width='7' height='7' rx='2' />
-      <rect x='4' y='13' width='7' height='7' rx='2' />
-      <rect x='13' y='13' width='7' height='7' rx='2' />
-      <path d='M11 7.5h2M7.5 11v2M16.5 11v2M11 16.5h2' />
+      <ellipse cx='12' cy='5.5' rx='7.5' ry='2.5' />
+      <path d='M4.5 5.5v4.5c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5V5.5' />
+      <path d='M4.5 10v4.5c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5V10' />
+      <path d='M4.5 14.5V19c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-4.5' />
     </>
   ),
   custom: (
@@ -66,17 +68,19 @@ const iconPaths = {
   ),
   integration: (
     <>
-      <path d='M8 7h8M8 17h8' />
-      <circle cx='5' cy='7' r='2' />
-      <circle cx='19' cy='17' r='2' />
-      <path d='M7 7c5.5 0 5.5 10 10 10' />
-      <path d='M17 7c-4.5 0-4.5 10-10 10' />
+      <path d='M5.5 3.5h5v5h-5z' />
+      <path d='M13.5 3.5h5v5h-5z' />
+      <path d='M5.5 15.5h5v5h-5z' />
+      <path d='M8 8.5v3.5h8V8.5' />
+      <path d='M12 12v3.5' />
+      <path d='M13.5 15.5h5v5h-5z' />
     </>
   ),
   logs: (
     <>
-      <path d='M6 4h12a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2Z' />
-      <path d='M8 8h8M8 12h8M8 16h5' />
+      <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z' />
+      <path d='M14 2v6h6' />
+      <path d='M8 13h8M8 17h5M8 9h3' />
     </>
   ),
   model: (
@@ -103,17 +107,20 @@ const iconPaths = {
   org: (
     <>
       <circle cx='12' cy='7' r='3' />
-      <path d='M6 20a6 6 0 0 1 12 0' />
-      <circle cx='5.5' cy='11.5' r='2' />
-      <circle cx='18.5' cy='11.5' r='2' />
-      <path d='M2.8 19a4 4 0 0 1 5.1-3.8M16.1 15.2A4 4 0 0 1 21.2 19' />
+      <path d='M5 21v-1a7 7 0 0 1 14 0v1' />
+      <circle cx='5' cy='12' r='2' />
+      <path d='M2 21v-.5a3.5 3.5 0 0 1 5-3.2' />
+      <circle cx='19' cy='12' r='2' />
+      <path d='M22 21v-.5a3.5 3.5 0 0 0-5-3.2' />
     </>
   ),
   probe: (
     <>
-      <path d='M12 3v5M12 16v5M4 12h5M15 12h5' />
-      <circle cx='12' cy='12' r='4' />
-      <path d='M6.5 6.5 9 9M17.5 6.5 15 9M6.5 17.5 9 15M17.5 17.5 15 15' />
+      <circle cx='12' cy='12' r='2' />
+      <path d='M12 2v4M12 18v4' />
+      <path d='M2 12h4M18 12h4' />
+      <circle cx='12' cy='12' r='6' opacity='.5' />
+      <circle cx='12' cy='12' r='9.5' opacity='.3' />
     </>
   ),
   query: (
@@ -134,8 +141,8 @@ const iconPaths = {
   ),
   settings: (
     <>
-      <path d='M12 8.4a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2Z' />
-      <path d='M19.4 14.2c.1-.7.1-1.5 0-2.2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.9-1.1L14.8 4h-5.6l-.4 2.9A8 8 0 0 0 7 8L4.6 7l-2 3.5 2 1.5a8.5 8.5 0 0 0 0 2.2l-2 1.5 2 3.5L7 18.2a8 8 0 0 0 1.9 1.1l.4 2.7h5.6l.4-2.7a8 8 0 0 0 1.9-1.1l2.4 1.1 2-3.5-2.2-1.6Z' />
+      <circle cx='12' cy='12' r='3' />
+      <path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08Z' />
     </>
   ),
   software: (
@@ -162,10 +169,39 @@ const iconPaths = {
   trace: (
     <>
       <circle cx='5' cy='12' r='2.5' />
-      <circle cx='12' cy='6' r='2.5' />
+      <circle cx='12' cy='5.5' r='2.5' />
       <circle cx='19' cy='12' r='2.5' />
-      <circle cx='12' cy='18' r='2.5' />
-      <path d='M7 10.5 10 7.5M14 7.5l3 3M17 13.5l-3 3M10 16.5l-3-3' />
+      <circle cx='12' cy='18.5' r='2.5' />
+      <path d='M7.2 10.5 9.8 7.5' />
+      <path d='M14.2 7.5l2.6 3' />
+      <path d='M16.8 13.5l-2.6 3' />
+      <path d='M9.8 16.5l-2.6-3' />
+    </>
+  ),
+  'status-critical': (
+    <>
+      <circle cx='12' cy='12' r='9' fill='currentColor' stroke='none' />
+      <path d='M15 9l-6 6M9 9l6 6' stroke='white' strokeWidth='2' />
+    </>
+  ),
+  'status-warning': (
+    <>
+      <path d='M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z' />
+      <path d='M12 9v4' />
+      <circle cx='12' cy='16' r='.5' fill='currentColor' stroke='none' />
+    </>
+  ),
+  'status-ok': (
+    <>
+      <circle cx='12' cy='12' r='9' />
+      <path d='M8 12l3 3 5-5' />
+    </>
+  ),
+  'status-unknown': (
+    <>
+      <circle cx='12' cy='12' r='9' />
+      <path d='M9.5 9a3 3 0 0 1 5.2 1.5c0 2-2.7 2-2.7 3.5' />
+      <circle cx='12' cy='17' r='.5' fill='currentColor' stroke='none' />
     </>
   ),
 }

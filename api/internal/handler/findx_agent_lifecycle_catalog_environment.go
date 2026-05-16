@@ -140,7 +140,7 @@ func packageEnvironmentBlocker(packageID string, blockers []string, sourceState 
 	if sourceState == environmentSourceMissing || isProbePackageWithoutLocalSource(packageID) {
 		return agentBlocked + ": LOCAL_SOURCE_MISSING;PACKAGE_MISSING"
 	}
-	return packageEnvironmentBlocked("ENVIRONMENT_MATRIX_BLOCKED", blockers)
+	return packageEnvironmentBlocked("ENVIRONMENT_MATRIX_PENDING", blockers)
 }
 
 func packageEnvironmentBlocked(reason string, blockers []string) string {

@@ -67,7 +67,7 @@ export function InstallWizardSection({ agents, packages }) {
       .then(() => setProgress({ status: 'done', message: '安装任务已提交' }))
       .catch(err => {
         const msg = formatAgentError(err)
-        if (msg.includes('BLOCKED')) {
+        if (msg.includes('pending')) {
           setProgress({ status: 'blocked', message: msg })
         } else {
           setError(msg)

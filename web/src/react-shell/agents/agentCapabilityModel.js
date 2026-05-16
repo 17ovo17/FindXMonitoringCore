@@ -1,11 +1,10 @@
 import { pluginConfigSpec } from './agentPluginConfigModel.js'
 
-const BLOCKED = 'PENDING'
 const MISSING_SOURCE = 'LOCAL_SOURCE_MISSING'
 const MISSING_PACKAGE = 'PACKAGE_MISSING'
 const SOURCE_PRESENT = 'LOCAL_SOURCE_PRESENT'
 
-const blocked = reason => `${BLOCKED}: ${reason}`
+const pending = reason => `pending: ${reason}`
 
 const methodRow = (platform, method, toolEvidence, sourceState, packageState, extra = {}) => ({
   platform,
@@ -13,13 +12,13 @@ const methodRow = (platform, method, toolEvidence, sourceState, packageState, ex
   toolEvidence,
   sourceState,
   packageState,
-  executor: extra.executor || BLOCKED,
-  serviceRegistration: extra.serviceRegistration || BLOCKED,
-  configDelivery: extra.configDelivery || BLOCKED,
-  uninstall: extra.uninstall || BLOCKED,
-  rollback: extra.rollback || BLOCKED,
-  dataArrival: extra.dataArrival || BLOCKED,
-  blocker: extra.blocker || blocked('缺少安装执行器、包仓库、服务回执和数据到达验证。'),
+  executor: extra.executor || 'pending',
+  serviceRegistration: extra.serviceRegistration || 'pending',
+  configDelivery: extra.configDelivery || 'pending',
+  uninstall: extra.uninstall || 'pending',
+  rollback: extra.rollback || 'pending',
+  dataArrival: extra.dataArrival || 'pending',
+  blocker: extra.blocker || pending('缺少安装执行器、包仓库、服务回执和数据到达验证。'),
 })
 
 const bundledPreviewMatrix = (sourceState, packageState, blocker) => [
@@ -29,10 +28,10 @@ const bundledPreviewMatrix = (sourceState, packageState, blocker) => [
   methodRow('Kubernetes', 'Helm / Operator / DaemonSet / Sidecar / InitContainer 预览', 'Kubernetes 原生命令形态可预览；未证明集群安装闭环。', sourceState, packageState, { blocker }),
 ]
 
-const appProbeBlocker = blocked('应用链路探针本地源码或包仓库缺失，只能展示 blocked 控制面。')
-const collectorBlocker = blocked('采集插件源码线索较完整，但 FindX 远程修改、reload、漂移检测、回滚和 receipt 契约缺失。')
-const inspectionBlocker = blocked('巡检诊断源码有线索，但缺二进制包仓库、安装服务和执行回执。')
-const coreBlocker = blocked('FindX Agent Core 缺少本地包仓库、签名、安装执行器、服务注册和心跳闭环。')
+const appProbeBlocker = pending('应用链路探针本地源码或包仓库缺失，只能展示待接入控制面。')
+const collectorBlocker = pending('采集插件源码线索较完整，但 FindX 远程修改、reload、漂移检测、回滚和 receipt 契约缺失。')
+const inspectionBlocker = pending('巡检诊断源码有线索，但缺二进制包仓库、安装服务和执行回执。')
+const coreBlocker = pending('FindX Agent Core 缺少本地包仓库、签名、安装执行器、服务注册和心跳闭环。')
 
 const pluginDeliveryScope = [
   'Agent',
@@ -44,11 +43,11 @@ const pluginDeliveryScope = [
 const categrafPluginConfig = (pluginId, reloadStrategy) => ({
   ...pluginConfigSpec(pluginId, reloadStrategy),
   delivery_scope: pluginDeliveryScope,
-  remote_mutation_status: BLOCKED,
-  remote_reload_status: BLOCKED,
-  drift_detection_status: BLOCKED,
-  rollback_status: BLOCKED,
-  receipt_status: BLOCKED,
+  remote_mutation_status: 'pending',
+  remote_reload_status: 'pending',
+  drift_detection_status: 'pending',
+  rollback_status: 'pending',
+  receipt_status: 'pending',
 })
 
 const appPackage = (id, name, runtime) => ({

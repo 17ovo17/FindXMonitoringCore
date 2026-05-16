@@ -18,7 +18,7 @@ export const sourceStateLabel = state => ({
   LOCAL_SOURCE_MISSING: '源码未接入',
   LOCAL_SOURCE_PRESENT: '源码待打包',
   READY: '能力包可用',
-  BLOCKED: '接入阻断',
+  PENDING: '待接入',
 })[state] || state || '未知'
 
 export const rowText = row => Object.values(row || {}).map(value => displayText(value, '')).join(' ').toLowerCase()

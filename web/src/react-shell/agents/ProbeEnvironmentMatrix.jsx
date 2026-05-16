@@ -1,11 +1,11 @@
 import React from 'react'
 import { Blocked, Status, Tags } from './AgentShared.jsx'
 
-const BLOCKED = 'PENDING'
-const fallbackBlocker = `${BLOCKED}: 安装环境契约未返回，不能判定平台自带工具、执行器、服务注册和数据到达闭环。`
+const PENDING_STATUS = 'pending'
+const fallbackBlocker = `${PENDING_STATUS}: 安装环境契约未返回，不能判定平台自带工具、执行器、服务注册和数据到达闭环。`
 
 const toList = value => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(/[,，\n]/).map(item => item.trim()).filter(Boolean)
-const field = (row, camelKey, snakeKey, fallback = BLOCKED) => row?.[camelKey] || row?.[snakeKey] || fallback
+const field = (row, camelKey, snakeKey, fallback = PENDING_STATUS) => row?.[camelKey] || row?.[snakeKey] || fallback
 
 const normalizeMatrixRow = row => ({
   platform: field(row, 'platform', 'platform', '未知平台'),
@@ -78,11 +78,11 @@ export function PluginDeliveryMatrix({ pluginConfig }) {
       <div className='fx-agent-subtitle'>采集插件配置下发范围</div>
       <Tags items={toList(pluginConfig.deliveryScope || pluginConfig.delivery_scope)} />
       <div className='fx-agent-plugin-config-row'>
-        <span>远程修改 {pluginConfig.remoteMutationStatus || BLOCKED}</span>
-        <span>reload {pluginConfig.remoteReloadStatus || BLOCKED}</span>
-        <span>漂移检测 {pluginConfig.driftDetectionStatus || BLOCKED}</span>
-        <span>回滚 {pluginConfig.rollbackStatus || BLOCKED}</span>
-        <span>receipt {pluginConfig.receiptStatus || BLOCKED}</span>
+        <span>远程修改 {pluginConfig.remoteMutationStatus || PENDING_STATUS}</span>
+        <span>reload {pluginConfig.remoteReloadStatus || PENDING_STATUS}</span>
+        <span>漂移检测 {pluginConfig.driftDetectionStatus || PENDING_STATUS}</span>
+        <span>回滚 {pluginConfig.rollbackStatus || PENDING_STATUS}</span>
+        <span>receipt {pluginConfig.receiptStatus || PENDING_STATUS}</span>
       </div>
       <Blocked>采集插件配置已纳入 FindX Agent、CMDB 主机、业务组和 namespace/workload 可下发范围；远程修改、reload、漂移检测、回滚和 receipt 仍为 PENDING。</Blocked>
     </div>

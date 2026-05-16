@@ -5,7 +5,6 @@ import { Blocked, Empty, ErrorBox, Status, Tags } from './AgentShared.jsx'
 
 const SENSITIVE_REF_RE = /(token|cookie|session|password|secret|dsn|private[_-]?key|credential|bearer|api[_-]?key|access[_-]?key)/i
 const MAX_REF_LENGTH = 96
-const BLOCKED_NOTE = 'install execution 只展示 status=blocked 的阻断审计记录，不表示真实安装成功或已执行完成。'
 
 const STEP_LABELS = {
   preflight: '预检',
@@ -154,7 +153,6 @@ function Detail({ record }) {
   return (
     <div className='fx-agent-panel'>
       <h3>blocked install execution detail</h3>
-      <p>{BLOCKED_NOTE}</p>
       <div className='fx-agent-summary-row'>
         <Status ok={false}>{statusText(record)}</Status>
         <span>execution {displayText(recordId(record))}</span>
@@ -201,7 +199,6 @@ export function InstallExecutionRecords() {
   return (
     <section className='fx-agent-panel'>
       <h3>blocked install executions 审计记录</h3>
-      <p>{BLOCKED_NOTE}</p>
       <Summary records={displayRecords} loading={loading} onRefresh={load} />
       <ErrorBox>{error}</ErrorBox>
       <RecordsTable records={displayRecords} loadingDetail={loadingDetail} onSelect={openDetail} />

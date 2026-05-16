@@ -9,7 +9,6 @@ const PAYLOAD_KEYS = ['template_id', 'plugin_id', 'target_mode', 'rollout_strate
 const SCOPE_KEYS = ['target_mode', 'scope', 'business_group', 'namespace', 'workload', 'cluster', 'target_ids', 'agent_ids']
 const SENSITIVE_REF_RE = /(token|cookie|session|password|secret|dsn|private[_-]?key|credential|bearer|api[_-]?key|access[_-]?key)/i
 const MAX_REF_LENGTH = 96
-const BLOCKED_NOTE = '配置/插件下发仍为 PENDING；这里只展示被阻断的持久化审计记录和 safe _ref contract metadata，不表示真实执行。'
 
 const isBlocked = record => String(record?.status || '').toLowerCase() === 'blocked'
 const normalizeRecords = rows => rows.filter(isBlocked)
@@ -94,7 +93,7 @@ function Detail({ record }) {
       <span>record {displayText(recordId(record))}</span>
       <Tags items={[`template ${displayText(pick(record, 'template_id', 'template'))}`, `plugin ${displayText(pick(record, 'plugin_id', 'plugin'))}`, `target ${displayText(targetText(record))}`]} />
       <Tags items={scopes.length ? scopes : ['scope: PENDING']} />
-      {missing.length ? <Blocked>缺少 contract refs：{missing.join(', ')}。配置/插件写入、reload、drift check、Evidence Chain 和 rollback 仍不可执行。</Blocked> : <Blocked>{BLOCKED_NOTE}</Blocked>}
+      {missing.length ? <Blocked>缺少 contract refs：{missing.join(', ')}。配置/插件写入、reload、drift check、Evidence Chain 和 rollback 仍不可执行。</Blocked> : null}
       <RefTable record={record} />
       <PayloadPreview record={record} />
     </div>
@@ -160,7 +159,6 @@ export function ConfigRolloutRecords() {
   return (
     <section className='fx-agent-panel'>
       <h3>配置/插件下发阻断记录</h3>
-      <p>{BLOCKED_NOTE}</p>
       <Summary records={displayRecords} loading={loading} onRefresh={load} />
       <ErrorBox>{error}</ErrorBox>
       <RecordsTable records={displayRecords} loadingDetail={loadingDetail} onSelect={openDetail} />

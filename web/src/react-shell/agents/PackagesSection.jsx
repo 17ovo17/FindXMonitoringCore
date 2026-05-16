@@ -4,7 +4,7 @@ import { capabilityPackages } from './agentModel.js'
 import { Blocked, ErrorBox, Field, Status, Tags } from './AgentShared.jsx'
 import { PluginDeliveryMatrix, ProbeEnvironmentMatrix } from './ProbeEnvironmentMatrix.jsx'
 
-const BLOCKED = 'PENDING'
+const PENDING_STATUS = 'pending'
 const blockedEnvironment = ['install_environment 契约未返回，不能判定平台自带安装能力。']
 
 const sourceStateText = state => ({
@@ -12,7 +12,7 @@ const sourceStateText = state => ({
   LOCAL_SOURCE_PRESENT: '源码线索已归档',
   PACKAGE_MISSING: '包缺失',
   READY: '可见但需验证',
-  BLOCKED: '接入阻断',
+  PENDING: '待接入',
 })[state] || state || '未知'
 
 const toList = value => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(/[,，\n]/).map(item => item.trim()).filter(Boolean)
@@ -52,11 +52,11 @@ const normalizePluginConfig = spec => spec ? {
   configFormat: (spec.config_format || spec.configFormat || '').toUpperCase(),
   configSnippetRef: spec.config_snippet_ref || spec.configSnippetRef,
   providerModes: spec.provider_modes || spec.providerModes || [],
-  remoteMutationStatus: spec.remote_mutation_status || spec.remoteMutationStatus || BLOCKED,
-  remoteReloadStatus: spec.remote_reload_status || spec.remoteReloadStatus || BLOCKED,
-  driftDetectionStatus: spec.drift_detection_status || spec.driftDetectionStatus || BLOCKED,
-  rollbackStatus: spec.rollback_status || spec.rollbackStatus || BLOCKED,
-  receiptStatus: spec.receipt_status || spec.receiptStatus || BLOCKED,
+  remoteMutationStatus: spec.remote_mutation_status || spec.remoteMutationStatus || PENDING_STATUS,
+  remoteReloadStatus: spec.remote_reload_status || spec.remoteReloadStatus || PENDING_STATUS,
+  driftDetectionStatus: spec.drift_detection_status || spec.driftDetectionStatus || PENDING_STATUS,
+  rollbackStatus: spec.rollback_status || spec.rollbackStatus || PENDING_STATUS,
+  receiptStatus: spec.receipt_status || spec.receiptStatus || PENDING_STATUS,
   deliveryScope: spec.delivery_scope || spec.deliveryScope || [],
 } : null
 
@@ -95,12 +95,12 @@ const deriveEnvironmentMatrix = item => {
       toolEvidence: `${toolEvidence}；${note}`,
       sourceState: item.sourceState || 'LOCAL_SOURCE_MISSING',
       packageState: item.packageState || 'PACKAGE_MISSING',
-      executor: BLOCKED,
-      serviceRegistration: BLOCKED,
-      configDelivery: item.pluginConfig ? '插件配置可进入下发控制面；真实远程修改仍阻断' : BLOCKED,
-      uninstall: BLOCKED,
-      rollback: BLOCKED,
-      dataArrival: BLOCKED,
+      executor: PENDING_STATUS,
+      serviceRegistration: PENDING_STATUS,
+      configDelivery: item.pluginConfig ? '插件配置可进入下发控制面；真实远程修改仍阻断' : PENDING_STATUS,
+      uninstall: PENDING_STATUS,
+      rollback: PENDING_STATUS,
+      dataArrival: PENDING_STATUS,
       blocker,
     }
   })
@@ -211,7 +211,7 @@ export function InstallEnvironmentSummary({ environment }) {
       <div className='fx-agent-subtitle'>安装环境摘要</div>
       <div className='fx-agent-plugin-config-row'>
         <span>状态 {environment.status}</span>
-        <span>平台 {environment.platforms.length ? environment.platforms.join(' / ') : BLOCKED}</span>
+        <span>平台 {environment.platforms.length ? environment.platforms.join(' / ') : PENDING_STATUS}</span>
       </div>
       <Tags items={bundledTools.length ? bundledTools : ['自带工具证据未返回']} />
       {!!blockers.length && <Blocked>{blockers.join(' / ')}</Blocked>}
