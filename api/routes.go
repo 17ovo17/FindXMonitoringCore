@@ -36,10 +36,12 @@ func registerRootRoutes(r *gin.Engine) {
 	r.POST("/prometheus/v1/write", handler.CategrafPrometheusRemoteWrite)
 	r.POST("/findx-agent/v1/logs", handler.FindXAgentLogsCompatibleReceiver)
 	r.POST("/findx-agent/v1/traces", handler.FindXAgentTracesCompatibleReceiver)
+	r.POST("/findx-agent/v1/apm/traces", handler.APMTraceReceive)
 }
 
 func registerAPIV1Routes(r *gin.Engine, v1 *gin.RouterGroup, mw routeMiddleware) {
 	registerAIOpsRoutes(v1, mw)
+	registerAIOpsEnhancedRoutes(v1, mw)
 	registerDiagnoseAndAgentRoutes(v1, mw)
 	registerPlatformRoutes(v1, mw)
 	registerAssetsAndLogsRoutes(v1, mw)
