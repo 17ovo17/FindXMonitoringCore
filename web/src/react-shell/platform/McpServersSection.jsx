@@ -3,7 +3,7 @@ import { get, post, put, del } from '../api/http.js'
 import { useConfirm } from '../shared/ConfirmModal.jsx'
 
 const MCP_TYPES = [
-  { value: 'nightingale', label: '夜莺监控' },
+  { value: 'monitoring', label: '监控平台' },
   { value: 'cmdb', label: 'CMDB' },
   { value: 'agent', label: 'Agent' },
   { value: 'knowledge', label: '知识库' },
@@ -15,7 +15,7 @@ const STATUS_BADGE = { online: '\u{1F7E2}', offline: '\u{1F534}', error: '⚠️
 const STATUS_LABEL = { online: '在线', offline: '离线', error: '异常' }
 
 function McpModal({ mode, item, onClose, onSave }) {
-  const [draft, setDraft] = useState(item || { name: '', type: 'nightingale', endpoint: '', description: '' })
+  const [draft, setDraft] = useState(item || { name: '', type: 'monitoring', endpoint: '', description: '' })
   const [saving, setSaving] = useState(false)
   const patch = (key, value) => setDraft((prev) => ({ ...prev, [key]: value }))
 
@@ -37,7 +37,7 @@ function McpModal({ mode, item, onClose, onSave }) {
             <input value={draft.name || ''} onChange={(e) => patch('name', e.target.value)} placeholder='MCP 服务名称' />
           </label>
           <label className='fx-platform-field'><span>类型</span>
-            <select value={draft.type || 'nightingale'} onChange={(e) => patch('type', e.target.value)}>
+            <select value={draft.type || 'monitoring'} onChange={(e) => patch('type', e.target.value)}>
               {MCP_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </label>
@@ -113,14 +113,14 @@ export function McpServersSection() {
   }
 
   const typeIcon = (type) => {
-    const icons = { nightingale: '\u{1F426}', cmdb: '\u{1F4E6}', agent: '\u{1F916}', knowledge: '\u{1F4DA}', prometheus: '\u{1F525}', alertmanager: '\u{1F514}' }
+    const icons = { monitoring: '\u{1F4CA}', cmdb: '\u{1F4E6}', agent: '\u{1F916}', knowledge: '\u{1F4DA}', prometheus: '\u{1F525}', alertmanager: '\u{1F514}' }
     return icons[type] || '\u{1F50C}'
   }
 
   return (
     <section className='fx-platform-models'>
       <div className='fx-platform-toolbar'>
-        <button type='button' onClick={() => setModal({ mode: 'create', item: { name: '', type: 'nightingale', endpoint: '', description: '' } })}>注册 MCP Server</button>
+        <button type='button' onClick={() => setModal({ mode: 'create', item: { name: '', type: 'monitoring', endpoint: '', description: '' } })}>注册 MCP Server</button>
         <button type='button' onClick={load}>刷新</button>
       </div>
       {error && <div className='fx-platform-error'>{error}</div>}

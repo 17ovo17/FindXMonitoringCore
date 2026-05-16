@@ -43,7 +43,6 @@ const datasourceLabel = (row) => {
   return type ? `${name} / ${type}` : name
 }
 
-/* PLACEHOLDER_BLOCKED_SECTION */
 
 function QueryBlockedSection({ section }) {
   const titles = { 'built-in-metrics': '内置指标', objects: '对象快捷视图', 'recording-rules': '记录规则' }
@@ -236,7 +235,7 @@ export function MetricExplorerPage({ query = {}, onNavigate }) {
       const promql = await metricQueryApi.aiGenerateQuery(panel.aiPrompt)
       patchPanel(panel.id, { query: promql, showAiInput: false, aiPrompt: '' })
     } catch (e) {
-      const msg = e?.status === 404 || e?.status === 501 ? 'BLOCKED: AI 接口不可用' : formatError(e)
+      const msg = e?.status === 404 || e?.status === 501 ? 'AI 接口暂不可用' : formatError(e)
       patchPanel(panel.id, { error: msg })
     } finally { patchPanel(panel.id, { aiLoading: false }) }
   }

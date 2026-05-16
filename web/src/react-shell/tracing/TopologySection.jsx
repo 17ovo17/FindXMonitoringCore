@@ -4,7 +4,7 @@ import { formatTracingError, tracingApi } from '../api/tracing.js'
 import { displayText, entityOptions, layerOptions } from './tracingModel.js'
 import { AgentEvidenceNotice, AgentLinkActions, Blocked, ErrorBox, Field } from './TracingShared.jsx'
 
-const BLOCKED_HINT = 'BLOCKED: 拓扑数据源未接入'
+const EMPTY_HINT = '拓扑数据源未接入'
 
 function normalizeGraph(raw) {
   if (!raw) return { nodes: [], edges: [] }
@@ -184,15 +184,15 @@ export function TopologySection({ query, onNavigate }) {
       })
       const normalized = normalizeGraph(raw)
       setGraph(normalized)
-      if (!normalized.nodes.length) setBlocked(BLOCKED_HINT)
+      if (!normalized.nodes.length) setBlocked(EMPTY_HINT)
     } catch (err) {
       setGraph({ nodes: [], edges: [] })
       const msg = formatTracingError(err)
       if (msg.startsWith('PENDING') || (err && [404, 405, 501].includes(err.status))) {
-        setBlocked(BLOCKED_HINT + ' (' + msg + ')')
+        setBlocked(EMPTY_HINT + ' (' + msg + ')')
       } else {
         setError(msg)
-        setBlocked(BLOCKED_HINT)
+        setBlocked(EMPTY_HINT)
       }
     } finally { setLoading(false) }
   }, [filters.layer, filters.entity, filters.depth, filters.serviceId])
@@ -239,7 +239,7 @@ export function TopologySection({ query, onNavigate }) {
         <TopologyGraph nodes={graph.nodes} edges={graph.edges} onSelectNode={setSelectedNode} onSelectEdge={setSelectedEdge} onContextMenu={handleContextMenu} />
       ) : (
         <div className='fx-tracing-topology-canvas'>
-          <div className='fx-tracing-topology-empty'>{blocked || (loading ? '加载拓扑...' : BLOCKED_HINT)}</div>
+          <div className='fx-tracing-topology-empty'>{blocked || (loading ? '加载拓扑...' : EMPTY_HINT)}</div>
         </div>
       )}
 

@@ -68,7 +68,7 @@ export function ServiceMetricsCharts({ serviceId }) {
           if (resp && resp.metrics) {
             setMetricsData(resp.metrics)
           } else {
-            // 后端返回了数据但没有 metrics 字段，使用模拟时间轴展示 BLOCKED
+            // 后端返回了数据但没有 metrics 字段
             setBlocked('PENDING: 需要后端实现 /apm/overview?serviceId&metrics API 返回时序指标数据')
           }
         }

@@ -31,7 +31,7 @@ const CMDB_CONTEXT_CARDS = [
   { title: '业务上下文', status: '需要 business_names/workspace_id', body: '实例拓扑必须能落到业务系统或业务组，不把单点拓扑伪装成业务拓扑。' },
   { title: '日志审计', status: 'FindX audit', body: '主机分配和监控绑定写入 scope=cmdb 的 FindX 审计日志，可从日志中心按 findx_audit 查询。' },
   { title: 'Agent 分配', status: '资源列表可操作', body: '主机行支持分配业务组和资源组；保存后由后端审计，不在前端伪造成功。' },
-  { title: '监控绑定', status: '真实绑定或 BLOCKED', body: '读取同一个 monitor-bindings 契约；没有真实绑定时展示阻断审计。' },
+  { title: '监控绑定', status: '绑定状态', body: '读取同一个 monitor-bindings 契约；没有真实绑定时展示阻断审计。' },
 ]
 
 const CMDB_RELATION_ACTIONS = [
@@ -41,7 +41,7 @@ const CMDB_RELATION_ACTIONS = [
   { key: 'topology', label: '拓扑', contract: 'cmdb_relation_topology_contract' },
 ]
 
-const CMDB_BLOCKED_CAPABILITIES = [
+const CMDB_PENDING_CAPABILITIES = [
   ['机房视图', '需要机房、机柜、U 位容量、告警统计和设备类型聚合契约。'],
   ['发现管理', '需要自动发现规则、映射字段、执行记录和同步回执契约。'],
   ['资源审批', '需要申请、审批人、审批结果、批量审批和审计链路契约。'],
@@ -249,10 +249,10 @@ function RelationBlockedCanvas({ audit, loading }) {
         <div className='fx-cmdb-lane is-blue'><header>关联 用户</header><p>需要 related_instance_id / relation_id</p></div>
         <div className='fx-cmdb-lane is-green'><header>属于 业务系统</header><p>需要 business_names / workspace_id</p></div>
         <div className='fx-cmdb-lane is-blue'><header>属于 数据库 / 中间件</header><p>需要 children[].relation 与实例边</p></div>
-        <div className='fx-cmdb-minimap'>BLOCKED</div>
+        <div className='fx-cmdb-minimap'>待接入</div>
       </div>
       <div className='fx-cmdb-blocked-capabilities'>
-        {CMDB_BLOCKED_CAPABILITIES.map(([name, reason]) => <span key={name}>{name}: {reason}</span>)}
+        {CMDB_PENDING_CAPABILITIES.map(([name, reason]) => <span key={name}>{name}: {reason}</span>)}
       </div>
     </div>
   )

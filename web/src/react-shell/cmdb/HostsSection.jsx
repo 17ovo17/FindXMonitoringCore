@@ -104,7 +104,7 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
     return groups.filter(g => displayText(g.name, '').toLowerCase().includes(kw))
   }, [groups, treeSearch])
 
-  // LWOPS: 前端过滤增强
+  // 前端过滤增强
   const filteredRows = useMemo(() => {
     let result = rows
     if (filters.alert_level) {

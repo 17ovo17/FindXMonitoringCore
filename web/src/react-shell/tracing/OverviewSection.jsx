@@ -26,7 +26,7 @@ export function OverviewSection({ onNavigate }) {
       <ErrorBox>{error}</ErrorBox>{blocked && <Blocked>{blocked}</Blocked>}
       <Blocked>{TRACING_BLOCKERS.agentLinkage}</Blocked>
       <div className='fx-tracing-grid'>
-        {cards.map(([label, value]) => <article key={label} className='fx-tracing-card'><strong>{value ?? 'BLOCKED'}</strong><span>{label}</span></article>)}
+        {cards.map(([label, value]) => <article key={label} className='fx-tracing-card'><strong>{value ?? '-'}</strong><span>{label}</span></article>)}
       </div>
       <div className='fx-tracing-table'>
         <table><tbody>

@@ -81,26 +81,26 @@ export const createBlockedMigrationState = () => [
     title: 'Agent 管理中心',
     children: [
       tempBridge('agent-overview', '概览', '/react/agents/overview', [
-        'D:\\平台源码\\skywalking-master',
-        'D:\\平台源码\\skywalking-booster-ui-main',
+        'source/trace-backend',
+        'source/trace-backend-ui',
       ]),
       tempBridge('agent-hosts', '主机 Agent', '/react/agents/hosts', [
-        'D:\\平台源码\\skywalking-master\\docs',
+        'source/trace-backend/docs',
       ]),
       tempBridge('agent-packages', '能力包', '/react/agents/packages', [
-        'D:\\平台源码\\skywalking-master\\apm-sniffer',
+        'source/trace-backend/apm-sniffer',
       ]),
       tempBridge('agent-install', '安装向导', '/react/agents/install', [
-        'D:\\平台源码\\skywalking-master\\docs',
+        'source/trace-backend/docs',
       ]),
       tempBridge('agent-templates', '配置模板', '/react/agents/templates', [
-        'D:\\平台源码\\skywalking-master\\docs',
+        'source/trace-backend/docs',
       ]),
       tempBridge('agent-heartbeat', '心跳状态', '/react/agents/heartbeat', [
-        'D:\\平台源码\\skywalking-master',
+        'source/trace-backend',
       ]),
       tempBridge('agent-data-arrival', '数据到达', '/react/agents/data-arrival', [
-        'D:\\平台源码\\skywalking-master',
+        'source/trace-backend',
       ]),
     ],
   },

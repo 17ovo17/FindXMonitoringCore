@@ -101,7 +101,7 @@ function SubscriptionStrip() {
         {blockedSubscriptions.map(([key, label, title]) => (
           <button key={key} type='button' disabled aria-disabled='true' title={title}>
             {label}
-            <small>BLOCKED</small>
+            <small>待配置</small>
           </button>
         ))}
       </div>

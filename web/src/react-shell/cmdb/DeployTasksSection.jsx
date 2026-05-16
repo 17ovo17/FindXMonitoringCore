@@ -3,7 +3,7 @@ import { CMDB_EXECUTION_BLOCKERS, cmdbApi, cmdbBlockedRecordMessage, cmdbContrac
 import { displayText, fmtTime } from './assetsModel.js'
 import { Blocked, ErrorBox, Field, Modal, Status } from './Shared.jsx'
 
-const BLOCKED_STATUSES = new Set(['blocked_by_contract', 'blocked'])
+const PENDING_STATUSES = new Set(['pending', 'unavailable'])
 const EXECUTION_WITHOUT_RECEIPT_STATUSES = new Set([
   'queued',
   'running',
@@ -19,7 +19,7 @@ const EXECUTION_WITHOUT_RECEIPT_STATUSES = new Set([
 
 const deployStatusLabel = status => {
   const normalized = String(status || '').toLowerCase()
-  if (BLOCKED_STATUSES.has(normalized)) return '契约阻断'
+  if (PENDING_STATUSES.has(normalized)) return '待处理'
   if (EXECUTION_WITHOUT_RECEIPT_STATUSES.has(normalized)) return '缺少执行回执'
   return '未知回执状态'
 }
