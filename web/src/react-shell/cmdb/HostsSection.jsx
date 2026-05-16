@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { ASSET_BLOCKERS, assetsApi, formatAssetError, splitText } from '../api/assets.js'
 import { cmdbApi } from '../api/cmdb.js'
+import { post } from '../api/http.js'
 import { displayText, fmtTime, hostIp, hostKey, hostName, isHostOnline, normalizeTags } from './assetsModel.js'
 import { Blocked, ErrorBox, Feedback, Field, Modal, Status, Tags } from './Shared.jsx'
 import { Pagination, useConfirm } from '../shared/ConfirmModal.jsx'
@@ -8,11 +9,35 @@ import { ExecSection } from './ExecSection.jsx'
 import { HostProbePluginDrawer } from './HostProbePluginDrawer.jsx'
 import { TerminalSection } from './TerminalSection.jsx'
 import { UploadSection } from './UploadSection.jsx'
+import { InstanceDetailDrawer } from './InstanceDetailDrawer.jsx'
+
+const CLASSIFICATION_TYPES = [
+  '物理机', '虚拟机', '容器', '云主机', '网络设备', '存储设备',
+  '安全设备', '数据库', '中间件', '应用服务', '负载均衡', 'GPU服务器',
+]
+
+const ALERT_LEVELS = [
+  { value: 'critical', label: '紧急', color: '#dc2626' },
+  { value: 'warning', label: '警告', color: '#f59e0b' },
+  { value: 'info', label: '信息', color: '#3b82f6' },
+  { value: 'none', label: '正常', color: '#10b981' },
+]
+
+const COLLECTION_STATUS_MAP = {
+  '正常': { color: '#10b981', bg: '#ecfdf5' },
+  '异常': { color: '#dc2626', bg: '#fef2f2' },
+  '未监控': { color: '#6b7280', bg: '#f3f4f6' },
+}
+
+const MAINTENANCE_STATUS_MAP = {
+  '维护中': { color: '#f59e0b', bg: '#fffbeb' },
+  '正常': { color: '#10b981', bg: '#ecfdf5' },
+}
 
 const PAGE_SIZE = 20
 
 export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, embedded = false }) {
-  const [filters, setFilters] = useState({ keyword: initialQuery.q || '', resource_group_id: initialQuery.group || '', workspace_id: initialQuery.workspace || '', online: initialQuery.online || '', tag: initialQuery.tag || '' })
+  const [filters, setFilters] = useState({ keyword: initialQuery.q || '', resource_group_id: initialQuery.group || '', workspace_id: initialQuery.workspace || '', online: initialQuery.online || '', tag: initialQuery.tag || '', alert_level: '', ip_exact: '', classification: '', maintenance_status: '', collection_status: '' })
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +47,9 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
   const [selectedGroup, setSelectedGroup] = useState(initialQuery.group || '')
   const [treeSearch, setTreeSearch] = useState('')
   const [treeExpanded, setTreeExpanded] = useState(true)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [batchModal, setBatchModal] = useState(null)
+  const [drawerRow, setDrawerRow] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
   const load = async (nextFilters = filters) => {
@@ -76,6 +104,59 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
     return groups.filter(g => displayText(g.name, '').toLowerCase().includes(kw))
   }, [groups, treeSearch])
 
+  // LWOPS: 前端过滤增强
+  const filteredRows = useMemo(() => {
+    let result = rows
+    if (filters.alert_level) {
+      result = result.filter(r => (r.alert_level || 'none') === filters.alert_level)
+    }
+    if (filters.ip_exact) {
+      result = result.filter(r => hostIp(r) === filters.ip_exact)
+    }
+    if (filters.classification) {
+      result = result.filter(r => (r.classification || '') === filters.classification)
+    }
+    if (filters.maintenance_status) {
+      result = result.filter(r => (r.maintenance_status || '正常') === filters.maintenance_status)
+    }
+    if (filters.collection_status) {
+      result = result.filter(r => (r.collection_status || '未监控') === filters.collection_status)
+    }
+    return result
+  }, [rows, filters.alert_level, filters.ip_exact, filters.classification, filters.maintenance_status, filters.collection_status])
+
+  // 批量操作
+  const handleBatchAction = useCallback(async (action, payload) => {
+    if (!selectedIds.length) return
+    setFeedback('')
+    try {
+      if (action === 'update-group') {
+        await post('/cmdb/batch/update-group', { resource_ids: selectedIds, group: payload })
+      } else if (action === 'update-owner') {
+        await post('/cmdb/batch/update-owner', { resource_ids: selectedIds, owner: payload })
+      } else if (action === 'set-maintenance') {
+        await post('/cmdb/batch/update-maintenance', { resource_ids: selectedIds, maintenance: true })
+      } else if (action === 'cancel-maintenance') {
+        await post('/cmdb/batch/update-maintenance', { resource_ids: selectedIds, maintenance: false })
+      } else if (action === 'delete') {
+        await post('/cmdb/batch/delete', { resource_ids: selectedIds })
+      } else if (action === 'deploy-agent') {
+        await post('/cmdb/batch/deploy-agent', { resource_ids: selectedIds })
+      }
+      setFeedback(`批量操作成功，影响 ${selectedIds.length} 条资源。`)
+      setSelectedIds([])
+      setBatchModal(null)
+      await load()
+      onRefreshAll?.()
+    } catch (err) {
+      setError(formatAssetError(err))
+    }
+  }, [selectedIds])
+
+  const handleRowClick = useCallback((row) => {
+    setDrawerRow(row)
+  }, [])
+
   return (
     <section className={embedded ? '' : 'fx-assets-split'}>
       {/* C01: 左侧分组树 */}
@@ -104,10 +185,29 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
           <button type='button' onClick={() => setModal({ type: 'terminal-select' })}>终端</button>
           <button type='button' onClick={load}>刷新</button>
         </div>
+        {selectedIds.length > 0 && (
+          <BatchToolbar
+            count={selectedIds.length}
+            onAction={(action) => {
+              if (action === 'update-group') setBatchModal({ type: 'group' })
+              else if (action === 'update-owner') setBatchModal({ type: 'owner' })
+              else if (action === 'set-maintenance') handleBatchAction('set-maintenance')
+              else if (action === 'cancel-maintenance') handleBatchAction('cancel-maintenance')
+              else if (action === 'delete') {
+                confirm({ title: '批量删除', message: `确认删除选中的 ${selectedIds.length} 条资源？此操作不可恢复。`, confirmText: '删除', danger: true })
+                  .then(ok => { if (ok) handleBatchAction('delete') })
+              }
+              else if (action === 'deploy-agent') handleBatchAction('deploy-agent')
+            }}
+            onClear={() => setSelectedIds([])}
+          />
+        )}
         <ErrorBox>{error}</ErrorBox><Feedback>{feedback}</Feedback>
-        <HostTable rows={rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)} allRows={rows} loading={loading} onDetail={row => setModal({ type: 'detail', row })} onChat={row => setModal({ type: 'host-chat-blocked', row })} onAssign={row => setModal({ type: 'assign', row, resource_group_id: row.resource_group_id || '', workspace_id: row.workspace_id || '' })} onProbe={row => setModal({ type: 'probe-plugin', row })} onTags={row => setModal({ type: 'tags', row, value: normalizeTags(row.tags).join(', ') })} onTerminal={row => setModal({ type: 'terminal', row })} onUpload={row => setModal({ type: 'upload', row })} onExec={row => setModal({ type: 'exec', row })} onDelete={handleDelete} />
-        <Pagination total={rows.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
+        <HostTable rows={filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)} allRows={filteredRows} loading={loading} selectedIds={selectedIds} onSelectChange={setSelectedIds} onRowClick={handleRowClick} onDetail={row => setModal({ type: 'detail', row })} onChat={row => setModal({ type: 'host-chat-blocked', row })} onAssign={row => setModal({ type: 'assign', row, resource_group_id: row.resource_group_id || '', workspace_id: row.workspace_id || '' })} onProbe={row => setModal({ type: 'probe-plugin', row })} onTags={row => setModal({ type: 'tags', row, value: normalizeTags(row.tags).join(', ') })} onTerminal={row => setModal({ type: 'terminal', row })} onUpload={row => setModal({ type: 'upload', row })} onExec={row => setModal({ type: 'exec', row })} onDelete={handleDelete} />
+        <Pagination total={filteredRows.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
         {modal && <HostModal modal={modal} groups={groups} workspaces={workspaces} onClose={() => setModal(null)} onSave={realAction} confirm={confirm} />}
+        {batchModal && <BatchModal type={batchModal.type} groups={groups} onClose={() => setBatchModal(null)} onConfirm={(value) => { handleBatchAction(batchModal.type === 'group' ? 'update-group' : 'update-owner', value); setBatchModal(null) }} />}
+        {drawerRow && <InstanceDetailDrawer row={drawerRow} open={!!drawerRow} onClose={() => setDrawerRow(null)} />}
         {confirmModal}
       </div>
     </section>
@@ -116,26 +216,112 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
 
 function HostFilter({ filters, groups, workspaces, onPatch, onSearch, loading }) {
   return (
-    <div className='fx-assets-filter'>
+    <div className='fx-assets-filter' style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
       <input value={filters.keyword} onChange={e => onPatch('keyword', e.target.value)} placeholder='主机名 / IP / Agent' />
       <select value={filters.workspace_id} onChange={e => onPatch('workspace_id', e.target.value)}><option value=''>全部业务组</option>{workspaces.map(row => <option key={row.id} value={row.id}>{displayText(row.name)}</option>)}</select>
       <select value={filters.resource_group_id} onChange={e => onPatch('resource_group_id', e.target.value)}><option value=''>全部资源组</option>{groups.map(row => <option key={row.id} value={row.id}>{displayText(row.name)}</option>)}</select>
       <select value={filters.online} onChange={e => onPatch('online', e.target.value)}><option value=''>全部状态</option><option value='true'>在线</option><option value='false'>离线</option></select>
       <input value={filters.tag} onChange={e => onPatch('tag', e.target.value)} placeholder='标签' />
+      <select value={filters.alert_level} onChange={e => onPatch('alert_level', e.target.value)}><option value=''>全部告警级别</option><option value='critical'>紧急</option><option value='warning'>警告</option><option value='info'>信息</option></select>
+      <input value={filters.ip_exact} onChange={e => onPatch('ip_exact', e.target.value)} placeholder='IP精准匹配' />
+      <select value={filters.classification} onChange={e => onPatch('classification', e.target.value)}><option value=''>全部类型</option>{CLASSIFICATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select>
+      <select value={filters.maintenance_status} onChange={e => onPatch('maintenance_status', e.target.value)}><option value=''>全部维护情况</option><option value='维护中'>维护中</option><option value='正常'>正常</option></select>
+      <select value={filters.collection_status} onChange={e => onPatch('collection_status', e.target.value)}><option value=''>全部采集情况</option><option value='正常'>正常</option><option value='异常'>异常</option><option value='未监控'>未监控</option></select>
       <button className='fx-assets-button is-primary' type='button' onClick={onSearch}>{loading ? '查询中...' : '查询'}</button>
     </div>
   )
 }
 
-function HostTable({ rows, allRows = rows, loading, onDetail, onChat, onAssign, onProbe, onTags, onTerminal, onUpload, onExec, onDelete }) {
+function BatchToolbar({ count, onAction, onClear }) {
+  return (
+    <div className='fx-assets-toolbar fx-batch-toolbar'>
+      <span style={{ fontSize: 13, color: '#193a63' }}>已选 <strong>{count}</strong> 项</span>
+      <button type='button' onClick={() => onAction('update-group')}>修改分组</button>
+      <button type='button' onClick={() => onAction('update-owner')}>修改负责人</button>
+      <button type='button' onClick={() => onAction('set-maintenance')}>设为维护</button>
+      <button type='button' onClick={() => onAction('cancel-maintenance')}>取消维护</button>
+      <button type='button' onClick={() => onAction('deploy-agent')}>下发Agent</button>
+      <button type='button' className='is-danger' onClick={() => onAction('delete')}>批量删除</button>
+      <button type='button' onClick={onClear}>取消选择</button>
+    </div>
+  )
+}
+
+function BatchModal({ type, groups, onClose, onConfirm }) {
+  const [value, setValue] = useState('')
+  const title = type === 'group' ? '修改分组' : '修改负责人'
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div className='fx-assets-form'>
+        {type === 'group' && (
+          <Field label='目标分组'>
+            <select value={value} onChange={e => setValue(e.target.value)}>
+              <option value=''>请选择分组</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{displayText(g.name)}</option>)}
+            </select>
+          </Field>
+        )}
+        {type === 'owner' && (
+          <Field label='负责人'>
+            <input value={value} onChange={e => setValue(e.target.value)} placeholder='输入负责人名称' />
+          </Field>
+        )}
+        <footer>
+          <button type='button' disabled={!value} onClick={() => onConfirm(value)}>确认</button>
+          <button type='button' onClick={onClose} style={{ marginLeft: 8, background: '#fff', color: '#21344d', borderColor: '#cdd8e8' }}>取消</button>
+        </footer>
+      </div>
+    </Modal>
+  )
+}
+
+function CollectionBadge({ status }) {
+  const label = status || '未监控'
+  const style = COLLECTION_STATUS_MAP[label] || COLLECTION_STATUS_MAP['未监控']
+  return <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 12, color: style.color, background: style.bg }}>{label}</span>
+}
+
+function MaintenanceBadge({ status }) {
+  const label = status || '正常'
+  const style = MAINTENANCE_STATUS_MAP[label] || MAINTENANCE_STATUS_MAP['正常']
+  return <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 12, color: style.color, background: style.bg }}>{label}</span>
+}
+
+function AlertDot({ level }) {
+  const info = ALERT_LEVELS.find(a => a.value === level) || ALERT_LEVELS[3]
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+      <i style={{ width: 8, height: 8, borderRadius: '50%', background: info.color, display: 'inline-block' }} />
+      {info.label}
+    </span>
+  )
+}
+
+function HostTable({ rows, allRows = rows, loading, selectedIds, onSelectChange, onRowClick, onDetail, onChat, onAssign, onProbe, onTags, onTerminal, onUpload, onExec, onDelete }) {
   const cmdbColumns = useMemo(() => buildCmdbHostColumns(allRows), [allRows])
   const useCmdbProjection = cmdbColumns.length > 0
-  const tableMinWidth = useCmdbProjection ? Math.max(880, 520 + cmdbColumns.length * 148) : 980
+  const tableMinWidth = useCmdbProjection ? Math.max(880, 520 + cmdbColumns.length * 148) : 1280
+
+  const allSelected = rows.length > 0 && rows.every(r => selectedIds.includes(hostKey(r)))
+  const toggleAll = () => {
+    if (allSelected) {
+      onSelectChange(selectedIds.filter(id => !rows.some(r => hostKey(r) === id)))
+    } else {
+      const newIds = [...new Set([...selectedIds, ...rows.map(r => hostKey(r))])]
+      onSelectChange(newIds)
+    }
+  }
+  const toggleRow = (row) => {
+    const id = hostKey(row)
+    onSelectChange(selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id])
+  }
+
   return (
     <div className={`fx-assets-table fx-assets-host-table ${useCmdbProjection ? 'is-cmdb-projection' : ''}`}>
       <table style={{ minWidth: tableMinWidth }}>
         <thead>
           <tr>
+            <th style={{ width: 36 }}><input type='checkbox' checked={allSelected} onChange={toggleAll} aria-label='全选' /></th>
             {useCmdbProjection ? (
               <>
                 <th>资源</th>
@@ -145,16 +331,24 @@ function HostTable({ rows, allRows = rows, loading, onDetail, onChat, onAssign, 
                     <span>{[column.tag, column.valueType, column.unit].filter(Boolean).join(' · ') || 'CMDB'}</span>
                   </th>
                 ))}
+                <th>所属业务</th>
+                <th>采集情况</th>
+                <th>类型</th>
+                <th>子类型</th>
+                <th>维护情况</th>
+                <th>负责人</th>
+                <th>告警级别</th>
                 <th>状态</th>
                 <th>操作</th>
               </>
             ) : (
-              <><th>主机名</th><th>IP</th><th>CPU</th><th>内存</th><th>磁盘</th><th>状态</th><th>操作</th></>
+              <><th>主机名</th><th>IP</th><th>所属业务</th><th>采集情况</th><th>类型</th><th>子类型</th><th>维护情况</th><th>负责人</th><th>告警级别</th><th>CPU</th><th>内存</th><th>磁盘</th><th>状态</th><th>操作</th></>
             )}
           </tr>
         </thead>
         <tbody>{rows.map(row => (
-          <tr key={hostKey(row)}>
+          <tr key={hostKey(row)} onClick={() => onRowClick(row)} style={{ cursor: 'pointer' }}>
+            <td onClick={e => e.stopPropagation()}><input type='checkbox' checked={selectedIds.includes(hostKey(row))} onChange={() => toggleRow(row)} aria-label={`选择 ${hostName(row)}`} /></td>
             {useCmdbProjection ? (
               <>
                 <td className='fx-assets-host-resource-cell'>
@@ -167,19 +361,33 @@ function HostTable({ rows, allRows = rows, loading, onDetail, onChat, onAssign, 
                     {renderCmdbHostCell(row, column)}
                   </td>
                 ))}
+                <td>{displayText(row.business_name, '-')}</td>
+                <td><CollectionBadge status={row.collection_status} /></td>
+                <td>{displayText(row.classification, '-')}</td>
+                <td>{displayText(row.subtype, '-')}</td>
+                <td><MaintenanceBadge status={row.maintenance_status} /></td>
+                <td>{displayText(row.owner, '-')}</td>
+                <td><AlertDot level={row.alert_level} /></td>
                 <td><Status ok={isHostOnline(row)}>{isHostOnline(row) ? '在线' : '离线'}</Status></td>
               </>
             ) : (
               <>
                 <td><strong>{hostName(row)}</strong><div className='fx-assets-muted'>{displayText(row.os)} {displayText(row.arch, '')}</div></td>
                 <td>{hostIp(row)}</td>
+                <td>{displayText(row.business_name, '-')}</td>
+                <td><CollectionBadge status={row.collection_status} /></td>
+                <td>{displayText(row.classification, '-')}</td>
+                <td>{displayText(row.subtype, '-')}</td>
+                <td><MaintenanceBadge status={row.maintenance_status} /></td>
+                <td>{displayText(row.owner, '-')}</td>
+                <td><AlertDot level={row.alert_level} /></td>
                 <td>{displayText(row.cpu_cores || row.cpu, '-')}</td>
                 <td>{formatMemory(row.memory_total || row.memory)}</td>
                 <td>{formatDisk(row.disk_total || row.disk)}</td>
                 <td><Status ok={isHostOnline(row)}>{isHostOnline(row) ? '在线' : '离线'}</Status></td>
               </>
             )}
-            <td className='fx-assets-actions'>
+            <td className='fx-assets-actions' onClick={e => e.stopPropagation()}>
               <button type='button' onClick={() => onDetail(row)}>详情</button>
               <button type='button' onClick={() => onChat(row)}>AI 对话</button>
               <button type='button' onClick={() => onProbe(row)}>探针/插件</button>

@@ -3,6 +3,7 @@ import { formatTracingError, tracingApi } from '../api/tracing.js'
 import { displayText, durationPresets, durationToRange, entityOptions, layerOptions, rowText } from './tracingModel.js'
 import { AgentEvidenceNotice, AgentLinkActions, Blocked, Empty, ErrorBox, Field, Status } from './TracingShared.jsx'
 import { ServiceMetricsCharts } from './ServiceMetricsCharts.jsx'
+import { ServiceDetailSection } from './ServiceDetailSection.jsx'
 
 const CONNECTION_HINT = [
   '暂无服务数据。请确认链路监控上游服务已启动并配置了正确的接入地址。',
@@ -161,6 +162,7 @@ export function ServicesSection({ onNavigate }) {
   const [blocked, setBlocked] = useState('')
   const [loading, setLoading] = useState(false)
   const [detail, setDetail] = useState(null)
+  const [serviceDetailName, setServiceDetailName] = useState(null)
   const filtered = useMemo(() => rows.filter(row => !filters.keyword || rowText(row).includes(filters.keyword.toLowerCase())), [rows, filters.keyword])
 
   const load = useCallback(async () => {
@@ -246,7 +248,8 @@ export function ServicesSection({ onNavigate }) {
                   <td>{fmtApdex(row)}</td>
                   <td><Status ok={st.ok}>{st.text}</Status></td>
                   <td className='fx-tracing-actions'>
-                    <button type='button' onClick={() => setDetail(row)}>详情</button>
+                    <button type='button' onClick={() => setDetail(row)}>概览</button>
+                    <button type='button' onClick={() => setServiceDetailName(label)}>详情</button>
                     <button type='button' onClick={() => onNavigate({ section: 'topology', serviceId: row.id || row.value })}>拓扑</button>
                     <button type='button' onClick={() => onNavigate({ section: 'traces', serviceId: row.id || row.value })}>Trace</button>
                   </td>
@@ -259,6 +262,7 @@ export function ServicesSection({ onNavigate }) {
       </div>
 
       {detail && <ServiceDetail service={detail} onClose={() => setDetail(null)} onNavigate={onNavigate} />}
+      {serviceDetailName && <ServiceDetailSection serviceName={serviceDetailName} onClose={() => setServiceDetailName(null)} onNavigate={onNavigate} />}
     </section>
   )
 }

@@ -1,0 +1,690 @@
+.fx-cmdb-probe-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fx-cmdb-probe-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(15, 23, 42, .52);
+}
+
+.fx-cmdb-probe-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 68vw);
+  max-width: calc(100vw - 20px);
+  height: 100vh;
+  overflow: hidden;
+  border-left: 1px solid #e4eaf3;
+  background: #fff;
+  box-shadow: -18px 0 38px rgba(15, 23, 42, .16);
+}
+
+.fx-cmdb-probe-panel > header {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e8edf5;
+  padding: 0 24px;
+}
+
+.fx-cmdb-probe-panel > header div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.fx-cmdb-probe-panel > header strong {
+  color: #172033;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.fx-cmdb-probe-panel > header span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-probe-panel > header button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5d6c80;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fx-cmdb-probe-body {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  overflow: auto;
+  padding: 18px 24px 88px;
+}
+
+.fx-cmdb-probe-form {
+  display: grid;
+  gap: 16px;
+}
+
+.fx-cmdb-probe-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.fx-cmdb-probe-row > label {
+  position: relative;
+  padding-top: 10px;
+  color: #44546a;
+  font-size: 14px;
+}
+
+.fx-cmdb-probe-row > label::before {
+  content: "*";
+  margin-right: 6px;
+  color: #ff4d4f;
+}
+
+.fx-cmdb-probe-target,
+.fx-cmdb-probe-health,
+.fx-cmdb-plugin-shell,
+.fx-cmdb-probe-chat {
+  min-width: 0;
+  border-radius: 6px;
+  background: #f3f6fb;
+  padding: 12px;
+}
+
+.fx-cmdb-probe-target strong,
+.fx-cmdb-probe-target span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-probe-target strong {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fx-cmdb-probe-target span {
+  margin-top: 4px;
+  color: #67758a;
+  font-size: 12px;
+}
+
+.fx-cmdb-probe-health {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fx-cmdb-probe-health > div {
+  min-width: 0;
+  border: 1px solid #dfe6f0;
+  border-radius: 4px;
+  background: #fff;
+  padding: 10px;
+}
+
+.fx-cmdb-probe-health span,
+.fx-cmdb-probe-health strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-probe-health span {
+  color: #66758a;
+  font-size: 12px;
+}
+
+.fx-cmdb-probe-health strong {
+  margin-top: 5px;
+  color: #172033;
+  font-size: 13px;
+}
+
+.fx-cmdb-plugin-group {
+  display: grid;
+  gap: 10px;
+}
+
+.fx-cmdb-plugin-group + .fx-cmdb-plugin-group {
+  margin-top: 12px;
+}
+
+.fx-cmdb-plugin-group-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fx-cmdb-plugin-group-head div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.fx-cmdb-plugin-group-head strong {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fx-cmdb-plugin-group-head span {
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-plugin-group-head button,
+.fx-cmdb-plugin-actions button {
+  border: 1px solid #d9dfe9;
+  border-radius: 4px;
+  background: #fff;
+  color: #21344d;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.fx-cmdb-plugin-actions button.is-danger {
+  border-color: #f0b8a8;
+  background: #fff7f4;
+  color: #9c3b20;
+}
+
+.fx-cmdb-plugin-actions button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.fx-cmdb-plugin-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.fx-cmdb-plugin-list article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dfe6f0;
+  border-radius: 4px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.fx-cmdb-plugin-list article.is-selected {
+  border-color: #2f87ff;
+  box-shadow: 0 0 0 1px rgba(47, 135, 255, .12);
+}
+
+.fx-cmdb-plugin-pick {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(120px, 180px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fx-cmdb-plugin-pick i {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #cfd7e4;
+  border-radius: 50%;
+}
+
+.fx-cmdb-plugin-list article.is-selected .fx-cmdb-plugin-pick i {
+  border: 4px solid #2f87ff;
+}
+
+.fx-cmdb-plugin-main,
+.fx-cmdb-plugin-summary,
+.fx-cmdb-plugin-pick strong,
+.fx-cmdb-plugin-pick span,
+.fx-cmdb-plugin-pick em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-plugin-main {
+  display: grid;
+  gap: 4px;
+}
+
+.fx-cmdb-plugin-pick strong {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.fx-cmdb-plugin-pick strong.is-missing {
+  color: #8a4d00;
+}
+
+.fx-cmdb-plugin-pick span {
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-plugin-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.fx-cmdb-plugin-summary span {
+  display: grid;
+  gap: 2px;
+  color: #34445a;
+  font-size: 12px;
+}
+
+.fx-cmdb-plugin-summary span b {
+  color: #728197;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.fx-cmdb-plugin-summary span.is-missing {
+  color: #8a4d00;
+}
+
+.fx-cmdb-contract-chips > span {
+  display: flex;
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.fx-cmdb-contract-chips i {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #e2e8f2;
+  border-radius: 4px;
+  background: #f8fafc;
+  padding: 2px 5px;
+  color: #5f6f85;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-cmdb-plugin-summary em {
+  grid-column: 1 / -1;
+  color: #8a4d00;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.fx-cmdb-plugin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.fx-cmdb-plugin-credential-state {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-top: 1px dashed #dfe6f0;
+  padding-top: 8px;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-runtime-audit,
+.fx-cmdb-dashboard-audit {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  border-radius: 6px;
+  background: #f3f6fb;
+  padding: 12px;
+}
+
+.fx-cmdb-runtime-audit > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.fx-cmdb-runtime-audit strong,
+.fx-cmdb-dashboard-audit strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fx-cmdb-runtime-audit span,
+.fx-cmdb-dashboard-audit span,
+.fx-cmdb-dashboard-audit code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-dashboard-audit code {
+  border: 1px solid #e6edf6;
+  border-radius: 4px;
+  background: #fff;
+  padding: 5px 7px;
+}
+
+.fx-cmdb-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fx-cmdb-runtime-grid span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #e6edf6;
+  border-radius: 4px;
+  background: #fff;
+  padding: 9px;
+}
+
+.fx-cmdb-runtime-grid b {
+  color: #728197;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.fx-cmdb-probe-chat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fx-cmdb-probe-chat div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.fx-cmdb-probe-chat strong {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fx-cmdb-probe-chat span {
+  color: #66758a;
+  font-size: 12px;
+}
+
+.fx-cmdb-probe-chat button {
+  flex: 0 0 auto;
+  border: 1px solid #d9dfe9;
+  border-radius: 4px;
+  background: #fff;
+  color: #21344d;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.fx-cmdb-probe-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  border-top: 1px solid #e8edf5;
+  background: #fff;
+  padding: 16px 24px;
+}
+
+.fx-cmdb-probe-selected {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 3px;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-probe-selected b {
+  color: #728197;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.fx-cmdb-probe-selected span {
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-cmdb-probe-footer button {
+  min-width: 84px;
+  height: 38px;
+  border: 1px solid #d9dfe9;
+  border-radius: 4px;
+  background: #fff;
+  color: #21344d;
+  cursor: pointer;
+}
+
+.fx-cmdb-probe-footer button.is-primary {
+  border-color: #2f87ff;
+  background: #2f87ff;
+  color: #fff;
+}
+
+.fx-cmdb-probe-footer button.is-danger {
+  border-color: #d95838;
+  background: #d95838;
+  color: #fff;
+}
+
+.fx-cmdb-probe-footer button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.fx-cmdb-plugin-blocked,
+.fx-cmdb-plugin-missing {
+  display: grid;
+  gap: 10px;
+}
+
+.fx-cmdb-plugin-missing {
+  border: 1px solid #e6edf6;
+  border-radius: 6px;
+  background: #fff;
+  padding: 12px;
+}
+
+.fx-cmdb-plugin-missing strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.fx-cmdb-plugin-missing span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-credential-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 3400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .42);
+}
+
+.fx-cmdb-credential-card {
+  width: min(460px, 100%);
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, .22);
+}
+
+.fx-cmdb-credential-card header,
+.fx-cmdb-credential-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e8edf5;
+  padding: 14px 16px;
+}
+
+.fx-cmdb-credential-card footer {
+  justify-content: flex-end;
+  border-top: 1px solid #e8edf5;
+  border-bottom: 0;
+}
+
+.fx-cmdb-credential-card header strong {
+  color: #172033;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fx-cmdb-credential-card button {
+  border: 1px solid #d9dfe9;
+  border-radius: 4px;
+  background: #fff;
+  color: #21344d;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.fx-cmdb-credential-card button.is-primary {
+  border-color: #2f87ff;
+  background: #2f87ff;
+  color: #fff;
+}
+
+.fx-cmdb-credential-card header button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  color: #5d6c80;
+  font-size: 22px;
+}
+
+.fx-cmdb-credential-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.fx-cmdb-credential-body span {
+  color: #60728e;
+  font-size: 13px;
+}
+
+.fx-cmdb-credential-body input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid #d9dfe9;
+  border-radius: 4px;
+  padding: 0 10px;
+  color: #172033;
+}
+
+@media (max-width: 1080px) {
+  .fx-cmdb-probe-panel {
+    width: min(100vw, 860px);
+    max-width: 100vw;
+  }
+
+  .fx-cmdb-probe-row,
+  .fx-cmdb-probe-health {
+    grid-template-columns: 1fr;
+  }
+
+  .fx-cmdb-plugin-pick,
+  .fx-cmdb-plugin-summary,
+  .fx-cmdb-runtime-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fx-cmdb-plugin-pick i {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .fx-cmdb-probe-panel {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .fx-cmdb-probe-body {
+    padding: 16px 16px 132px;
+  }
+
+  .fx-cmdb-plugin-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .fx-cmdb-plugin-actions {
+    justify-content: flex-start;
+  }
+
+  .fx-cmdb-probe-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .fx-cmdb-probe-selected {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  .fx-cmdb-probe-footer button {
+    flex: 1 1 120px;
+  }
+}

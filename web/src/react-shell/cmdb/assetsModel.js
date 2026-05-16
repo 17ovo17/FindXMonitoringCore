@@ -9,6 +9,7 @@ export const sections = [
   { value: 'deploy-tasks', label: '部署任务', desc: '创建部署预检记录并查看契约阻断、缺失契约和进度状态。' },
   { value: 'resource-groups', label: '资源组', desc: '维护分层资源组树和主机关联边界。' },
   { value: 'agents', label: 'FindX Agent', desc: '查看 Agent 在线、心跳、版本、能力和生命周期状态。' },
+  { value: 'datacenter-view', label: '机房视图', desc: '按机房、机柜、U位展示物理资源布局和容量。' },
   { value: 'model-detail', label: '模型详情', desc: '查看和编辑模型属性定义。' },
 ]
 

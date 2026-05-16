@@ -1,71 +1,97 @@
-import React, { useEffect, useState } from 'react'
-import { pluginApi } from '../api/plugins.js'
-import { agentApi } from '../api/agents.js'
+import React, { useEffect, useState, useCallback } from 'react'
+import { get, post } from '../api/http.js'
 import { ErrorBox } from './AgentShared.jsx'
 
-const STEPS = ['选择目标 Agent', '选择插件和配置', '选择策略', '确认并执行']
+const STEPS = ['选择模板', '填写参数', '预览配置', '选择目标', '执行下发']
+
+const PARAM_DEFAULTS = { text: '', password: '', bool: false, number: 0, array: '' }
+
+function paramDefault(param) {
+  if (param.default !== undefined && param.default !== null) return param.default
+  return PARAM_DEFAULTS[param.type] ?? ''
+}
 
 export function ConfigPushWizard({ onClose }) {
   const [step, setStep] = useState(0)
-  const [agents, setAgents] = useState([])
-  const [plugins, setPlugins] = useState([])
-  const [selectedAgents, setSelectedAgents] = useState([])
-  const [selectedPlugins, setSelectedPlugins] = useState([])
-  const [strategy, setStrategy] = useState('all')
+  const [templates, setTemplates] = useState([])
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [templateDetail, setTemplateDetail] = useState(null)
+  const [params, setParams] = useState({})
+  const [tomlPreview, setTomlPreview] = useState('')
+  const [targets, setTargets] = useState('')
+  const [credential, setCredential] = useState({ user: 'root', port: '22', authType: 'password', secret: '' })
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([
-      agentApi.list().catch(() => []),
-      pluginApi.listPlugins().catch(() => []),
-    ]).then(([a, p]) => { setAgents(a); setPlugins(p) })
+    get('/integration-templates').then(resp => {
+      const list = Array.isArray(resp) ? resp : resp?.items || resp?.data || resp?.list || []
+      setTemplates(list)
+    }).catch(() => setTemplates([]))
   }, [])
 
-  const toggleAgent = (id) => {
-    setSelectedAgents(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
-  const togglePlugin = (id) => {
-    setSelectedPlugins(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
-  const handleExecute = async () => {
+  const selectTemplate = useCallback(async (tpl) => {
+    setSelectedTemplate(tpl)
     setLoading(true)
     setError('')
     try {
-      const body = {
-        agent_ids: selectedAgents,
-        plugins: selectedPlugins.map(id => {
-          const p = plugins.find(x => x.id === id)
-          return { id, enabled: true, config: p?.default_config || '' }
-        }),
-        strategy,
-      }
-      const res = await pluginApi.configPush(body)
-      setResults(res?.results || [])
-      setStep(4)
+      const detail = await get(`/integration-templates/${encodeURIComponent(tpl.id)}`)
+      setTemplateDetail(detail)
+      const initial = {}
+      ;(detail.params || []).forEach(p => { initial[p.name || p.key] = paramDefault(p) })
+      setParams(initial)
     } catch (err) {
-      setResults((err?.body?.results || []).length ? err.body.results : [{
-        agent_id: selectedAgents.join(', '),
-        plugin_id: selectedPlugins.join(', '),
-        status: err?.body?.status || 'PENDING',
-        message: err?.body?.message || err?.message || '配置预检被后端契约阻断',
-      }])
-      setStep(4)
+      setError(err?.message || '获取模板详情失败')
     } finally { setLoading(false) }
+  }, [])
+
+  const renderPreview = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const resp = await post('/categraf/render', {
+        template_id: selectedTemplate.id,
+        params,
+      })
+      setTomlPreview(resp?.content || resp?.toml || resp?.rendered || '')
+    } catch (err) {
+      setError(err?.message || '渲染配置失败')
+    } finally { setLoading(false) }
+  }, [selectedTemplate, params])
+
+  const handleDeploy = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const hostList = targets.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean)
+      const resp = await post('/categraf/deploy', {
+        template_id: selectedTemplate.id,
+        params,
+        hosts: hostList,
+        credential: { user: credential.user, port: Number(credential.port) || 22, auth_type: credential.authType, secret: credential.secret },
+      })
+      setResults(resp?.results || resp?.hosts || [])
+    } catch (err) {
+      setError(err?.message || '下发失败')
+      setResults([{ host: targets, status: 'failed', message: err?.message || '下发失败' }])
+    } finally { setLoading(false) }
+  }, [selectedTemplate, params, targets, credential])
+
+  const goNext = () => {
+    if (step === 1) { renderPreview(); setStep(2) }
+    else { setStep(s => s + 1) }
   }
 
   const canNext = () => {
-    if (step === 0) return selectedAgents.length > 0
-    if (step === 1) return selectedPlugins.length > 0
+    if (step === 0) return selectedTemplate !== null
+    if (step === 1) return true
+    if (step === 2) return tomlPreview.length > 0
+    if (step === 3) return targets.trim().length > 0
     return true
   }
+
+  const setParamValue = (key, value) => setParams(prev => ({ ...prev, [key]: value }))
 
   return (
     <section className='fx-agent-work'>
@@ -82,108 +108,222 @@ export function ConfigPushWizard({ onClose }) {
       </nav>
       <ErrorBox>{error}</ErrorBox>
 
-      {step === 0 && (
-        <div className='fx-plugin-wizard-body'>
-          <p>选择要下发配置的目标 Agent（可多选）：</p>
-          <div className='fx-plugin-select-list'>
-            {agents.map(a => (
-              <label key={a.ident || a.id || a.ip} className='fx-plugin-select-item'>
-                <input type='checkbox'
-                  checked={selectedAgents.includes(a.ident || a.id || a.ip)}
-                  onChange={() => toggleAgent(a.ident || a.id || a.ip)} />
-                <span>{a.hostname || a.ident || a.ip}</span>
-                <small>{a.ip} / {a.os}</small>
-              </label>
-            ))}
-            {agents.length === 0 && <div className='fx-agent-muted'>暂无在线 Agent</div>}
-          </div>
-        </div>
-      )}
-
-      {step === 1 && (
-        <div className='fx-plugin-wizard-body'>
-          <p>选择要下发的插件（可多选）：</p>
-          <div className='fx-plugin-select-list'>
-            {plugins.map(p => (
-              <label key={p.id} className='fx-plugin-select-item'>
-                <input type='checkbox'
-                  checked={selectedPlugins.includes(p.id)}
-                  onChange={() => togglePlugin(p.id)} />
-                <span>{p.name}</span>
-                <small>{p.category} / {p.config_format}</small>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className='fx-plugin-wizard-body'>
-          <p>选择下发策略：</p>
-          <label className='fx-plugin-select-item'>
-            <input type='radio' name='strategy' value='all'
-              checked={strategy === 'all'} onChange={() => setStrategy('all')} />
-            <span>全量下发</span>
-            <small>覆盖目标 Agent 上的所有插件配置</small>
-          </label>
-          <label className='fx-plugin-select-item'>
-            <input type='radio' name='strategy' value='incremental'
-              checked={strategy === 'incremental'}
-              onChange={() => setStrategy('incremental')} />
-            <span>增量下发</span>
-            <small>仅更新选中的插件配置，保留其他配置不变</small>
-          </label>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className='fx-plugin-wizard-body'>
-          <h4>确认下发信息</h4>
-          <dl>
-            <dt>目标 Agent</dt>
-            <dd>{selectedAgents.join(', ')}</dd>
-            <dt>下发插件</dt>
-            <dd>{selectedPlugins.join(', ')}</dd>
-            <dt>策略</dt>
-            <dd>{strategy === 'all' ? '全量下发' : '增量下发'}</dd>
-          </dl>
-        </div>
-      )}
-
-      {step === 4 && results && (
-        <div className='fx-plugin-wizard-body'>
-          <h4>契约预检结果</h4>
-          <table className='fx-plugin-result-table'>
-            <thead><tr><th>Agent</th><th>插件</th><th>状态</th><th>信息</th></tr></thead>
-            <tbody>
-              {results.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.agent_id}</td>
-                  <td>{r.plugin_id}</td>
-                  <td className='is-fail'>{r.status}</td>
-                  <td>{r.message || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {step === 0 && <StepSelectTemplate templates={templates} selected={selectedTemplate} onSelect={selectTemplate} loading={loading} />}
+      {step === 1 && <StepFillParams detail={templateDetail} params={params} onChange={setParamValue} />}
+      {step === 2 && <StepPreviewToml toml={tomlPreview} loading={loading} />}
+      {step === 3 && <StepSelectTargets targets={targets} onTargetsChange={setTargets} credential={credential} onCredentialChange={setCredential} />}
+      {step === 4 && <StepExecute results={results} loading={loading} onDeploy={handleDeploy} />}
 
       {step < 4 && (
         <div className='fx-plugin-wizard-nav'>
           {step > 0 && <button type='button' onClick={() => setStep(s => s - 1)}>上一步</button>}
-          {step < 3 && (
-            <button type='button' disabled={!canNext()} onClick={() => setStep(s => s + 1)}>
-              下一步
-            </button>
-          )}
-          {step === 3 && (
-            <button type='button' disabled={loading} onClick={handleExecute}>
-              {loading ? '预检中...' : '确认预检'}
-            </button>
-          )}
+          <button type='button' disabled={!canNext() || loading} onClick={goNext}>
+            {loading ? '处理中...' : '下一步'}
+          </button>
+        </div>
+      )}
+      {step === 4 && !results && (
+        <div className='fx-plugin-wizard-nav'>
+          <button type='button' onClick={() => setStep(3)}>上一步</button>
+          <button type='button' disabled={loading} onClick={handleDeploy}>
+            {loading ? '下发中...' : '确认下发'}
+          </button>
         </div>
       )}
     </section>
+  )
+}
+
+/* --- Step 0: 选择模板 --- */
+function StepSelectTemplate({ templates, selected, onSelect, loading }) {
+  return (
+    <div className='fx-plugin-wizard-body'>
+      <p>选择采集模板：</p>
+      {loading && <p style={{ color: 'var(--fx-text-weak, #66758d)', fontSize: 13 }}>加载中...</p>}
+      <div className='fx-template-grid'>
+        {templates.map(tpl => (
+          <div
+            key={tpl.id}
+            className={`fx-template-card ${selected?.id === tpl.id ? 'is-selected' : ''}`}
+            onClick={() => onSelect(tpl)}
+          >
+            <strong>{tpl.name || tpl.title}</strong>
+            <small>{tpl.description || tpl.category || ''}</small>
+            {tpl.version && <span className='fx-template-card__ver'>v{tpl.version}</span>}
+          </div>
+        ))}
+        {templates.length === 0 && !loading && <div className='fx-agent-muted'>暂无可用模板</div>}
+      </div>
+    </div>
+  )
+}
+
+/* --- Step 1: 填写参数 --- */
+function StepFillParams({ detail, params, onChange }) {
+  const paramDefs = detail?.params || []
+  if (!paramDefs.length) {
+    return (
+      <div className='fx-plugin-wizard-body'>
+        <p style={{ color: 'var(--fx-text-weak, #66758d)' }}>该模板无需额外参数配置。</p>
+      </div>
+    )
+  }
+  return (
+    <div className='fx-plugin-wizard-body'>
+      <p>填写模板参数：</p>
+      <div className='fx-param-form'>
+        {paramDefs.map(p => {
+          const key = p.name || p.key
+          return <ParamField key={key} param={p} value={params[key]} onChange={v => onChange(key, v)} />
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ParamField({ param, value, onChange }) {
+  const key = param.name || param.key
+  const label = param.label || param.name || param.key
+  const hint = param.description || param.hint || ''
+  const type = (param.type || 'text').toLowerCase()
+
+  if (type === 'bool' || type === 'boolean') {
+    return (
+      <label className='fx-param-field'>
+        <span className='fx-param-field__label'>{label}</span>
+        <input type='checkbox' checked={!!value} onChange={e => onChange(e.target.checked)} />
+        {hint && <small className='fx-param-field__hint'>{hint}</small>}
+      </label>
+    )
+  }
+  if (type === 'number' || type === 'int' || type === 'float') {
+    return (
+      <label className='fx-param-field'>
+        <span className='fx-param-field__label'>{label}</span>
+        <input type='number' value={value ?? ''} onChange={e => onChange(Number(e.target.value))} placeholder={hint} />
+        {hint && <small className='fx-param-field__hint'>{hint}</small>}
+      </label>
+    )
+  }
+  if (type === 'password' || type === 'secret') {
+    return (
+      <label className='fx-param-field'>
+        <span className='fx-param-field__label'>{label}</span>
+        <input type='password' value={value ?? ''} onChange={e => onChange(e.target.value)} placeholder={hint} autoComplete='off' />
+        {hint && <small className='fx-param-field__hint'>{hint}</small>}
+      </label>
+    )
+  }
+  if (type === 'array' || type === 'list') {
+    return (
+      <label className='fx-param-field'>
+        <span className='fx-param-field__label'>{label}</span>
+        <textarea rows={3} value={Array.isArray(value) ? value.join('\n') : (value ?? '')} onChange={e => onChange(e.target.value)} placeholder={hint || '每行一个值'} />
+        {hint && <small className='fx-param-field__hint'>{hint}</small>}
+      </label>
+    )
+  }
+  if (type === 'select' && Array.isArray(param.options)) {
+    return (
+      <label className='fx-param-field'>
+        <span className='fx-param-field__label'>{label}</span>
+        <select value={value ?? ''} onChange={e => onChange(e.target.value)}>
+          <option value=''>请选择</option>
+          {param.options.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
+        </select>
+        {hint && <small className='fx-param-field__hint'>{hint}</small>}
+      </label>
+    )
+  }
+  return (
+    <label className='fx-param-field'>
+      <span className='fx-param-field__label'>{label}</span>
+      <input type='text' value={value ?? ''} onChange={e => onChange(e.target.value)} placeholder={hint} />
+      {hint && <small className='fx-param-field__hint'>{hint}</small>}
+    </label>
+  )
+}
+
+/* --- Step 2: 预览 TOML --- */
+function StepPreviewToml({ toml, loading }) {
+  return (
+    <div className='fx-plugin-wizard-body'>
+      <p>渲染后的 .toml 配置预览：</p>
+      {loading && <p style={{ color: 'var(--fx-text-weak, #66758d)', fontSize: 13 }}>渲染中...</p>}
+      <pre className='fx-toml-preview'><code>{toml || '(空)'}</code></pre>
+    </div>
+  )
+}
+
+/* --- Step 3: 选择目标 --- */
+function StepSelectTargets({ targets, onTargetsChange, credential, onCredentialChange }) {
+  const setCred = (key, val) => onCredentialChange(prev => ({ ...prev, [key]: val }))
+  return (
+    <div className='fx-plugin-wizard-body'>
+      <p>输入目标主机 IP（每行一个或逗号分隔）：</p>
+      <textarea
+        className='fx-target-input'
+        rows={5}
+        value={targets}
+        onChange={e => onTargetsChange(e.target.value)}
+        placeholder={'192.168.1.10\n192.168.1.11\n192.168.1.12'}
+      />
+      <div className='fx-credential-form'>
+        <label className='fx-param-field'>
+          <span className='fx-param-field__label'>SSH 用户</span>
+          <input type='text' value={credential.user} onChange={e => setCred('user', e.target.value)} />
+        </label>
+        <label className='fx-param-field'>
+          <span className='fx-param-field__label'>SSH 端口</span>
+          <input type='number' value={credential.port} onChange={e => setCred('port', e.target.value)} />
+        </label>
+        <label className='fx-param-field'>
+          <span className='fx-param-field__label'>认证方式</span>
+          <select value={credential.authType} onChange={e => setCred('authType', e.target.value)}>
+            <option value='password'>密码</option>
+            <option value='key'>密钥</option>
+          </select>
+        </label>
+        <label className='fx-param-field'>
+          <span className='fx-param-field__label'>{credential.authType === 'password' ? '密码' : '私钥内容'}</span>
+          <input type='password' value={credential.secret} onChange={e => setCred('secret', e.target.value)} autoComplete='off' />
+        </label>
+      </div>
+    </div>
+  )
+}
+
+/* --- Step 4: 执行下发 --- */
+function StepExecute({ results, loading, onDeploy }) {
+  if (loading) {
+    return (
+      <div className='fx-plugin-wizard-body'>
+        <p style={{ color: 'var(--fx-text-weak, #66758d)' }}>正在下发配置到目标主机...</p>
+      </div>
+    )
+  }
+  if (!results) {
+    return (
+      <div className='fx-plugin-wizard-body'>
+        <p>确认无误后点击「确认下发」开始部署。</p>
+      </div>
+    )
+  }
+  return (
+    <div className='fx-plugin-wizard-body'>
+      <h4>下发结果</h4>
+      <table className='fx-plugin-result-table'>
+        <thead><tr><th>主机</th><th>状态</th><th>信息</th></tr></thead>
+        <tbody>
+          {results.map((r, i) => (
+            <tr key={i}>
+              <td>{r.host || r.ip || r.target}</td>
+              <td className={r.status === 'success' ? 'is-ok' : 'is-fail'}>{r.status === 'success' ? '成功' : '失败'}</td>
+              <td>{r.message || r.error || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

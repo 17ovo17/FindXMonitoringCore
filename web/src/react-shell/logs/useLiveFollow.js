@@ -40,7 +40,7 @@ export function useLiveFollow() {
     setData(current => {
       const existingIds = new Set(current.rows.map(r => r.id))
       const fresh = newItems.filter(r => r.id && !existingIds.has(r.id))
-      const merged = [...current.rows, ...fresh].slice(-500)
+      const merged = [...current.rows, ...fresh].slice(-1000)
       return {
         rows: merged.length > 0 ? merged : (newItems.length ? newItems : current.rows),
         meta: null,
@@ -51,7 +51,6 @@ export function useLiveFollow() {
   }, [])
 
   const fetchPoll = useCallback(async (ctrl) => {
-    if (ctrl.source !== 'findx_audit') { setBlocked(LOG_BLOCKERS.live); return }
     setLoading(true)
     try {
       const resp = await logsApi.query({
@@ -77,7 +76,14 @@ export function useLiveFollow() {
   const connectWebSocket = useCallback((ctrl) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsHost = window.location.host
-    const url = `${protocol}//${wsHost}/api/v1/logs/live`
+    const params = new URLSearchParams()
+    if (ctrl.query) params.set('query', ctrl.query)
+    if (ctrl.severityFilter) params.set('severity', ctrl.severityFilter)
+    if (ctrl.serviceFilter) params.set('service', ctrl.serviceFilter)
+    if (ctrl.hostFilter) params.set('host', ctrl.hostFilter)
+    if (ctrl.source) params.set('source', ctrl.source)
+    const qs = params.toString()
+    const url = `${protocol}//${wsHost}/api/v1/logs/tail/ws${qs ? '?' + qs : ''}`
     setTransport(WS_STATES.connecting)
     setWsNotice('')
 
@@ -144,11 +150,6 @@ export function useLiveFollow() {
     setBlocked('')
     setWsNotice('')
     retryCountRef.current = 0
-    if (control.source !== 'findx_audit') {
-      setControlValue({ state: LIVE_STATES.stopped })
-      setBlocked(LOG_BLOCKERS.live)
-      return
-    }
     setControlValue({ state: LIVE_STATES.playing })
     connectWebSocket(control)
   }

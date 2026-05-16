@@ -113,9 +113,20 @@ function LiveToolbar({ live }) {
 
 function TransportBadge({ transport }) {
   const isWs = transport === WS_STATES.connected
-  const label = isWs ? 'WebSocket' : transport === WS_STATES.connecting ? '连接中...' : '轮询'
-  const style = isWs ? { background: '#e8f8ef', color: '#167346' } : { background: '#f5f5f5', color: '#595959' }
-  return <span style={{ ...style, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{label}</span>
+  const isConnecting = transport === WS_STATES.connecting
+  const label = isWs ? 'WebSocket' : isConnecting ? '连接中...' : '轮询'
+  const dotColor = isWs ? '#17a86b' : isConnecting ? '#f59e0b' : '#8c8c8c'
+  const style = isWs
+    ? { background: '#e8f8ef', color: '#167346' }
+    : isConnecting
+      ? { background: '#fffbe6', color: '#ad6800' }
+      : { background: '#f5f5f5', color: '#595959' }
+  return (
+    <span style={{ ...style, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, display: 'inline-block' }} />
+      {label}
+    </span>
+  )
 }
 
 function LiveIndicator({ state }) {
@@ -143,14 +154,6 @@ function LiveStreamView({ live }) {
     setAutoScroll(scrollHeight - scrollTop - clientHeight < 40)
   }
 
-  if (live.source !== 'findx_audit') {
-    return (
-      <div className='fx-logs-panel'>
-        <p style={{ margin: 0, color: 'var(--fx-text-weak,#66758d)' }}>通用 OTel 实时日志仍为 PENDING，未发起实时请求。</p>
-      </div>
-    )
-  }
-
   return (
     <div className='fx-live'>
       {!autoScroll && live.state === LIVE_STATES.playing && (
@@ -167,8 +170,8 @@ function LiveStreamView({ live }) {
         )}
       </div>
       <div className='fx-live__foot'>
-        <span>模式：{live.transport === WS_STATES.connected ? 'WebSocket' : `轮询（间隔 ${live.intervalSeconds}s）`}</span>
-        <span>{live.rows.length} 条日志 · {autoScroll ? '自动滚动中' : '手动浏览'}</span>
+        <span>模式：{live.transport === WS_STATES.connected ? 'WebSocket' : live.transport === WS_STATES.connecting ? '连接中' : `轮询（间隔 ${live.intervalSeconds}s）`}</span>
+        <span>{live.rows.length} / 1000 条日志 · {autoScroll ? '自动滚动中' : '手动浏览'}</span>
       </div>
     </div>
   )
@@ -177,8 +180,15 @@ function LiveStreamView({ live }) {
 function LiveLogLine({ row }) {
   const level = normalizeLevel(row.severity_text || row.level)
   const svc = row.source_name || row.service_name || row.source || '-'
+  const levelStyle = level === 'error' || level === 'fatal'
+    ? { color: 'var(--fx-red, #dc2626)' }
+    : level === 'warn' || level === 'warning'
+      ? { color: 'var(--fx-yellow, #d97706)' }
+      : level === 'debug' || level === 'trace'
+        ? { color: 'var(--fx-text-weak, #8c8c8c)' }
+        : {}
   return (
-    <div className={`fx-live-line is-${level}`}>
+    <div className={`fx-live-line is-${level}`} style={levelStyle}>
       <span className='fx-live-line__ts'>{formatTime(row.timestamp)}</span>
       <span className={`fx-live-line__lvl is-${level}`}>{level}</span>
       <span className='fx-live-line__svc'>{svc}</span>

@@ -1,0 +1,431 @@
+.fx-cmdb-route-section,
+.fx-cmdb-instance-contract {
+  display: grid;
+  gap: 12px;
+}
+
+.fx-cmdb-route-frame {
+  min-width: 0;
+  display: block;
+}
+
+.fx-cmdb-route-section .fx-cmdb-topology {
+  margin-bottom: 0;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.fx-cmdb-topology {
+  margin-bottom: 14px;
+  border: 1px solid #dde6f2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.fx-cmdb-topology-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fx-cmdb-topology-head h2,
+.fx-cmdb-topology-head p,
+.fx-cmdb-audit-panel h3,
+.fx-cmdb-node-detail h3,
+.fx-cmdb-node-detail p {
+  margin: 0;
+}
+
+.fx-cmdb-topology-head h2 {
+  color: #193a63;
+  font-size: 16px;
+}
+
+.fx-cmdb-topology-head p,
+.fx-cmdb-node-detail,
+.fx-cmdb-audit-panel,
+.fx-cmdb-relation-actions span {
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-blocked-audit {
+  display: grid;
+  gap: 12px;
+}
+
+.fx-cmdb-context-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.fx-cmdb-context-strip article {
+  min-width: 0;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.fx-cmdb-context-strip strong,
+.fx-cmdb-context-strip span,
+.fx-cmdb-context-strip p,
+.fx-cmdb-canvas-toolbar strong,
+.fx-cmdb-canvas-toolbar span,
+.fx-cmdb-lane header,
+.fx-cmdb-lane p,
+.fx-cmdb-lane button strong,
+.fx-cmdb-lane button span,
+.fx-cmdb-instance-card span,
+.fx-cmdb-instance-card strong,
+.fx-cmdb-instance-card em,
+.fx-cmdb-blocked-capabilities span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-context-strip strong {
+  color: #193a63;
+  font-size: 13px;
+}
+
+.fx-cmdb-context-strip span {
+  margin-top: 5px;
+  color: #1769ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fx-cmdb-context-strip p {
+  margin: 6px 0 0;
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-audit-status {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #f9d3a3;
+  border-radius: 8px;
+  background: #fff8ed;
+  padding: 10px 12px;
+  color: #8a4d00;
+  font-size: 13px;
+}
+
+.fx-cmdb-audit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fx-cmdb-audit-panel {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.fx-cmdb-audit-panel--wide {
+  grid-column: span 2;
+}
+
+.fx-cmdb-audit-panel h3 {
+  color: #193a63;
+  font-size: 13px;
+}
+
+.fx-cmdb-audit-panel code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px 7px;
+  color: #334966;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.fx-cmdb-monitor-binding-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.fx-cmdb-monitor-binding-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(15, 23, 42, .56);
+}
+
+.fx-cmdb-monitor-binding-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(1056px, calc(100vw - 272px));
+  max-width: calc(100vw - 20px);
+  height: 100vh;
+  overflow: hidden;
+  border-left: 1px solid #e5e9f1;
+  background: #fff;
+  box-shadow: -22px 0 44px rgba(15, 23, 42, .18);
+}
+
+.fx-cmdb-monitor-binding-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 66px;
+  border-bottom: 1px solid #e8edf5;
+  padding: 0 24px;
+}
+
+.fx-cmdb-monitor-binding-header div,
+.fx-cmdb-binding-list article,
+.fx-cmdb-binding-log-query {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.fx-cmdb-monitor-binding-header strong {
+  color: #172033;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.fx-cmdb-monitor-binding-header span {
+  color: #60728e;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.fx-cmdb-monitor-binding-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5d6c80;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.fx-cmdb-binding-drawer-body {
+  display: grid;
+  gap: 26px;
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+
+.fx-cmdb-binding-drawer-section {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fx-cmdb-binding-drawer-section h3 {
+  margin: 0;
+  border-left: 3px solid #1f87ff;
+  padding-left: 10px;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.fx-cmdb-binding-summary-grid {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 12px 18px;
+  align-items: center;
+  max-width: 760px;
+}
+
+.fx-cmdb-binding-summary-grid span {
+  color: #69798e;
+}
+
+.fx-cmdb-binding-summary-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #23364f;
+  font-weight: 500;
+}
+
+.fx-cmdb-relation-action-note {
+  margin: 0;
+  border-radius: 6px;
+  background: #fff5eb;
+  padding: 12px 14px;
+  color: #684421;
+  line-height: 1.7;
+}
+
+.fx-cmdb-action-contract-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fx-cmdb-action-contract-list code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  background: #f7f9fd;
+  padding: 9px 10px;
+  color: #334966;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.fx-cmdb-query-runtime-audit {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid #f6d49e;
+  border-radius: 8px;
+  background: #fff8ed;
+  padding: 12px;
+}
+
+.fx-cmdb-query-runtime-audit header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fx-cmdb-query-runtime-audit strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.fx-cmdb-query-runtime-audit span {
+  color: #8a4d00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fx-cmdb-query-runtime-audit p {
+  margin: 0;
+  color: #684421;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.fx-cmdb-query-runtime-audit div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fx-cmdb-query-runtime-audit code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  background: #fff;
+  padding: 7px;
+  color: #334966;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.fx-cmdb-binding-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fx-cmdb-binding-list article {
+  border: 1px solid #e6edf6;
+  border-radius: 6px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.fx-cmdb-binding-list code,
+.fx-cmdb-binding-log-query code {
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  background: #f7f9fd;
+  padding: 7px;
+  color: #334966;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.fx-cmdb-field-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fx-cmdb-field-matrix div {
+  min-width: 0;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px;
+}
+
+.fx-cmdb-field-matrix strong,
+.fx-cmdb-field-matrix span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-field-matrix strong {
+  color: #193a63;
+  font-size: 12px;
+}
+
+@media (max-width: 1080px) {
+  .fx-cmdb-route-frame { grid-template-columns: 1fr; }
+  .fx-cmdb-context-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fx-cmdb-relation-lanes,
+  .fx-cmdb-blocked-capabilities { grid-template-columns: 1fr; }
+  .fx-cmdb-monitor-binding-panel { width: min(760px, calc(100vw - 20px)); }
+}
+
+@media (max-width: 680px) {
+  .fx-cmdb-topology-head,
+  .fx-cmdb-relation-actions { align-items: stretch; flex-direction: column; }
+  .fx-cmdb-audit-grid,
+  .fx-cmdb-field-matrix,
+  .fx-cmdb-graph-wrap,
+  .fx-cmdb-query-runtime-audit div,
+  .fx-cmdb-action-contract-list,
+  .fx-cmdb-binding-list,
+  .fx-cmdb-context-strip { grid-template-columns: 1fr; }
+  .fx-cmdb-audit-panel--wide { grid-column: auto; }
+  .fx-cmdb-graph-canvas { min-height: 300px; }
+  .fx-cmdb-graph-canvas svg { height: 300px; }
+  .fx-cmdb-mature-canvas { min-height: 360px; padding: 28px 18px 92px; }
+  .fx-cmdb-minimap { width: 104px; height: 58px; }
+  .fx-cmdb-monitor-binding-panel { width: 100vw; max-width: 100vw; }
+  .fx-cmdb-monitor-binding-header { min-height: 58px; padding: 0 16px; }
+  .fx-cmdb-binding-drawer-body { padding: 18px 16px 24px; }
+  .fx-cmdb-binding-summary-grid { grid-template-columns: 1fr; gap: 6px; }
+}

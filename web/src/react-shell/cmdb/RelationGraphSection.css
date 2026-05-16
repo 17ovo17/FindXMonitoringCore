@@ -1,0 +1,281 @@
+.fx-cmdb-graph-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 12px;
+}
+
+.fx-cmdb-canvas-shell {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.fx-cmdb-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #edf2f8;
+  padding: 10px 12px;
+}
+
+.fx-cmdb-canvas-toolbar strong {
+  color: #193a63;
+  font-size: 14px;
+}
+
+.fx-cmdb-canvas-toolbar span {
+  color: #60728e;
+  font-size: 12px;
+}
+
+.fx-cmdb-canvas-toolbar button {
+  border: 1px solid #d6e0ee;
+  border-radius: 7px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #21344d;
+}
+
+.fx-cmdb-mature-canvas {
+  position: relative;
+  min-height: 420px;
+  overflow: auto;
+  padding: 42px 44px 62px;
+  background-color: #fff;
+  background-image: radial-gradient(#d7e1ee 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.fx-cmdb-mature-canvas.is-blocked {
+  border-top: 1px solid #fff2d7;
+  background-color: #fffdf8;
+}
+
+.fx-cmdb-instance-card {
+  display: grid;
+  gap: 5px;
+  width: min(240px, 100%);
+  margin: 0 auto 36px;
+  border: 1px solid #bed2f4;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  color: #21344d;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(23, 105, 255, .08);
+}
+
+.fx-cmdb-instance-card.is-current::before {
+  content: '◇';
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 3px;
+  border-radius: 10px;
+  background: #e8efff;
+  color: #1769ff;
+  font-size: 28px;
+}
+
+.fx-cmdb-instance-card.is-active,
+.fx-cmdb-lane button.is-active {
+  border-color: #1769ff;
+  box-shadow: 0 0 0 2px rgba(23, 105, 255, .12);
+}
+
+.fx-cmdb-instance-card span,
+.fx-cmdb-instance-card em {
+  color: #60728e;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.fx-cmdb-instance-card strong {
+  color: #102a4c;
+  font-size: 13px;
+}
+
+.fx-cmdb-relation-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 18px;
+}
+
+.fx-cmdb-lane {
+  overflow: hidden;
+  border: 1px solid #cfdaf0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .9);
+}
+
+.fx-cmdb-lane header {
+  padding: 9px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fx-cmdb-lane.is-blue header {
+  background: #1e7df2;
+}
+
+.fx-cmdb-lane.is-green header {
+  background: #2fcf91;
+}
+
+.fx-cmdb-lane p {
+  margin: 0;
+  padding: 12px;
+  color: #8a4d00;
+  font-size: 12px;
+}
+
+.fx-cmdb-lane button {
+  width: calc(100% - 20px);
+  margin: 10px;
+  border: 1px solid #cfdaf0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #f7f9fd;
+  color: #21344d;
+  text-align: left;
+}
+
+.fx-cmdb-lane button strong {
+  color: #102a4c;
+  font-size: 12px;
+}
+
+.fx-cmdb-lane button span {
+  margin-top: 4px;
+  color: #60728e;
+  font-size: 11px;
+}
+
+.fx-cmdb-minimap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  place-items: center;
+  width: 130px;
+  height: 72px;
+  border: 2px solid #2f8cff;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .72);
+  color: #1769ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fx-cmdb-blocked-capabilities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border-top: 1px solid #edf2f8;
+  padding: 10px 12px;
+  background: #fffdf8;
+}
+
+.fx-cmdb-blocked-capabilities span {
+  border-radius: 6px;
+  background: #fff8ed;
+  padding: 7px 8px;
+  color: #8a4d00;
+  font-size: 12px;
+}
+
+.fx-cmdb-graph-canvas {
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.fx-cmdb-graph-canvas svg {
+  width: 100%;
+  height: 360px;
+  display: block;
+}
+
+.fx-cmdb-edge {
+  stroke: #9bb6d7;
+  stroke-width: 2;
+}
+
+.fx-cmdb-node {
+  cursor: pointer;
+}
+
+.fx-cmdb-node circle {
+  fill: #edf4ff;
+  stroke: #1769ff;
+  stroke-width: 2;
+}
+
+.fx-cmdb-node.is-active circle {
+  fill: #1769ff;
+}
+
+.fx-cmdb-node text {
+  fill: #233653;
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.fx-cmdb-node.is-active text {
+  font-weight: 700;
+}
+
+.fx-cmdb-node-detail {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.fx-cmdb-node-detail h3 {
+  margin-bottom: 8px;
+  color: #193a63;
+  font-size: 13px;
+}
+
+.fx-cmdb-node-detail dl {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.fx-cmdb-node-detail dd {
+  min-width: 0;
+  margin: 0;
+  color: #233653;
+  overflow-wrap: anywhere;
+}
+
+.fx-cmdb-relation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fx-cmdb-relation-actions button {
+  border: 1px solid #cdd8e8;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: #fff;
+  color: #21344d;
+}
+
+.fx-cmdb-relation-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

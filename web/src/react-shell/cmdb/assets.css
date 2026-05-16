@@ -1030,3 +1030,193 @@
     padding: 16px;
   }
 }
+
+/* Batch toolbar */
+.fx-batch-toolbar {
+  border: 1px solid #bde8cc;
+  background: #f0fbf4;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+/* Instance detail drawer */
+.fx-instance-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.fx-instance-drawer-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e6edf6;
+  margin-bottom: 16px;
+}
+
+.fx-instance-drawer-tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 10px 16px;
+  color: #60728e;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fx-instance-drawer-tabs button.is-active {
+  color: #1769ff;
+  border-bottom-color: #1769ff;
+  font-weight: 600;
+}
+
+.fx-instance-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Datacenter view */
+.fx-datacenter-view {
+  padding: 14px;
+}
+
+.fx-datacenter-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 500px;
+}
+
+.fx-datacenter-sidebar {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  overflow-y: auto;
+  max-height: 700px;
+}
+
+.fx-datacenter-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+.fx-datacenter-card.is-active {
+  border-color: #1769ff;
+  background: #edf4ff;
+}
+
+.fx-datacenter-card strong {
+  display: block;
+  color: #193a63;
+  font-size: 13px;
+}
+
+.fx-datacenter-card span {
+  display: block;
+  color: #60728e;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.fx-datacenter-main {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.fx-datacenter-rack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.fx-datacenter-rack {
+  display: block;
+  width: 100%;
+  text-align: center;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  padding: 10px 8px;
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+.fx-datacenter-rack.is-active {
+  border-color: #1769ff;
+  background: #edf4ff;
+}
+
+.fx-datacenter-rack strong {
+  display: block;
+  color: #193a63;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.fx-datacenter-rack span {
+  display: block;
+  color: #60728e;
+  font-size: 11px;
+}
+
+.fx-datacenter-rack-bar {
+  height: 4px;
+  background: #e6edf6;
+  border-radius: 2px;
+  margin: 6px 0 4px;
+  overflow: hidden;
+}
+
+.fx-datacenter-rack-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width .2s;
+}
+
+/* Rack U-position strip */
+.fx-rack-strip {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.fx-rack-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border-bottom: 1px solid #f0f4f8;
+  font-size: 11px;
+  min-height: 22px;
+}
+
+.fx-rack-unit.is-occupied {
+  background: #edf4ff;
+}
+
+.fx-rack-unit-num {
+  width: 24px;
+  color: #60728e;
+  font-weight: 600;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.fx-rack-unit-device {
+  color: #193a63;
+  font-size: 11px;
+}

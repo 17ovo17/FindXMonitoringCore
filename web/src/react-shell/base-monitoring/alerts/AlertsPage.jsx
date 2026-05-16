@@ -2,6 +2,9 @@ import React, { useMemo } from 'react'
 import { alertSections } from './alertModel.js'
 import { AlertEventsSection } from './AlertEventsSection.jsx'
 import { AlertRulesSection } from './AlertRulesSection.jsx'
+import { AlertMuteSection } from './AlertMuteSection.jsx'
+import { AlertSubscribeSection } from './AlertSubscribeSection.jsx'
+import { AlertPipelineSection } from './AlertPipelineSection.jsx'
 import { AlertsBlockedSection } from './AlertsBlockedSection.jsx'
 import './alerts.css'
 
@@ -30,7 +33,10 @@ export function AlertsPage({ query = {}, onNavigate }) {
       {section === 'rules' && <AlertRulesSection />}
       {section === 'events' && <AlertEventsSection historyMode={query.history === 'true'} />}
       {section === 'history-events' && <AlertEventsSection historyMode />}
-      {section !== 'rules' && section !== 'events' && section !== 'history-events' && <AlertsBlockedSection section={section} />}
+      {section === 'mutes' && <AlertMuteSection />}
+      {section === 'subscriptions' && <AlertSubscribeSection />}
+      {section === 'event-pipelines' && <AlertPipelineSection />}
+      {section !== 'rules' && section !== 'events' && section !== 'history-events' && section !== 'mutes' && section !== 'subscriptions' && section !== 'event-pipelines' && <AlertsBlockedSection section={section} />}
     </main>
   )
 }

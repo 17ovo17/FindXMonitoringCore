@@ -11,6 +11,7 @@ import { InstanceDetailContractSection, RelationGraphSection, TopologySection } 
 import { ModelDetailSection } from './ModelDetailSection.jsx'
 import { ModelTreeSection } from './ModelTreeSection.jsx'
 import { GroupTree, ResourceGroupsSection } from './ResourceGroupsSection.jsx'
+import { DatacenterView } from './DatacenterView.jsx'
 import { Blocked, ErrorBox, Status } from './Shared.jsx'
 import './assets.css'
 
@@ -44,10 +45,11 @@ const approvalRouteViews = {
   'approval-todo': 'todo',
   'approval-archive': 'archive',
 }
-const routeSections = new Set([...sectionSet, 'search', 'topology', 'instance-detail', 'resource-stats', ...Object.keys(approvalRouteViews), ...blockedRouteSections])
+const routeSections = new Set([...sectionSet, 'search', 'topology', 'instance-detail', 'resource-stats', 'datacenter-view', ...Object.keys(approvalRouteViews), ...blockedRouteSections])
 const routeMeta = {
   topology: { label: '\u0043\u004d\u0044\u0042 \u5173\u7cfb\u62d3\u6251', desc: '\u6309\u5b9e\u4f8b\u3001\u4e1a\u52a1\u4e0a\u4e0b\u6587\u548c\u5ba1\u8ba1\u5951\u7ea6\u5c55\u793a\u5173\u7cfb\u3002' },
   'instance-detail': { label: '\u0043\u004d\u0044\u0042 \u5b9e\u4f8b\u8be6\u60c5', desc: '\u5c55\u793a\u5b9e\u4f8b\u8be6\u60c5\u3001\u5173\u7cfb\u53cd\u67e5\u548c\u76d1\u63a7\u7ed1\u5b9a\u5951\u7ea6\u3002' },
+  'datacenter-view': { label: '机房视图', desc: '按机房、机柜、U位展示物理资源布局和容量。' },
 }
 const blockedRouteMeta = {
   search: { label: '\u5168\u6587\u68c0\u7d22', desc: '\u9700\u8981\u771f\u5b9e\u7d22\u5f15\u3001\u6743\u9650\u8fc7\u6ee4\u548c\u5ba1\u8ba1\u56de\u6267\u3002' },
@@ -139,6 +141,7 @@ export function AssetsPage({ query, onNavigate }) {
       {section === 'topology' && <TopologySection query={query} />}
       {section === 'instance-detail' && <InstanceDetailContractSection query={query} onNavigate={onNavigate} />}
       {section === 'resource-stats' && <ResourceStatsSection />}
+      {section === 'datacenter-view' && <DatacenterView />}
       {approvalRouteViews[section] && <ResourceApprovalSection section={section} meta={meta} />}
       {(section === 'search' || blockedRouteSections.includes(section)) && <CmdbCapabilityBlockedSection section={section} meta={meta} />}
     </main>
@@ -156,6 +159,7 @@ function OverviewSection({ rows, errors, loading, onNavigate, onRefresh }) {
         <button type='button' onClick={() => onNavigate({ section: 'databases' })}>{'\u6570\u636e\u5e93\u8d44\u4ea7'}</button>
         <button type='button' onClick={() => onNavigate({ section: 'deploy-tasks' })}>{'\u90e8\u7f72\u4efb\u52a1'}</button>
         <button type='button' onClick={() => onNavigate({ section: 'agents' })}>{'Agent \u7ba1\u7406\u4e2d\u5fc3'}</button>
+        <button type='button' onClick={() => onNavigate({ section: 'datacenter-view' })}>{'\u673a\u623f\u89c6\u56fe'}</button>
       </div>
       <div className='fx-assets-grid'>{cards.map(([label, value]) => <article className='fx-assets-card' key={label}><strong>{value}</strong><span>{label}</span></article>)}</div>
       {Object.values(errors).map(error => <ErrorBox key={error}>{error}</ErrorBox>)}
