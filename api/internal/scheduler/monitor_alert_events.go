@@ -45,7 +45,10 @@ func upsertMonitorAlertCandidates(rule model.MonitorAlertRule, candidates []eval
 		stored, err := store.UpsertMonitorAlertEvent(event)
 		joined = errors.Join(joined, err)
 		if err == nil && newlyFiring {
-			dispatchAlertEvent(stored)
+			processed, shouldDrop := ApplyPipelines(stored)
+			if !shouldDrop {
+				dispatchAlertEvent(processed)
+			}
 		}
 	}
 	return created, active, joined

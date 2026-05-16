@@ -39,6 +39,14 @@ func registerWorkflowAndNotificationRoutes(v1 *gin.RouterGroup, mw routeMiddlewa
 	v1.PUT("/notifications/rules/:id", mw.adminRequired, handler.UpdateNotificationRule)
 	v1.DELETE("/notifications/rules/:id", mw.adminRequired, handler.DeleteNotificationRules)
 	registerNotificationTemplateRoutes(v1, mw)
+	registerAlertSubscribeRoutes(v1, mw)
+}
+
+func registerAlertSubscribeRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
+	v1.GET("/alert-subscribes", handler.ListAlertSubscribes)
+	v1.POST("/alert-subscribes", mw.adminRequired, handler.CreateAlertSubscribe)
+	v1.PUT("/alert-subscribes/:id", mw.adminRequired, handler.UpdateAlertSubscribe)
+	v1.DELETE("/alert-subscribes/:id", mw.adminRequired, handler.DeleteAlertSubscribe)
 }
 
 func registerNotificationTemplateRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
@@ -90,6 +98,7 @@ func registerSettingsRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/settings/embedding/test", mw.adminRequired, handler.TestEmbeddingConnection)
 	v1.GET("/settings/reranker", handler.GetRerankerSettings)
 	v1.PUT("/settings/reranker", mw.adminRequired, handler.UpdateRerankerSettings)
+	v1.GET("/ai/config/status", handler.AIConfigStatus)
 }
 
 func registerDownloadRoute(r *gin.Engine) {

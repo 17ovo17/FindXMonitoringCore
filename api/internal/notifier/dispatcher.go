@@ -30,6 +30,10 @@ func DispatchAlertEvent(event *model.MonitorAlertEvent) {
 	if event == nil {
 		return
 	}
+	if model.IsAlertMuted(event) {
+		log.Infof("alert event muted: name=%q", event.Name)
+		return
+	}
 	rules := store.ListActiveNotificationRules()
 	for _, rule := range rules {
 		if !matchesRule(rule, event) {
@@ -41,6 +45,20 @@ func DispatchAlertEvent(event *model.MonitorAlertEvent) {
 				continue
 			}
 			ch, ok := store.GetNotificationChannel(id)
+			if !ok || ch == nil || !ch.Enabled {
+				continue
+			}
+			channel := *ch
+			evCopy := *event
+			go sendToChannel(&channel, &evCopy)
+		}
+	}
+
+	// Dispatch to subscribers
+	subs := store.MatchingSubscribes(event)
+	for _, sub := range subs {
+		for _, chID := range sub.ChannelIDs {
+			ch, ok := store.GetNotificationChannel(chID)
 			if !ok || ch == nil || !ch.Enabled {
 				continue
 			}
@@ -170,23 +188,19 @@ func webhookPayload(event *model.MonitorAlertEvent) map[string]any {
 }
 
 func sendDingTalk(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
-	log.Warnf("notifier: channel=%s type=dingtalk 尚未实现 (alert event %q)", ch.Name, event.Name)
-	return nil
+	return sendDingTalkReal(ch, event)
 }
 
 func sendWeCom(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
-	log.Warnf("notifier: channel=%s type=wecom 尚未实现 (alert event %q)", ch.Name, event.Name)
-	return nil
+	return sendWeComReal(ch, event)
 }
 
 func sendFeishu(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
-	log.Warnf("notifier: channel=%s type=feishu 尚未实现 (alert event %q)", ch.Name, event.Name)
-	return nil
+	return sendFeishuReal(ch, event)
 }
 
 func sendEmail(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
-	log.Warnf("notifier: channel=%s type=email 尚未实现 (alert event %q)", ch.Name, event.Name)
-	return nil
+	return sendEmailReal(ch, event)
 }
 
 func firstNonEmpty(values ...string) string {

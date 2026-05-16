@@ -7,7 +7,7 @@ import (
 )
 
 func registerAuthAndUserRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
-	v1.GET("/credentials", handler.ListCredentials)
+	v1.GET("/credentials", mw.monitorRequired("credential", "read"), handler.ListCredentials)
 	v1.POST("/credentials", mw.adminRequired, handler.SaveCredential)
 	v1.DELETE("/credentials/:id", mw.adminRequired, handler.DeleteCredential)
 	v1.POST("/auth/login", handler.Login)
@@ -91,4 +91,12 @@ func registerMonitorAlertRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/monitor/events/:id/archive", mw.monitorRequired("monitor.alert_event", "archive"), handler.ArchiveMonitorEvent)
 	v1.GET("/monitor/audit-logs", mw.monitorRequired("monitor.audit_log", "read"), handler.ListMonitorAuditLogs)
 	v1.GET("/monitor/audit-logs/:id", mw.monitorRequired("monitor.audit_log", "read"), handler.GetMonitorAuditLog)
+	v1.GET("/alert-mutes", handler.ListAlertMutes)
+	v1.POST("/alert-mutes", mw.adminRequired, handler.CreateAlertMute)
+	v1.PUT("/alert-mutes/:id", mw.adminRequired, handler.UpdateAlertMute)
+	v1.DELETE("/alert-mutes/:id", mw.adminRequired, handler.DeleteAlertMute)
+	v1.GET("/alert-pipelines", mw.monitorRequired("monitor.alert_pipeline", "read"), handler.ListAlertPipelines)
+	v1.POST("/alert-pipelines", mw.monitorRequired("monitor.alert_pipeline", "create"), handler.CreateAlertPipeline)
+	v1.PUT("/alert-pipelines/:id", mw.monitorRequired("monitor.alert_pipeline", "update"), handler.UpdateAlertPipeline)
+	v1.DELETE("/alert-pipelines/:id", mw.monitorRequired("monitor.alert_pipeline", "delete"), handler.DeleteAlertPipeline)
 }
