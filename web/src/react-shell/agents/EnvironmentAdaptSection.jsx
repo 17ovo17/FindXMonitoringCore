@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { pluginApi } from '../api/plugins.js'
-import { ErrorBox } from './AgentShared.jsx'
+import { Blocked, ErrorBox } from './AgentShared.jsx'
 
 export function EnvironmentAdaptSection({ agentId }) {
   const [env, setEnv] = useState(null)
@@ -9,7 +9,7 @@ export function EnvironmentAdaptSection({ agentId }) {
   const [loading, setLoading] = useState(false)
   const [adapting, setAdapting] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
     if (!agentId) return
@@ -46,17 +46,17 @@ export function EnvironmentAdaptSection({ agentId }) {
   const handleApply = async () => {
     if (!agentId || selected.size === 0) return
     setError('')
+    setFeedback('')
     try {
       const body = {
         agent_ids: [agentId],
         plugins: [...selected].map(id => ({ id, enabled: true, config: '' })),
         strategy: 'incremental',
       }
-      await pluginApi.configPush(body)
-      setSuccess('已启用选中的插件')
-      setTimeout(() => setSuccess(''), 3000)
+      const res = await pluginApi.configPush(body)
+      setFeedback(`PENDING: 配置预检返回 ${res?.status || 'non-blocked'}；没有真实执行器、投递回执和效果回执前，不显示完成态。`)
     } catch (err) {
-      setError(err?.message || '启用失败')
+      setFeedback(`PENDING: ${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
     }
   }
 
@@ -68,7 +68,7 @@ export function EnvironmentAdaptSection({ agentId }) {
     <section className='fx-agent-work'>
       <h3>环境探测与自动适配</h3>
       <ErrorBox>{error}</ErrorBox>
-      {success && <div className='fx-agent-success'>{success}</div>}
+      {feedback && <Blocked>{feedback}</Blocked>}
 
       {loading && <div className='fx-agent-muted'>加载环境信息...</div>}
 
@@ -83,9 +83,9 @@ export function EnvironmentAdaptSection({ agentId }) {
             <dt>内存</dt><dd>{env.memory_mb} MB</dd>
             <dt>磁盘</dt><dd>{env.disk_gb} GB</dd>
           </dl>
-          <h4>已安装服务</h4>
+          <h4>探测线索</h4>
           <div className='fx-plugin-service-tags'>
-            {(env.installed_services || []).map(s => (
+            {(env.detected_services || []).map(s => (
               <span key={s} className='fx-agent-tag'>{s}</span>
             ))}
           </div>
@@ -114,7 +114,7 @@ export function EnvironmentAdaptSection({ agentId }) {
           </div>
           <button type='button' onClick={handleApply}
             disabled={selected.size === 0}>
-            一键启用选中插件
+            提交配置预检
           </button>
         </div>
       )}

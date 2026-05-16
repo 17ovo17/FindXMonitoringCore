@@ -14,10 +14,10 @@ func TestKubernetesInstallerPrerequisitesRequireStableSortedContractRefs(t *test
 	if result.Allowed || result.Status != "blocked" || result.Runner != "helm" {
 		t.Fatalf("expected blocked helm gate, got %#v", result)
 	}
-	if !strings.HasPrefix(result.Reason, "BLOCKED_BY_CONTRACT: missing ") {
+	if !strings.HasPrefix(result.Reason, "PENDING: missing ") {
 		t.Fatalf("expected missing contract reason, got %q", result.Reason)
 	}
-	got := strings.Split(strings.TrimPrefix(result.Reason, "BLOCKED_BY_CONTRACT: missing "), ", ")
+	got := strings.Split(strings.TrimPrefix(result.Reason, "PENDING: missing "), ", ")
 	if !sort.StringsAreSorted(got) {
 		t.Fatalf("missing refs must be stable sorted, got %#v", got)
 	}
@@ -56,7 +56,7 @@ func TestKubernetesInstallerPrerequisitesStillBlockWhenComplete(t *testing.T) {
 	if result.Runner != "kubernetes-daemonset" {
 		t.Fatalf("expected daemonset runner, got %q", result.Runner)
 	}
-	if result.Reason != "BLOCKED_BY_CONTRACT: Kubernetes executor not enabled / lifecycle protocol not open" {
+	if result.Reason != "PENDING: Kubernetes executor not enabled / lifecycle protocol not open" {
 		t.Fatalf("unexpected complete-block reason %q", result.Reason)
 	}
 }

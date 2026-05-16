@@ -73,7 +73,7 @@ func DefaultLogPipeline(version string) model.LogPipeline {
 		Description: "仅提供内置解析草稿；日志数据源和生产管道生效契约尚未接入。",
 		Enabled:     false,
 		Stages:      json.RawMessage(`[{"id":"parse-json","type":"json","on_error":"keep_raw"},{"id":"map-severity","type":"attribute_map","from":"severity_text","to":"severity"}]`),
-		Config:      json.RawMessage(`{"status":"template","data_source":"BLOCKED_BY_CONTRACT"}`),
+		Config:      json.RawMessage(`{"status":"template","data_source":"PENDING"}`),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

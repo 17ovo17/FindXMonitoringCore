@@ -23,8 +23,8 @@ const visibleRefKeys = record => {
 }
 const refValue = (record, key) => record?.[key] ?? safeRefsOf(record)[key] ?? metadataOf(record)[key]
 const hasRef = (record, key) => Boolean(String(refValue(record, key) ?? '').trim())
-const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message') || 'BLOCKED_BY_CONTRACT'
-const statusText = record => isBlockedPlan(record) ? 'blocked' : 'BLOCKED_BY_CONTRACT'
+const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message') || 'PENDING'
+const statusText = record => isBlockedPlan(record) ? 'blocked' : 'PENDING'
 
 const targetText = record => {
   const direct = pick(record, 'target', 'target_id', 'host_id', 'agent_id')
@@ -96,7 +96,7 @@ function Detail({ record }) {
         <strong>blocked reason</strong>
         <span>{displayText(blockerText(record))}</span>
       </div>
-      {refs.length ? <RefTable record={record} refs={refs} /> : <Blocked>当前记录没有可见 safe refs，仍然保持 BLOCKED_BY_CONTRACT。</Blocked>}
+      {refs.length ? <RefTable record={record} refs={refs} /> : <Blocked>当前记录没有可见 safe refs，仍然保持 PENDING。</Blocked>}
     </div>
   )
 }
@@ -112,7 +112,7 @@ function RefTable({ record, refs }) {
             <tr key={key}>
               <td>{key}</td>
               <td><Status ok={hasRef(record, key)}>{value ? 'present' : 'missing'}</Status></td>
-              <td><span className='fx-agent-muted'>{value ? redactRef(value) : 'BLOCKED_BY_CONTRACT'}</span></td>
+              <td><span className='fx-agent-muted'>{value ? redactRef(value) : 'PENDING'}</span></td>
             </tr>
           )
         })}</tbody>

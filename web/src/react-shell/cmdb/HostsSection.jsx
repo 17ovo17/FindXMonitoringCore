@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { ASSET_BLOCKERS, assetsApi, formatAssetError, splitText } from '../api/assets.js'
+import { cmdbApi } from '../api/cmdb.js'
 import { displayText, fmtTime, hostIp, hostKey, hostName, isHostOnline, normalizeTags } from './assetsModel.js'
 import { Blocked, ErrorBox, Feedback, Field, Modal, Status, Tags } from './Shared.jsx'
 import { Pagination, useConfirm } from '../shared/ConfirmModal.jsx'
 import { ExecSection } from './ExecSection.jsx'
+import { HostProbePluginDrawer } from './HostProbePluginDrawer.jsx'
 import { TerminalSection } from './TerminalSection.jsx'
 import { UploadSection } from './UploadSection.jsx'
 
@@ -22,15 +24,17 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
   const [treeExpanded, setTreeExpanded] = useState(true)
   const { confirm, modal: confirmModal } = useConfirm()
 
-  const load = async () => {
+  const load = async (nextFilters = filters) => {
     setLoading(true); setError(''); setPage(1)
-    try { setRows(await assetsApi.hosts.list(filters)) } catch (err) { setRows([]); setError(formatAssetError(err)) } finally { setLoading(false) }
+    try { setRows(await assetsApi.hosts.list(nextFilters)) } catch (err) { setRows([]); setError(formatAssetError(err)) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
   useEffect(() => {
     if (initialQuery.group !== undefined && initialQuery.group !== filters.resource_group_id) {
-      setFilters(prev => ({ ...prev, resource_group_id: initialQuery.group || '' }))
+      const nextFilters = { ...filters, resource_group_id: initialQuery.group || '' }
+      setFilters(nextFilters)
+      load(nextFilters)
     }
   }, [initialQuery.group])
 
@@ -38,8 +42,9 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
 
   const handleGroupSelect = (groupId) => {
     setSelectedGroup(groupId)
-    setFilters(prev => ({ ...prev, resource_group_id: groupId }))
-    setTimeout(load, 0)
+    const nextFilters = { ...filters, resource_group_id: groupId }
+    setFilters(nextFilters)
+    load(nextFilters)
   }
 
   const realAction = async (kind, row, value) => {
@@ -48,6 +53,12 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
       if (kind === 'tags') await assetsApi.hosts.updateTags(hostKey(row), splitText(value))
       if (kind === 'group') await assetsApi.hosts.bindResourceGroup(hostKey(row), value.trim())
       if (kind === 'workspace') await assetsApi.hosts.bindWorkspace(hostKey(row), value.trim())
+      if (kind === 'assign') {
+        const groupId = (value.resource_group_id || '').trim()
+        const workspaceId = (value.workspace_id || '').trim()
+        if (groupId !== (row.resource_group_id || '')) await assetsApi.hosts.bindResourceGroup(hostKey(row), groupId)
+        if (workspaceId !== (row.workspace_id || '')) await assetsApi.hosts.bindWorkspace(hostKey(row), workspaceId)
+      }
       setFeedback('主机绑定信息已保存。'); setModal(null); await load(); onRefreshAll?.()
     } catch (err) { setError(formatAssetError(err)); throw err }
   }
@@ -55,7 +66,7 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
   const handleDelete = async (row) => {
     const ok = await confirm({ title: '删除主机', message: `确认删除主机「${hostName(row)}」？此操作不可恢复。`, confirmText: '删除', danger: true })
     if (!ok) return
-    setFeedback('BLOCKED_BY_CONTRACT: 主机删除缺少审计、回滚和关联资源影响分析契约，当前不会删除主机。')
+    setFeedback('PENDING: 主机删除缺少审计、回滚和关联资源影响分析契约，当前不会删除主机。')
   }
 
   // C01: 左侧分组树过滤
@@ -89,14 +100,14 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
       <div className={embedded ? '' : 'fx-assets-detail'}>
         <HostFilter filters={filters} groups={groups} workspaces={workspaces} onPatch={patch} onSearch={load} loading={loading} />
         <div className='fx-assets-toolbar'>
-          <button type='button' onClick={() => setModal({ type: 'import' })}>导入主机</button>
+          <button type='button' onClick={() => setModal({ type: 'host-create-contract' })}>新增主机</button>
           <button type='button' onClick={() => setModal({ type: 'terminal-select' })}>终端</button>
           <button type='button' onClick={load}>刷新</button>
         </div>
         <ErrorBox>{error}</ErrorBox><Feedback>{feedback}</Feedback>
-        <HostTable rows={rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)} loading={loading} onDetail={row => setModal({ type: 'detail', row })} onTags={row => setModal({ type: 'tags', row, value: normalizeTags(row.tags).join(', ') })} onGroup={row => setModal({ type: 'group', row, value: row.resource_group_id || '' })} onWorkspace={row => setModal({ type: 'workspace', row, value: row.workspace_id || '' })} onTerminal={row => setModal({ type: 'terminal', row })} onUpload={row => setModal({ type: 'upload', row })} onExec={row => setModal({ type: 'exec', row })} onDelete={handleDelete} />
+        <HostTable rows={rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)} allRows={rows} loading={loading} onDetail={row => setModal({ type: 'detail', row })} onChat={row => setModal({ type: 'host-chat-blocked', row })} onAssign={row => setModal({ type: 'assign', row, resource_group_id: row.resource_group_id || '', workspace_id: row.workspace_id || '' })} onProbe={row => setModal({ type: 'probe-plugin', row })} onTags={row => setModal({ type: 'tags', row, value: normalizeTags(row.tags).join(', ') })} onTerminal={row => setModal({ type: 'terminal', row })} onUpload={row => setModal({ type: 'upload', row })} onExec={row => setModal({ type: 'exec', row })} onDelete={handleDelete} />
         <Pagination total={rows.length} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} />
-        {modal && <HostModal modal={modal} groups={groups} workspaces={workspaces} onClose={() => setModal(null)} onSave={realAction} />}
+        {modal && <HostModal modal={modal} groups={groups} workspaces={workspaces} onClose={() => setModal(null)} onSave={realAction} confirm={confirm} />}
         {confirmModal}
       </div>
     </section>
@@ -116,30 +127,149 @@ function HostFilter({ filters, groups, workspaces, onPatch, onSearch, loading })
   )
 }
 
-function HostTable({ rows, loading, onDetail, onTags, onGroup, onWorkspace, onTerminal, onUpload, onExec, onDelete }) {
+function HostTable({ rows, allRows = rows, loading, onDetail, onChat, onAssign, onProbe, onTags, onTerminal, onUpload, onExec, onDelete }) {
+  const cmdbColumns = useMemo(() => buildCmdbHostColumns(allRows), [allRows])
+  const useCmdbProjection = cmdbColumns.length > 0
+  const tableMinWidth = useCmdbProjection ? Math.max(880, 520 + cmdbColumns.length * 148) : 980
   return (
-    <div className='fx-assets-table'>
-      <table><thead><tr><th>主机名</th><th>IP</th><th>CPU</th><th>内存</th><th>磁盘</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>{rows.map(row => <tr key={hostKey(row)}>
-          <td><strong>{hostName(row)}</strong><div className='fx-assets-muted'>{displayText(row.os)} {displayText(row.arch, '')}</div></td>
-          <td>{hostIp(row)}</td>
-          <td>{displayText(row.cpu_cores || row.cpu, '-')}</td>
-          <td>{formatMemory(row.memory_total || row.memory)}</td>
-          <td>{formatDisk(row.disk_total || row.disk)}</td>
-          <td><Status ok={isHostOnline(row)}>{isHostOnline(row) ? '在线' : '离线'}</Status></td>
-          <td className='fx-assets-actions'>
-            <button type='button' onClick={() => onDetail(row)}>详情</button>
-            <button type='button' onClick={() => onTerminal(row)}>终端</button>
-            <button type='button' onClick={() => onUpload(row)}>上传</button>
-            <button type='button' onClick={() => onExec(row)}>执行</button>
-            <button type='button' onClick={() => onTags(row)}>标签</button>
-            <button type='button' className='is-danger' onClick={() => onDelete(row)}>删除</button>
-          </td>
-        </tr>)}</tbody>
+    <div className={`fx-assets-table fx-assets-host-table ${useCmdbProjection ? 'is-cmdb-projection' : ''}`}>
+      <table style={{ minWidth: tableMinWidth }}>
+        <thead>
+          <tr>
+            {useCmdbProjection ? (
+              <>
+                <th>资源</th>
+                {cmdbColumns.map(column => (
+                  <th key={column.attr} className='fx-assets-cmdb-column-head'>
+                    <strong>{column.label}</strong>
+                    <span>{[column.tag, column.valueType, column.unit].filter(Boolean).join(' · ') || 'CMDB'}</span>
+                  </th>
+                ))}
+                <th>状态</th>
+                <th>操作</th>
+              </>
+            ) : (
+              <><th>主机名</th><th>IP</th><th>CPU</th><th>内存</th><th>磁盘</th><th>状态</th><th>操作</th></>
+            )}
+          </tr>
+        </thead>
+        <tbody>{rows.map(row => (
+          <tr key={hostKey(row)}>
+            {useCmdbProjection ? (
+              <>
+                <td className='fx-assets-host-resource-cell'>
+                  <strong>{hostName(row)}</strong>
+                  <div className='fx-assets-muted'>{hostIp(row)}</div>
+                  <div className='fx-assets-muted'>{displayText(row?.cmdb_instance?.object_name || row?.cmdb_instance?.object_id, '未关联 CMDB')}</div>
+                </td>
+                {cmdbColumns.map(column => (
+                  <td key={column.attr} className={column.sensitive || column.masked ? 'fx-assets-cmdb-sensitive' : ''}>
+                    {renderCmdbHostCell(row, column)}
+                  </td>
+                ))}
+                <td><Status ok={isHostOnline(row)}>{isHostOnline(row) ? '在线' : '离线'}</Status></td>
+              </>
+            ) : (
+              <>
+                <td><strong>{hostName(row)}</strong><div className='fx-assets-muted'>{displayText(row.os)} {displayText(row.arch, '')}</div></td>
+                <td>{hostIp(row)}</td>
+                <td>{displayText(row.cpu_cores || row.cpu, '-')}</td>
+                <td>{formatMemory(row.memory_total || row.memory)}</td>
+                <td>{formatDisk(row.disk_total || row.disk)}</td>
+                <td><Status ok={isHostOnline(row)}>{isHostOnline(row) ? '在线' : '离线'}</Status></td>
+              </>
+            )}
+            <td className='fx-assets-actions'>
+              <button type='button' onClick={() => onDetail(row)}>详情</button>
+              <button type='button' onClick={() => onChat(row)}>AI 对话</button>
+              <button type='button' onClick={() => onProbe(row)}>探针/插件</button>
+              <details className='fx-assets-more-actions'>
+                <summary>更多</summary>
+                <div onClick={event => { event.currentTarget.closest('details').open = false }}>
+                  <button type='button' onClick={() => onAssign(row)}>分配</button>
+                  <button type='button' onClick={() => onTerminal(row)}>终端</button>
+                  <button type='button' onClick={() => onUpload(row)}>上传</button>
+                  <button type='button' onClick={() => onExec(row)}>执行</button>
+                  <button type='button' onClick={() => onTags(row)}>标签</button>
+                  <button type='button' className='is-danger' onClick={() => onDelete(row)}>删除</button>
+                </div>
+              </details>
+            </td>
+          </tr>
+        ))}</tbody>
       </table>
       {!rows.length && <div className='fx-assets-empty'>{loading ? '正在加载主机资产...' : '暂无主机资产。'}</div>}
     </div>
   )
+}
+
+const isCmdbColumnVisible = column => column?.visible !== false && column?.visible !== 'false'
+
+const cmdbSensitiveColumnPattern = /(pass|secret|token|auth|cookie|private|dsn|credential|cert|owner|phone|mobile|account|user)/i
+
+const buildCmdbHostColumns = rows => {
+  const byAttr = new Map()
+  for (const row of rows) {
+    for (const source of asArray(row?.cmdb_columns)) {
+      const attr = cmdbText(source?.attr, '')
+      if (!attr || !isCmdbColumnVisible(source)) continue
+      const column = {
+        attr,
+        label: cmdbText(source?.label || source?.name || attr, attr),
+        valueType: cmdbText(source?.value_type || source?.valueType, ''),
+        tag: cmdbText(source?.tag, ''),
+        unit: cmdbText(source?.unit, ''),
+        sort: cmdbSortValue(source),
+        sensitive: source?.sensitive === true || source?.sensitive === 'true' || cmdbSensitiveColumnPattern.test(`${source?.attr || ''} ${source?.label || ''}`),
+        masked: source?.masked === true || source?.masked === 'true',
+      }
+      if (column.sensitive) column.masked = true
+      const existing = byAttr.get(attr)
+      if (!existing || column.sort < existing.sort || (existing.label === attr && column.label !== attr)) {
+        byAttr.set(attr, column)
+      }
+    }
+  }
+  return Array.from(byAttr.values())
+    .filter(column => rows.some(row => hasCmdbProjectionValue(row, column)))
+    .sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label, 'zh-CN'))
+}
+
+const cmdbRawValue = (row, attr) => row?.cmdb_values && Object.prototype.hasOwnProperty.call(row.cmdb_values, attr) ? row.cmdb_values[attr] : undefined
+
+const hasCmdbProjectionValue = (row, column) => {
+  const raw = cmdbRawValue(row, column.attr)
+  if (raw !== undefined && raw !== null && raw !== '') return true
+  const fallback = cmdbAssetFallbackValue(row, column.attr)
+  return fallback !== undefined && fallback !== null && fallback !== '' && fallback !== '-'
+}
+
+const cmdbAssetFallbackValue = (row, attr) => {
+  const key = String(attr || '').toLowerCase()
+  if (['name', 'hostname', 'host_name', 'instance_name'].includes(key)) return hostName(row)
+  if (['ip_address', 'mgmt_ip', 'ip', 'host_ip', 'os001'].includes(key)) return hostIp(row)
+  if (['cpu', 'cpu_cores', 'cpu_core'].includes(key)) return displayText(row?.cpu_cores || row?.cpu, '-')
+  if (['memory', 'memory_total', 'mem_total'].includes(key)) return formatMemory(row?.memory_total || row?.memory)
+  if (['disk', 'disk_total', 'disk_size'].includes(key)) return formatDisk(row?.disk_total || row?.disk)
+  if (key === 'agent_status') return isHostOnline(row) ? '在线' : '离线'
+  return undefined
+}
+
+const formatCmdbTableValue = value => {
+  if (value === null || value === undefined || value === '') return '-'
+  if (Array.isArray(value)) return value.map(item => displayText(item, '')).filter(Boolean).join(', ') || '-'
+  if (typeof value === 'object') return '结构化字段'
+  return displayText(value)
+}
+
+const renderCmdbHostCell = (row, column) => {
+  const raw = cmdbRawValue(row, column.attr)
+  const fallback = raw === undefined ? cmdbAssetFallbackValue(row, column.attr) : undefined
+  const hasValue = raw !== undefined && raw !== null && raw !== ''
+  if ((column.sensitive || column.masked) && hasValue) return '******'
+  const value = formatCmdbTableValue(raw === undefined ? fallback : raw)
+  if (value === '-' || !column.unit || column.sensitive || column.masked) return value
+  return `${value} ${column.unit}`
 }
 
 function formatMemory(val) {
@@ -161,14 +291,49 @@ function formatDisk(val) {
 }
 
 // C02: 主机详情抽屉 + 编辑/终端/上传/执行弹窗
-function HostModal({ modal, groups, workspaces, onClose, onSave }) {
+const asArray = value => Array.isArray(value) ? value : []
+
+const pickCmdbInstanceId = row => row?.cmdb_instance?.instance_id || ''
+
+const cmdbText = (value, fallback = '-') => value === null || value === undefined || value === '' ? fallback : String(value)
+
+const cmdbSortValue = item => {
+  const raw = item?.sort ?? item?.Sort ?? item?.order ?? item?.Order ?? 0
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : 0
+}
+
+const pickCmdbDetailPayload = raw => raw?.data?.data || raw?.data || raw
+
+const normalizeCmdbDetailGroups = raw => {
+  const payload = pickCmdbDetailPayload(raw)
+  return asArray(payload?.base)
+    .map((group, groupIndex) => ({
+      tag: cmdbText(group?.tag || group?.label || group?.name, `分组 ${groupIndex + 1}`),
+      sort: cmdbSortValue(group),
+      infos: asArray(group?.infos)
+        .map((info, infoIndex) => ({
+          key: cmdbText(info?.key || info?.field || info?.id || `${groupIndex}-${infoIndex}`),
+          label: cmdbText(info?.label || info?.name || info?.field || info?.key, '未命名字段'),
+          value: cmdbText(info?.value ?? info?.display_value ?? info?.text),
+          unit: cmdbText(info?.unit, ''),
+          sort: cmdbSortValue(info),
+        }))
+        .sort((a, b) => a.sort - b.sort),
+    }))
+    .filter(group => group.infos.length)
+    .sort((a, b) => a.sort - b.sort)
+}
+
+function HostModal({ modal, groups, workspaces, onClose, onSave, confirm }) {
   const [value, setValue] = useState(modal.value || '')
+  const [assignment, setAssignment] = useState({ resource_group_id: modal.resource_group_id || '', workspace_id: modal.workspace_id || '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const submit = async () => {
     setSaving(true); setError('')
-    try { await onSave(modal.type, modal.row, value) } catch (err) { setError(formatAssetError(err)) } finally { setSaving(false) }
+    try { await onSave(modal.type, modal.row, modal.type === 'assign' ? assignment : value) } catch (err) { setError(formatAssetError(err)) } finally { setSaving(false) }
   }
 
   // C02: 详情抽屉
@@ -183,6 +348,10 @@ function HostModal({ modal, groups, workspaces, onClose, onSave }) {
         </div>
       </Modal>
     )
+  }
+
+  if (modal.type === 'probe-plugin') {
+    return <HostProbePluginDrawer row={modal.row} onClose={onClose} confirm={confirm} />
   }
 
   if (modal.type === 'terminal') {
@@ -207,15 +376,19 @@ function HostModal({ modal, groups, workspaces, onClose, onSave }) {
     )
   }
 
-  if (modal.type === 'import') {
+  if (modal.type === 'host-create-contract') {
     return (
-      <Modal title='导入主机' onClose={onClose}>
-        <div className='fx-assets-form'>
-          <Blocked>{ASSET_BLOCKERS.hostCreate}</Blocked>
-          <p className='fx-assets-muted'>云导入和 Excel 导入需要凭据引用、字段映射、审计和回滚契约；当前不会生成临时主机或导入完成提示。</p>
-          <footer><button type='button' onClick={onClose}>关闭</button></footer>
-        </div>
-      </Modal>
+      <HostContractPanel title='新增主机' onClose={onClose}>
+        <HostCreateContract groups={groups} workspaces={workspaces} />
+      </HostContractPanel>
+    )
+  }
+
+  if (modal.type === 'host-chat-blocked') {
+    return (
+      <HostContractPanel title={`单机诊断对话 - ${hostName(modal.row)}`} onClose={onClose}>
+        <HostChatBlocked row={modal.row} />
+      </HostContractPanel>
     )
   }
 
@@ -232,6 +405,24 @@ function HostModal({ modal, groups, workspaces, onClose, onSave }) {
   }
 
   const title = modal.type === 'tags' ? '编辑标签' : modal.type === 'group' ? '绑定资源组' : '绑定业务组'
+  if (modal.type === 'assign') {
+    return (
+      <Modal title={`分配主机 - ${hostName(modal.row)}`} onClose={onClose}>
+        <div className='fx-assets-form'>
+          <div className='fx-assets-host-assignment'>
+            <strong>{hostName(modal.row)}</strong>
+            <span>{hostIp(modal.row)} · Agent {displayText(modal.row.agent_id || modal.row.agent_status)}</span>
+          </div>
+          <div className='fx-assets-form-grid'>
+            <Field label='业务组'><select value={assignment.workspace_id} onChange={e => setAssignment(prev => ({ ...prev, workspace_id: e.target.value }))}><option value=''>解除绑定</option>{workspaces.map(row => <option key={row.id} value={row.id}>{displayText(row.name)}</option>)}</select></Field>
+            <Field label='资源组'><select value={assignment.resource_group_id} onChange={e => setAssignment(prev => ({ ...prev, resource_group_id: e.target.value }))}><option value=''>解除绑定</option>{groups.map(row => <option key={row.id} value={row.id}>{displayText(row.name)}</option>)}</select></Field>
+          </div>
+          <p className='fx-assets-muted'>保存后会写入 FindX 审计日志，日志中心可按 scope=cmdb、resource_type=host_asset 查询分配记录。</p>
+          <ErrorBox>{error}</ErrorBox><footer><button type='button' disabled={saving} onClick={submit}>{saving ? '保存中...' : '保存分配'}</button></footer>
+        </div>
+      </Modal>
+    )
+  }
   return (
     <Modal title={title} onClose={onClose}>
       <div className='fx-assets-form'>
@@ -244,8 +435,167 @@ function HostModal({ modal, groups, workspaces, onClose, onSave }) {
   )
 }
 
+function HostContractPanel({ title, onClose, children }) {
+  return (
+    <div className='fx-assets-contract-drawer' role='dialog' aria-modal='true' aria-labelledby='fx-assets-contract-title'>
+      <button type='button' className='fx-assets-contract-backdrop' aria-label='关闭面板' onClick={onClose} />
+      <section className='fx-assets-contract-panel'>
+        <header>
+          <div>
+            <strong id='fx-assets-contract-title'>{title}</strong>
+            <span>FindX CMDB 契约审计</span>
+          </div>
+          <button type='button' onClick={onClose} aria-label='关闭面板'>×</button>
+        </header>
+        <div className='fx-assets-contract-body'>{children}</div>
+      </section>
+    </div>
+  )
+}
+
+function HostCreateContract({ groups, workspaces }) {
+  const requiredFields = [
+    ['hostname', '主机名，CMDB host.name / hostname，不允许为空'],
+    ['primary_ip', '主 IP，需通过 IP 格式校验并作为资产唯一性候选'],
+    ['os_type', '操作系统类型，例如 linux / windows / unix'],
+    ['resource_group_id', `资源组引用，当前可选 ${groups.length} 个资源组`],
+    ['workspace_id', `业务组引用，当前可选 ${workspaces.length} 个业务组`],
+    ['credential_ref', '连接凭据引用，仅保存引用，不接收明文密钥'],
+    ['owner_ref', '资产负责人或服务归属引用'],
+    ['audit_reason', '新增原因，用于 FindX 审计链路'],
+  ]
+  return (
+    <div className='fx-assets-contract-content'>
+      <Blocked>PENDING: 缺少后端 POST /host-assets 或 CMDB instance create 契约，当前只展示新增主机字段契约，不会创建主机。</Blocked>
+      <p className='fx-assets-muted'>新增主机必须由 CMDB 模型字段驱动，并在后端提供唯一性校验、凭据引用校验、审计写入和回滚契约后才能开放提交。</p>
+      <section className='fx-cmdb-blocked-grid'>
+        {requiredFields.map(([field, desc]) => (
+          <article key={field}>
+            <strong>{field}</strong>
+            <code>{desc}</code>
+          </article>
+        ))}
+      </section>
+      <div className='fx-assets-contract-audit'>
+        <strong>missing contracts</strong>
+        <span>POST /host-assets 或 CMDB instance create</span>
+        <span>CMDB host model required fields schema</span>
+        <span>credential_ref validator</span>
+        <span>asset uniqueness and rollback receipt</span>
+      </div>
+    </div>
+  )
+}
+
+function HostChatBlocked({ row }) {
+  const [state, setState] = useState({ loading: true, audit: null, error: '', message: '' })
+  const [draft, setDraft] = useState('请基于这台主机的 CMDB、Agent 和监控上下文做只读诊断预检。')
+  const hostId = hostKey(row)
+
+  useEffect(() => {
+    let alive = true
+    setState({ loading: true, audit: null, error: '', message: '' })
+    cmdbApi.hostAiSession.preflight(hostId)
+      .then(audit => {
+        if (alive) setState({ loading: false, audit, error: '', message: '' })
+      })
+      .catch(err => {
+        if (alive) setState({ loading: false, audit: null, error: formatAssetError(err), message: '' })
+      })
+    return () => { alive = false }
+  }, [hostId])
+
+  const requestPreflight = async () => {
+    setState(prev => ({ ...prev, loading: true, error: '', message: '' }))
+    try {
+      const audit = await cmdbApi.hostAiSession.request(hostId, {
+        message: draft,
+        tool: 'readonly_diagnosis',
+        metadata: {
+          host_id: hostId,
+          host_name: hostName(row),
+          host_ip: hostIp(row),
+          cmdb_instance_id: pickCmdbInstanceId(row),
+        },
+      })
+      setState({ loading: false, audit, error: '', message: 'PENDING: 请求已进入单机诊断会话预检，未建立真实会话，未调用命令或工具。' })
+    } catch (err) {
+      setState(prev => ({ ...prev, loading: false, error: formatAssetError(err), message: '' }))
+    }
+  }
+
+  const audit = state.audit
+  const hostContext = audit?.host_context || {}
+  const missingContracts = normalizeContractRows(audit?.missing_contracts)
+  const auditQuery = audit?.findx_audit_query || {}
+
+  return (
+    <div className='fx-assets-contract-content'>
+      <div className='fx-assets-host-assignment'>
+        <strong>{hostName(row)}</strong>
+        <span>{hostIp(row)} · Agent {displayText(row.agent_id || row.agent_status, '未上报')}</span>
+      </div>
+      {state.loading && <p className='fx-assets-muted'>正在读取单机诊断会话 runtime 契约...</p>}
+      <ErrorBox>{state.error}</ErrorBox>
+      <Feedback>{state.message}</Feedback>
+      <Blocked>{audit?.message || 'PENDING: 单机诊断对话缺少会话传输、主机上下文、工具审计、输出回执和风险策略，当前不会建立真实连接。'}</Blocked>
+      <section className='fx-host-ai-layout'>
+        <div className='fx-host-ai-context'>
+          <h4>主机上下文</h4>
+          <dl>
+            <dt>资源</dt><dd>{hostName(row)} / {hostIp(row)}</dd>
+            <dt>CMDB 实例</dt><dd>{displayText(hostContext?.cmdb_instance?.instance_id || pickCmdbInstanceId(row), '未建立映射')}</dd>
+            <dt>CMDB 模型</dt><dd>{displayText(hostContext?.cmdb_instance?.object_name || hostContext?.cmdb_instance?.object_id, '未建立映射')}</dd>
+            <dt>监控对象</dt><dd>{displayText(hostContext?.monitor_target?.target_id || row.host_id || row.ident, '未上报')}</dd>
+            <dt>Agent</dt><dd>{displayText(hostContext?.agent?.agent_id || row.agent_id || row.agent_status, '未上报')}</dd>
+            <dt>执行边界</dt><dd>{displayText(audit?.preflight?.readonly_context_only ? '只读上下文' : 'PENDING')}</dd>
+          </dl>
+        </div>
+        <div className='fx-host-ai-request'>
+          <h4>请求预检</h4>
+          <textarea rows='5' value={draft} onChange={event => setDraft(event.target.value)} />
+          <button type='button' onClick={requestPreflight} disabled={state.loading}>请求诊断预检</button>
+          <p>预检只返回契约审计，不创建会话、不调用模型、不执行命令。</p>
+        </div>
+      </section>
+      <section className='fx-cmdb-blocked-grid'>
+        {missingContracts.map(item => (
+          <article key={item.id}>
+            <strong>{item.id}</strong>
+            <code>{item.status || 'PENDING'}</code>
+          </article>
+        ))}
+      </section>
+      <div className='fx-assets-contract-audit'>
+        <strong>findx_audit query</strong>
+        <span>source={displayText(auditQuery.source, 'findx_audit')}</span>
+        <span>scope={displayText(auditQuery.scope, 'cmdb')}</span>
+        <span>resource_type={displayText(auditQuery.resource_type, 'cmdb_host_ai_session')}</span>
+        <span>action={displayText(auditQuery.action, 'cmdb.host_ai_session.preflight')}</span>
+        <span>host_id={displayText(auditQuery.host_id || hostId)}</span>
+      </div>
+    </div>
+  )
+}
+
+const normalizeContractRows = items => {
+  const rows = asArray(items)
+    .map(item => typeof item === 'string'
+      ? { id: item, status: '' }
+      : { id: cmdbText(item?.id || item?.contract_id || item?.key || item?.name, ''), status: cmdbText(item?.status || item?.state || item?.reason, '') })
+    .filter(item => item.id)
+  return rows.length ? rows : [
+    { id: 'cmdb_ai_host_session_transport_contract', status: '' },
+    { id: 'cmdb_ai_host_context_contract', status: '' },
+    { id: 'cmdb_ai_tool_audit_contract', status: '' },
+    { id: 'cmdb_ai_output_receipt_contract', status: '' },
+  ]
+}
+
 // C02: 主机详情内容
 function HostDetailDrawer({ row }) {
+  const [detailState, setDetailState] = useState({ loading: false, groups: [], blocked: '' })
+  const cmdbInstanceId = pickCmdbInstanceId(row)
   const basicInfo = [
     ['主机名', hostName(row)],
     ['IP 地址', hostIp(row)],
@@ -255,21 +605,57 @@ function HostDetailDrawer({ row }) {
     ['磁盘', formatDisk(row.disk_total || row.disk)],
     ['状态', isHostOnline(row) ? '在线' : '离线'],
     ['来源', displayText(row.source)],
+    ['CMDB 实例', displayText(cmdbInstanceId, '未关联')],
     ['最近心跳', fmtTime(row.last_seen_at || row.last_seen || row.updated_at)],
   ]
-  const connInfo = [
-    ['SSH 端口', displayText(row.ssh_port || '22')],
-    ['SSH 用户', displayText(row.ssh_user, '***')],
-    ['密码/密钥', '******'],
-  ]
+
+  useEffect(() => {
+    let cancelled = false
+    if (!cmdbInstanceId) {
+      setDetailState({ loading: false, groups: [], blocked: '未关联 CMDB 实例，使用主机资产基础信息。' })
+      return () => { cancelled = true }
+    }
+    const loadDetail = async () => {
+      setDetailState({ loading: true, groups: [], blocked: '' })
+      try {
+        const raw = await cmdbApi.instances.compatibleDetail(cmdbInstanceId)
+        const groups = normalizeCmdbDetailGroups(raw)
+        if (cancelled) return
+        if (!groups.length) {
+          setDetailState({ loading: false, groups: [], blocked: 'PENDING: CMDB detail-compatible 未返回 base[].infos 字段契约，已降级展示主机资产基础信息。' })
+          return
+        }
+        setDetailState({ loading: false, groups, blocked: '' })
+      } catch (err) {
+        if (cancelled) return
+        const status = err?.status ? `HTTP ${err.status}` : '请求失败'
+        setDetailState({ loading: false, groups: [], blocked: `PENDING: CMDB detail-compatible ${status}，已降级展示主机资产基础信息。` })
+      }
+    }
+    loadDetail()
+    return () => { cancelled = true }
+  }, [cmdbInstanceId])
+
   return (
     <div>
-      <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#193a63' }}>基本信息</h3>
+      <h3 style={{ margin: '0 0 8px', fontSize: 14, color: '#193a63' }}>主机资产基础信息</h3>
       <div className='fx-assets-table'><table><tbody>{basicInfo.map(([k, v]) => <tr key={k}><th style={{ width: 100 }}>{k}</th><td>{v}</td></tr>)}</tbody></table></div>
-      <h3 style={{ margin: '12px 0 8px', fontSize: 14, color: '#193a63' }}>连接信息（脱敏）</h3>
-      <div className='fx-assets-table'><table><tbody>{connInfo.map(([k, v]) => <tr key={k}><th style={{ width: 100 }}>{k}</th><td>{v}</td></tr>)}</tbody></table></div>
-      <h3 style={{ margin: '12px 0 8px', fontSize: 14, color: '#193a63' }}>关联仪表盘</h3>
-      <p className='fx-assets-muted'>暂无关联仪表盘。可在监控模块中配置主机仪表盘后自动关联。</p>
+      <h3 style={{ margin: '12px 0 8px', fontSize: 14, color: '#193a63' }}>CMDB 动态详情</h3>
+      {detailState.loading && <p className='fx-assets-muted'>正在读取 CMDB detail-compatible 详情...</p>}
+      {detailState.blocked && <Blocked>{detailState.blocked}</Blocked>}
+      {detailState.groups.map(group => (
+        <section key={group.tag} style={{ marginTop: 10 }}>
+          <h4 style={{ margin: '0 0 6px', fontSize: 13, color: '#193a63' }}>{group.tag}</h4>
+          <div className='fx-assets-table'>
+            <table><tbody>{group.infos.map(info => (
+              <tr key={info.key}>
+                <th style={{ width: 140 }}>{info.label}</th>
+                <td>{info.value}{info.unit ? ` ${info.unit}` : ''}</td>
+              </tr>
+            ))}</tbody></table>
+          </div>
+        </section>
+      ))}
       <h3 style={{ margin: '12px 0 8px', fontSize: 14, color: '#193a63' }}>标签</h3>
       <Tags items={row.tags} />
     </div>

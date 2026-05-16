@@ -43,10 +43,19 @@ func CmdbHostTerminal(c *gin.Context) {
 		"action":  "terminal_blocked",
 	}).Warn("cmdb: terminal blocked by missing webssh contract")
 
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.host.terminal.v1",
-		[]string{"webssh_channel_contract", "credential_ref_resolver", "websocket_origin_policy", "terminal_audit_contract"},
-	))
+	c.JSON(http.StatusConflict, cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
+		ContractID:    "cmdb.host.terminal.v1",
+		ResourceType:  "cmdb_host_terminal",
+		ResourceID:    hostID,
+		Action:        "terminal",
+		RiskLevel:     "critical",
+		Title:         "CMDB host terminal review",
+		Summary:       "Open terminal request requires approval and runtime receipts before execution.",
+		Reason:        "missing webssh channel, credential resolver, websocket origin policy and terminal audit contracts",
+		Context:       map[string]any{"host_id": hostID, "origin_present": c.Request.Header.Get("Origin") != ""},
+		Missing:       []string{"webssh_channel_contract", "credential_ref_resolver", "websocket_origin_policy", "terminal_audit_contract"},
+		ExecutionState: "webssh session remains blocked",
+	}))
 }
 
 // CmdbHostUpload 文件上传到目标主机。缺少真实远程 writer 时阻断。
@@ -73,10 +82,22 @@ func CmdbHostUpload(c *gin.Context) {
 		"action":  "file_upload_blocked",
 	}).Warn("cmdb: file upload blocked by missing remote writer contract")
 
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.host.file_upload.v1",
-		[]string{"remote_file_writer_contract", "credential_ref_resolver", "artifact_checksum_contract", "upload_audit_contract"},
-	))
+	c.JSON(http.StatusConflict, cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
+		ContractID:   "cmdb.host.file_upload.v1",
+		ResourceType: "cmdb_host_file_upload",
+		ResourceID:   hostID,
+		Action:       "upload",
+		RiskLevel:    "high",
+		Title:        "CMDB host file upload review",
+		Summary:      "Remote file upload requires approval, artifact checksum and upload receipt contracts.",
+		Reason:       "missing remote writer, credential resolver, checksum and upload audit contracts",
+		Context: map[string]any{
+			"host_id": hostID,
+			"ip":      connInfo.IP,
+		},
+		Missing:        []string{"remote_file_writer_contract", "credential_ref_resolver", "artifact_checksum_contract", "upload_audit_contract"},
+		ExecutionState: "remote writer remains blocked",
+	}))
 }
 
 type execRequest struct {
@@ -121,10 +142,26 @@ func CmdbHostExec(c *gin.Context) {
 		"action":         "command_exec_blocked",
 	}).Warn("cmdb: command execution blocked by missing executor contract")
 
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.host.command_exec.v1",
-		[]string{"remote_command_executor_contract", "credential_ref_resolver", "command_audit_contract", "stdout_stderr_capture_contract"},
-	))
+	c.JSON(http.StatusConflict, cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
+		ContractID:   "cmdb.host.command_exec.v1",
+		ResourceType: "cmdb_host_command_exec",
+		ResourceID:   hostID,
+		Action:       "exec",
+		RiskLevel:    "critical",
+		Title:        "CMDB host command execution review",
+		Summary:      "Remote command execution requires approval and command output receipts before execution.",
+		Reason:       "missing remote command executor, credential resolver, command audit and stdout/stderr capture contracts",
+		Context: map[string]any{
+			"host_id":        hostID,
+			"ip":             connInfo.IP,
+			"command_length": len(req.Command),
+			"command_digest": commandDigest(req.Command),
+			"sudo":           req.Sudo,
+			"timeout":        req.Timeout,
+		},
+		Missing:        []string{"remote_command_executor_contract", "credential_ref_resolver", "command_audit_contract", "stdout_stderr_capture_contract"},
+		ExecutionState: "remote command executor remains blocked",
+	}))
 }
 
 func resolveCmdbHostForOps(c *gin.Context, hostID string, contractID string, missing []string) (*model.CmdbInstance, bool) {
@@ -135,7 +172,7 @@ func resolveCmdbHostForOps(c *gin.Context, hostID string, contractID string, mis
 	if _, ok := store.GetMonitorTarget(hostID); ok {
 		c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
 			contractID,
-			append([]string{cmdbHostInstanceMappingContract}, missing...),
+			cmdbHighRiskMissingContracts(append([]string{cmdbHostInstanceMappingContract}, missing...)...),
 		))
 		return nil, false
 	}

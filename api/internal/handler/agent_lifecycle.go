@@ -173,16 +173,23 @@ func ConfigPushFindXAgent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "mode must be single, batch, or canary"})
 		return
 	}
-	event := model.AgentLifecycleEvent{
-		ID:       store.NewID(),
-		AgentID:  agentID,
-		Action:   "config-push",
-		Status:   "pending",
-		Detail:   "mode=" + mode,
-		Operator: c.GetString("username"),
-	}
-	saved, _ := store.SaveAgentLifecycleEvent(event)
-	c.JSON(http.StatusOK, gin.H{"message": "config push triggered", "mode": mode, "event": saved})
+	c.JSON(http.StatusConflict, gin.H{
+		"code":        "pending",
+		"status":      "pending",
+		"contract_id": "cmdb.agent.plugin.config_push.runtime.v1",
+		"message":     "PENDING: single-agent config push must use config-rollouts runtime contracts before execution",
+		"mode":        mode,
+		"agent_id":    agentID,
+		"missing_contracts": []string{
+			"cmdb_agent_config_rollout_contract",
+			"cmdb_agent_config_push_executor_contract",
+			"cmdb_agent_rollout_delivery_receipt_contract",
+			"cmdb_agent_rollout_effect_receipt_contract",
+			"cmdb_action_audit_receipt_contract",
+		},
+		"safe_to_retry":     false,
+		"findx_audit_query": "scope=cmdb/resource_type=cmdb_agent_plugin/action=config_push/agent_id=" + agentID,
+	})
 }
 
 func GetAgentEvidenceChain(c *gin.Context) {

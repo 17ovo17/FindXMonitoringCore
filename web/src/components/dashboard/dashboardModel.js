@@ -138,8 +138,8 @@ export const normalizeVariables = (row, variableValues = {}) => toVariables(row)
   const dynamicBlocked = dynamicVariableTypes.includes(type)
   const emptySelectBlocked = control === 'select' && options.length === 0
   const blockedReason = dynamicBlocked
-    ? 'BLOCKED_BY_CONTRACT：动态变量选项、搜索、URL 参数联动和 Panel 查询替换 contract 未完整暴露。'
-    : 'BLOCKED_BY_CONTRACT：当前变量缺少可选择 options，无法执行真实选择。'
+    ? 'PENDING：动态变量选项、搜索、URL 参数联动和 Panel 查询替换 contract 未完整暴露。'
+    : 'PENDING：当前变量缺少可选择 options，无法执行真实选择。'
   return {
     key,
     label: sanitizeDisplayText(pick(item, ['label', 'title', 'name'], key)),
@@ -159,7 +159,7 @@ export const normalizePanels = row => toPanels(row).map((item, index) => ({
   preview: sanitizeDisplayText(pick(item, ['expr', 'query', 'metric', 'unit'], '未暴露查询语句')),
   note: sanitizeDisplayText(pick(item, ['description', 'note'], '已读取 Panel 配置，等待查询渲染 contract 接入')),
   rendererBlocked: true,
-  blockedReason: 'BLOCKED_BY_CONTRACT：Panel 查询、变量替换、渲染器、loading/empty/error 状态 contract 未完整暴露，禁止用静态卡片冒充真实图表。',
+  blockedReason: 'PENDING：Panel 查询、变量替换、渲染器、loading/empty/error 状态 contract 未完整暴露，禁止用静态卡片冒充真实图表。',
 }))
 
 export const parseObjectJson = text => {

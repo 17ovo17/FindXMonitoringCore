@@ -1,17 +1,17 @@
 import { AUTH_EXPIRED_EVENT, get, isPermissionError, normalizeList, post, redactText } from './http.js'
 
 export const TRACING_BLOCKERS = {
-  overview: 'BLOCKED_BY_CONTRACT: 链路总览、采集覆盖率和错误率聚合缺少 APM Adapter 契约。',
-  selectors: 'BLOCKED_BY_CONTRACT: 服务、实例、端点和标签选择器缺少 APM Adapter 契约。',
-  topology: 'BLOCKED_BY_CONTRACT: 服务拓扑、层级拓扑、节点指标和调用边指标缺少 APM Adapter 契约。',
-  traces: 'BLOCKED_BY_CONTRACT: Trace 检索、标签联想、Span 树和日志关联缺少 APM Adapter 契约。',
-  profiling: 'BLOCKED_BY_CONTRACT: Profiling 任务创建、列表、取消、重试和结果查看缺少 APM Adapter 契约。',
-  alarms: 'BLOCKED_BY_CONTRACT: 链路告警列表、详情、确认和规则关联缺少 APM Adapter 契约。',
-  settings: 'BLOCKED_BY_CONTRACT: 链路保留期、采样、标签索引和查询保护保存缺少 APM Adapter 契约。',
-  agentLinkage: 'BLOCKED_BY_CONTRACT: 服务覆盖率、Trace 详情反查探针状态和拓扑节点探针证据缺少 Agent 联动契约。',
+  overview: 'PENDING: 链路总览、采集覆盖率和错误率聚合缺少 APM Adapter 契约。',
+  selectors: 'PENDING: 服务、实例、端点和标签选择器缺少 APM Adapter 契约。',
+  topology: 'PENDING: 服务拓扑、层级拓扑、节点指标和调用边指标缺少 APM Adapter 契约。',
+  traces: 'PENDING: Trace 检索、标签联想、Span 树和日志关联缺少 APM Adapter 契约。',
+  profiling: 'PENDING: Profiling 任务创建、列表、取消、重试和结果查看缺少 APM Adapter 契约。',
+  alarms: 'PENDING: 链路告警列表、详情、确认和规则关联缺少 APM Adapter 契约。',
+  settings: 'PENDING: 链路保留期、采样、标签索引和查询保护保存缺少 APM Adapter 契约。',
+  agentLinkage: 'PENDING: 服务覆盖率、Trace 详情反查探针状态和拓扑节点探针证据缺少 Agent 联动契约。',
 }
 
-const blockedCode = value => String(value || '').toUpperCase() === 'BLOCKED_BY_CONTRACT'
+const blockedCode = value => String(value || '').toUpperCase() === 'PENDING'
 const blockedStatus = value => String(value || '').toLowerCase() === 'blocked'
 
 const blockedMessageFrom = value => {
@@ -21,7 +21,7 @@ const blockedMessageFrom = value => {
 
 const isBlockedEnvelope = value => {
   if (!value || typeof value !== 'object') return false
-  return blockedCode(value.code) || blockedStatus(value.status) || blockedCode(value.error_code) || /BLOCKED_BY_CONTRACT/i.test(blockedMessageFrom(value))
+  return blockedCode(value.code) || blockedStatus(value.status) || blockedCode(value.error_code) || /PENDING/i.test(blockedMessageFrom(value))
 }
 
 const blockedErrorFromEnvelope = (value, fallback = '链路查询服务契约未开放') => {
@@ -29,9 +29,9 @@ const blockedErrorFromEnvelope = (value, fallback = '链路查询服务契约未
   if (value?.contract_id) parts.push(`contract_id=${redactText(value.contract_id)}`)
   if (value?.code) parts.push(`code=${redactText(value.code)}`)
   const message = redactText(blockedMessageFrom(value) || fallback)
-  const error = new Error(`BLOCKED_BY_CONTRACT: ${parts.length ? parts.join(' ') + ' ' : ''}${message}`)
+  const error = new Error(`PENDING: ${parts.length ? parts.join(' ') + ' ' : ''}${message}`)
   error.status = value?.status_code || value?.http_status
-  error.code = value?.code || 'BLOCKED_BY_CONTRACT'
+  error.code = value?.code || 'PENDING'
   error.contract_id = value?.contract_id
   return error
 }
@@ -70,8 +70,8 @@ const requestJson = async (url, options = {}) => {
 
 export const formatTracingError = error => {
   if (isPermissionError(error)) return error.status === 401 ? '登录状态已过期，请重新登录。' : '当前账号没有链路监控权限。'
-  if (error?.contract_id || blockedCode(error?.code) || /BLOCKED_BY_CONTRACT/i.test(error?.message || '')) return redactText(error.message || 'BLOCKED_BY_CONTRACT: 链路查询服务契约阻断')
-  if ([404, 405, 409, 501].includes(error?.status)) return `BLOCKED_BY_CONTRACT: ${redactText(error.message || '接口未开放')}`
+  if (error?.contract_id || blockedCode(error?.code) || /PENDING/i.test(error?.message || '')) return redactText(error.message || 'PENDING: 链路查询服务契约阻断')
+  if ([404, 405, 409, 501].includes(error?.status)) return `PENDING: ${redactText(error.message || '接口未开放')}`
   return redactText(error?.message || '链路监控请求失败')
 }
 

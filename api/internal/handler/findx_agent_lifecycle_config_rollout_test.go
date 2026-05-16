@@ -46,7 +46,7 @@ func TestFindXAgentConfigRolloutMissingBaseRefsPersistsBlockedContract(t *testin
 	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
 		t.Fatalf("missing refs should persist blocked 409, code=%d payload=%#v", w.Code, payload)
 	}
-	for _, want := range []string{"BLOCKED_BY_CONTRACT", "config_snippet_ref", "config_version", "executor_ref", "rollback_ref"} {
+	for _, want := range []string{"PENDING", "config_snippet_ref", "config_version", "executor_ref", "rollback_ref"} {
 		if !strings.Contains(payload.Error, want) || !strings.Contains(payload.Data.Blocker, want) {
 			t.Fatalf("blocker should include %q, payload=%#v", want, payload)
 		}
@@ -69,7 +69,7 @@ func TestFindXAgentConfigRolloutRequiresRemotePreflightEnvelope(t *testing.T) {
 	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
 		t.Fatalf("missing remote preflight should persist blocked 409, code=%d payload=%#v", w.Code, payload)
 	}
-	want := "BLOCKED_BY_CONTRACT: missing audit_ref_or_evidence_chain_ref, credential_ref, execution_receipt_ref_or_receipt_ref, idempotency_key, target_os, timeout_policy_ref, transport_or_runner"
+	want := "PENDING: missing audit_ref_or_evidence_chain_ref, credential_ref, execution_receipt_ref_or_receipt_ref, idempotency_key, target_os, timeout_policy_ref, transport_or_runner"
 	if payload.Error != want || payload.Data.Blocker != want {
 		t.Fatalf("remote preflight blocker should be stable sorted, want=%q payload=%#v", want, payload)
 	}
@@ -181,7 +181,7 @@ func TestFindXAgentConfigRolloutUnsafeExecPluginBlocked(t *testing.T) {
 			if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
 				t.Fatalf("unsafe exec plugin should stay blocked, code=%d payload=%#v", w.Code, payload)
 			}
-			if !containsLifecycleTestString(payload.Blockers, "UNSAFE_PLUGIN_BLOCKED_BY_CONTRACT") ||
+			if !containsLifecycleTestString(payload.Blockers, "UNSAFE_PLUGIN_PENDING") ||
 				!containsLifecycleTestString(payload.MissingContracts, "unsafe_plugin_policy_ref") {
 				t.Fatalf("unsafe exec plugin should expose unsafe policy blocker, payload=%#v", payload)
 			}
@@ -237,7 +237,7 @@ func TestFindXAgentConfigRolloutLocalProviderSkipsHTTPProviderRefs(t *testing.T)
 	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
 		t.Fatalf("local provider complete refs should stay blocked 409, code=%d payload=%#v", w.Code, payload)
 	}
-	if payload.Error != "BLOCKED_BY_CONTRACT: executor not enabled / config rollout protocol not open" {
+	if payload.Error != "PENDING: executor not enabled / config rollout protocol not open" {
 		t.Fatalf("local provider should skip http provider refs, payload=%#v", payload)
 	}
 	for _, forbidden := range requiredHTTPProviderConfigRolloutRefs() {
@@ -290,7 +290,7 @@ func TestFindXAgentConfigRolloutKubernetesMissingRefs(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("kubernetes missing refs should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	want := "BLOCKED_BY_CONTRACT: missing cluster_ref, config_map_ref, data_arrival_validator_ref, drift_check_ref, executor_ref, helm_chart_ref_or_manifest_bundle_ref, namespace_ref, reload_receipt_ref, rollout_receipt_ref, rollout_strategy_ref, workload_selector_ref"
+	want := "PENDING: missing cluster_ref, config_map_ref, data_arrival_validator_ref, drift_check_ref, executor_ref, helm_chart_ref_or_manifest_bundle_ref, namespace_ref, reload_receipt_ref, rollout_receipt_ref, rollout_strategy_ref, workload_selector_ref"
 	if payload.Error != want || payload.Data.Blocker != want {
 		t.Fatalf("kubernetes missing refs should be stable sorted, want=%q payload=%#v", want, payload)
 	}
@@ -306,7 +306,7 @@ func TestFindXAgentConfigRolloutHelmMissingChoiceAndReleaseRefs(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("helm missing refs should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	want := "BLOCKED_BY_CONTRACT: missing helm_chart_ref_or_manifest_bundle_ref, helm_release_ref"
+	want := "PENDING: missing helm_chart_ref_or_manifest_bundle_ref, helm_release_ref"
 	if payload.Error != want || payload.Data.Blocker != want {
 		t.Fatalf("helm missing refs should be stable sorted, want=%q payload=%#v", want, payload)
 	}
@@ -322,7 +322,7 @@ func TestFindXAgentConfigRolloutCompleteRefsStillBlockedByExecutorGate(t *testin
 	if w.Code != http.StatusConflict {
 		t.Fatalf("complete refs should still be blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	if payload.Error != "BLOCKED_BY_CONTRACT: executor not enabled / config rollout protocol not open" {
+	if payload.Error != "PENDING: executor not enabled / config rollout protocol not open" {
 		t.Fatalf("unexpected executor gate blocker: %#v", payload)
 	}
 	if payload.Data.ReloadStrategy != "hup" {
@@ -356,7 +356,7 @@ func TestFindXAgentConfigRolloutResponseIncludesSafeContractEnvelope(t *testing.
 	if w.Code != http.StatusConflict || payload.Status != "blocked" {
 		t.Fatalf("config rollout should return blocked envelope, code=%d payload=%#v", w.Code, payload)
 	}
-	for _, want := range []string{"BLOCKED_BY_CONTRACT", "MISSING_CONTRACTS"} {
+	for _, want := range []string{"PENDING", "MISSING_CONTRACTS"} {
 		if !containsLifecycleTestString(payload.Blockers, want) {
 			t.Fatalf("blocked envelope should include %q, payload=%#v", want, payload)
 		}
@@ -367,7 +367,7 @@ func TestFindXAgentConfigRolloutResponseIncludesSafeContractEnvelope(t *testing.
 		}
 	}
 	if payload.ReceiptContract.ID == "" ||
-		payload.ReceiptContract.Scope != "categraf_plugin_config_rollout" ||
+		payload.ReceiptContract.Scope != "findx_agent_plugin_config_rollout" ||
 		payload.ReceiptContract.Status != "blocked_by_contract" ||
 		!payload.ReceiptContract.CredentialRequired ||
 		payload.ReceiptContract.CredentialProvided {
@@ -397,7 +397,7 @@ func TestFindXAgentConfigRolloutReceiptScopeRejectsUnknownMetadataScope(t *testi
 			if w.Code != http.StatusConflict || payload.Status != "blocked" {
 				t.Fatalf("unknown scope should stay blocked, code=%d payload=%#v", w.Code, payload)
 			}
-			if payload.ReceiptContract.Scope != "categraf_plugin_config_rollout" {
+			if payload.ReceiptContract.Scope != "findx_agent_plugin_config_rollout" {
 				t.Fatalf("unknown scope must not be echoed into receipt contract, scope=%q payload=%#v", scope, payload)
 			}
 			if strings.Contains(payload.ReceiptContract.Scope, "token") ||
@@ -476,6 +476,290 @@ func TestFindXAgentConfigRolloutCompleteRefsEnvelopeStillExecutorDisabled(t *tes
 	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
 }
 
+func TestFindXAgentConfigRolloutCmdbPluginCredentialAndDashboardContracts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"cmdb-host-plugin-dispatch","target_ids":["host-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"local","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"full","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref","dashboard_refs":"dashboard:redis-overview","credential_ref":"password=secret","token":"secret-token","cookie":"secret-cookie"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("cmdb plugin rollout should stay blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	for _, want := range []string{
+		"cmdb_agent_plugin_credential_contract",
+		"cmdb_credential_ref_resolve_contract",
+		"cmdb_plugin_config_schema_contract",
+		"cmdb_dashboard_template_lookup_contract",
+		"cmdb_dashboard_import_runtime_contract",
+	} {
+		if !containsLifecycleTestString(payload.MissingContracts, want) ||
+			!containsLifecycleTestString(payload.ReceiptContract.MissingContracts, want) {
+			t.Fatalf("cmdb plugin missing_contracts should include %q, payload=%#v", want, payload)
+		}
+	}
+	if !payload.Data.CredentialRefPresent {
+		t.Fatalf("top-level credential_ref should be recorded as present without echoing the value: %#v", payload.Data)
+	}
+	if payload.Data.Metadata["credential_ref"] != "" || payload.Data.Metadata["token"] != "" || payload.Data.Metadata["cookie"] != "" {
+		t.Fatalf("sensitive metadata must be dropped, metadata=%#v", payload.Data.Metadata)
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginAssignAndDispatchHaveDifferentContracts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tt := range []struct {
+		name           string
+		templateID     string
+		strategy       string
+		remoteMutation bool
+		wantMode       string
+		wantContract   string
+		wantRequired   []string
+		wantMissing    []string
+		forbidRequired []string
+		forbidMissing  []string
+		wantRemote     bool
+	}{
+		{
+			name:           "assign records target plugin binding intent only",
+			templateID:     "cmdb-host-plugin-assign",
+			strategy:       "assign",
+			remoteMutation: false,
+			wantMode:       "assign",
+			wantContract:   "cmdb.agent.plugin.assignment.v1",
+			wantRequired:   []string{"assignment_record", "target_binding_ref", "credential_policy_ref", "audit_ref"},
+			wantMissing:    []string{"cmdb_agent_plugin_credential_contract", "cmdb_dashboard_import_runtime_contract"},
+			forbidRequired: []string{"writer_receipt", "reload_receipt", "effect_receipt", "data_arrival_receipt"},
+			forbidMissing:  []string{"cmdb_agent_plugin_assignment_store_contract", "cmdb_agent_plugin_target_binding_contract", "cmdb_agent_plugin_assignment_audit_contract", "cmdb_agent_rollout_delivery_receipt_contract", "cmdb_agent_rollout_effect_receipt_contract"},
+			wantRemote:     false,
+		},
+		{
+			name:           "dispatch records remote delivery intent",
+			templateID:     "cmdb-host-plugin-dispatch",
+			strategy:       "dispatch",
+			remoteMutation: true,
+			wantMode:       "dispatch",
+			wantContract:   "cmdb.agent.plugin.dispatch.v1",
+			wantRequired:   []string{"assignment_ref", "writer_receipt", "delivery_receipt", "effect_receipt", "rollback_receipt", "data_arrival_receipt", "evidence_chain"},
+			wantMissing:    []string{"cmdb_agent_rollout_delivery_receipt_contract", "cmdb_agent_rollout_effect_receipt_contract"},
+			forbidRequired: []string{"assignment_record"},
+			wantRemote:     true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resetAgentLifecycleRecordsForTest(t)
+			body := strings.NewReader(`{"template_id":"` + tt.templateID + `","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"` + tt.strategy + `","rollback_ref":"rollback-ref","remote_mutation":` + boolString(tt.remoteMutation) + `,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","agent_ref":"agent-a","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref"}}`)
+			w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+			payload := decodeConfigRolloutEnvelope(t, w)
+			if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+				t.Fatalf("cmdb plugin %s should stay blocked, code=%d payload=%#v", tt.strategy, w.Code, payload)
+			}
+			op := payload.OperationContract
+			if op["mode"] != tt.wantMode || op["contract"] != tt.wantContract || op["remote_mutation"] != tt.wantRemote {
+				t.Fatalf("operation_contract mismatch for %s: %#v", tt.strategy, op)
+			}
+			required := anySliceToStrings(t, op["required_receipts"])
+			missing := anySliceToStrings(t, op["missing_contracts"])
+			for _, want := range tt.wantRequired {
+				if !containsLifecycleTestString(required, want) {
+					t.Fatalf("%s required_receipts missing %q: %#v", tt.strategy, want, op)
+				}
+			}
+			for _, want := range tt.wantMissing {
+				if !containsLifecycleTestString(missing, want) ||
+					!containsLifecycleTestString(payload.MissingContracts, want) ||
+					!containsLifecycleTestString(payload.ReceiptContract.MissingContracts, want) {
+					t.Fatalf("%s missing_contracts missing %q: op=%#v payload=%#v", tt.strategy, want, op, payload)
+				}
+			}
+			for _, forbidden := range tt.forbidRequired {
+				if containsLifecycleTestString(required, forbidden) {
+					t.Fatalf("%s required_receipts should not include %q: %#v", tt.strategy, forbidden, op)
+				}
+			}
+			for _, forbidden := range tt.forbidMissing {
+				if containsLifecycleTestString(missing, forbidden) {
+					t.Fatalf("%s missing_contracts should not include %q: %#v", tt.strategy, forbidden, op)
+				}
+			}
+			if payload.Data.Metadata["plugin_action"] != tt.wantMode || payload.Data.Metadata["cmdb_host_ref"] != "host-a" {
+				t.Fatalf("rollout metadata should preserve safe action/host refs: %#v", payload.Data.Metadata)
+			}
+			assertNoConfigRolloutExecutionStates(t, w.Body.String())
+			assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+		})
+	}
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginActionIdentityConflictIsBlocked(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"cmdb-host-plugin-assign","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"assign","rollback_ref":"rollback-ref","remote_mutation":false,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","plugin_action":"dispatch","cmdb_host_ref":"host-a","agent_ref":"agent-a","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("conflicting plugin action should stay blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	op := payload.OperationContract
+	if op["mode"] != "assign" || op["contract"] != "cmdb.agent.plugin.assignment.v1" || op["remote_mutation"] != false {
+		t.Fatalf("metadata plugin_action must not override template identity: %#v", op)
+	}
+	for _, values := range [][]string{
+		payload.MissingContracts,
+		payload.ReceiptContract.MissingContracts,
+		anySliceToStrings(t, op["missing_contracts"]),
+	} {
+		if !containsLifecycleTestString(values, configRolloutPluginOperationConflict) {
+			t.Fatalf("conflicting action should include identity contract, values=%#v payload=%#v", values, payload)
+		}
+	}
+	if payload.Data.Metadata["plugin_action"] != "assign" || payload.Data.Metadata["plugin_action_conflict"] != "blocked" {
+		t.Fatalf("metadata should persist derived action and conflict marker: %#v", payload.Data.Metadata)
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginMissingCredentialRefKeepsRuntimeContracts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"cmdb-host-plugin-assign","target_ids":["host-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"local","plugin_id":"mysql","reload_strategy":"local-reload","rollback_ref":"rollback-ref","remote_mutation":true,"metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"dashboard_refs":"dashboard:mysql-overview"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" || payload.Data.CredentialRefPresent {
+		t.Fatalf("missing credential_ref should persist blocked without credential present, code=%d payload=%#v", w.Code, payload)
+	}
+	for _, want := range []string{"credential_ref", "cmdb_agent_plugin_credential_contract", "cmdb_credential_ref_resolve_contract", "cmdb_dashboard_import_runtime_contract"} {
+		if !containsLifecycleTestString(payload.MissingContracts, want) {
+			t.Fatalf("missing credential rollout should include %q, payload=%#v", want, payload)
+		}
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginAssignPersistsAssignmentStore(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"cmdb-host-plugin-assign","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"assign","rollback_ref":"rollback-ref","remote_mutation":false,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","agent_ref":"agent-a","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref","token":"secret-token","dsn":"mysql://user:pass@host/db"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("assign should still return blocked 409, code=%d payload=%#v", w.Code, payload)
+	}
+	assignmentRef, _ := payload.OperationContract["assignment_ref"].(string)
+	bindingRef, _ := payload.OperationContract["target_binding_ref"].(string)
+	if assignmentRef == "" || bindingRef == "" {
+		t.Fatalf("assign should expose safe assignment and target binding refs: %#v", payload.OperationContract)
+	}
+	assignment, ok, err := store.GetFindXAgentPluginAssignment(assignmentRef)
+	if err != nil || !ok {
+		t.Fatalf("assignment should be persisted, ok=%v err=%v ref=%s", ok, err, assignmentRef)
+	}
+	if assignment.HostRef != "host-a" || assignment.AgentRef != "agent-a" || assignment.PluginID != "redis" || !assignment.CredentialRefPresent {
+		t.Fatalf("assignment identity mismatch: %#v", assignment)
+	}
+	bindings, err := store.ListFindXAgentPluginTargetBindings(assignment.ID)
+	if err != nil || len(bindings) != 1 || bindings[0].ID != bindingRef {
+		t.Fatalf("target binding should be persisted, bindings=%#v err=%v", bindings, err)
+	}
+	for _, forbidden := range []string{
+		"cmdb_agent_plugin_assignment_store_contract",
+		"cmdb_agent_plugin_target_binding_contract",
+		"cmdb_agent_plugin_assignment_audit_contract",
+	} {
+		if containsLifecycleTestString(payload.MissingContracts, forbidden) ||
+			containsLifecycleTestString(payload.ReceiptContract.MissingContracts, forbidden) ||
+			containsLifecycleTestString(anySliceToStrings(t, payload.OperationContract["missing_contracts"]), forbidden) {
+			t.Fatalf("persisted assignment should remove %q from missing contracts: %#v", forbidden, payload)
+		}
+	}
+	if containsLifecycleTestString(anySliceToStrings(t, payload.OperationContract["missing_contracts"]), "cmdb_credential_ref_resolve_contract") == false {
+		t.Fatalf("credential resolver must remain blocked after assignment persistence: %#v", payload.OperationContract)
+	}
+	auditResp, err := store.QueryFindXAuditLogs(model.LogQueryRequest{
+		Source:       "findx_audit",
+		Scope:        "cmdb",
+		ResourceType: "cmdb_agent_plugin_assignment",
+		ResourceID:   assignment.ID,
+		Action:       "cmdb.agent.plugin.assignment.save",
+		Limit:        5,
+	})
+	if err != nil || len(auditResp.Items) == 0 {
+		t.Fatalf("assignment audit should be queryable, items=%#v err=%v", auditResp.Items, err)
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginDispatchRequiresResolvableAssignment(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{"template_id":"cmdb-host-plugin-dispatch","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"dispatch","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","agent_ref":"agent-a","assignment_ref":"missing-assignment-ref","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", body, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("dispatch with stale assignment should stay blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	for _, values := range [][]string{
+		payload.MissingContracts,
+		payload.ReceiptContract.MissingContracts,
+		anySliceToStrings(t, payload.OperationContract["missing_contracts"]),
+	} {
+		if !containsLifecycleTestString(values, "cmdb_agent_plugin_assignment_ref_contract") {
+			t.Fatalf("stale assignment_ref should keep assignment ref blocker, values=%#v payload=%#v", values, payload)
+		}
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
+func TestFindXAgentConfigRolloutCmdbPluginDispatchResolvesAssignmentRefButKeepsReceiptsBlocked(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	assignBody := strings.NewReader(`{"template_id":"cmdb-host-plugin-assign","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v1","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"assign","rollback_ref":"rollback-ref","remote_mutation":false,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","agent_ref":"agent-a","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref"}}`)
+	assignResp := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", assignBody, CreateFindXAgentConfigRollout)
+	assignPayload := decodeConfigRolloutEnvelope(t, assignResp)
+	assignmentRef, _ := assignPayload.OperationContract["assignment_ref"].(string)
+	if assignmentRef == "" {
+		t.Fatalf("assign should create assignment_ref before dispatch: %#v", assignPayload.OperationContract)
+	}
+
+	dispatchBody := strings.NewReader(`{"template_id":"cmdb-host-plugin-dispatch","target_ids":["host-a"],"agent_ids":["agent-a"],"config_version":"cfg-v2","config_snippet_ref":"snippet-ref","config_format":"toml","provider_mode":"cmdb_host_probe","plugin_id":"redis","reload_strategy":"local-reload","rollout_strategy":"dispatch","rollback_ref":"rollback-ref","remote_mutation":true,"credential_ref":"<CREDENTIAL_REF>","metadata":{"scope":"cmdb_host","cmdb_host_ref":"host-a","agent_ref":"agent-a","assignment_ref":"` + assignmentRef + `","dashboard_refs":"dashboard:redis-overview","executor_ref":"executor-ref",` + completeRemotePreflightMetadata() + `,` + completePluginConfigRolloutMetadata() + `,"rollout_strategy_ref":"rollout-strategy-ref","rollout_receipt_ref":"rollout-receipt-ref"}}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/config-rollouts", dispatchBody, CreateFindXAgentConfigRollout)
+	payload := decodeConfigRolloutEnvelope(t, w)
+	if w.Code != http.StatusConflict || payload.Data.Status != "blocked" {
+		t.Fatalf("dispatch should still be blocked, code=%d payload=%#v", w.Code, payload)
+	}
+	if got, _ := payload.OperationContract["assignment_ref"].(string); got != assignmentRef {
+		t.Fatalf("dispatch should expose resolved assignment_ref, got=%q want=%q contract=%#v", got, assignmentRef, payload.OperationContract)
+	}
+	for _, values := range [][]string{
+		payload.MissingContracts,
+		payload.ReceiptContract.MissingContracts,
+		anySliceToStrings(t, payload.OperationContract["missing_contracts"]),
+	} {
+		if containsLifecycleTestString(values, "cmdb_agent_plugin_assignment_ref_contract") {
+			t.Fatalf("resolved assignment_ref should be removed from missing contracts, values=%#v payload=%#v", values, payload)
+		}
+		for _, want := range []string{
+			"cmdb_agent_rollout_delivery_receipt_contract",
+			"cmdb_agent_rollout_effect_receipt_contract",
+			"cmdb_agent_rollout_rollback_receipt_contract",
+			"cmdb_agent_rollout_data_arrival_contract",
+			"cmdb_agent_rollout_evidence_chain_contract",
+		} {
+			if !containsLifecycleTestString(values, want) {
+				t.Fatalf("dispatch must keep remote receipt blocker %q, values=%#v payload=%#v", want, values, payload)
+			}
+		}
+	}
+	assertNoConfigRolloutExecutionStates(t, w.Body.String())
+	assertNoConfigRolloutSensitiveEcho(t, w.Body.String())
+}
+
 func assertConfigRolloutReceiptMatrixBlocked(t *testing.T, matrix []model.FindXAgentReceiptContractMatrixRow) {
 	t.Helper()
 	if len(matrix) == 0 {
@@ -499,6 +783,30 @@ func assertConfigRolloutReceiptMatrixBlocked(t *testing.T, matrix []model.FindXA
 			t.Fatalf("receipt_matrix missing scope %q: %#v", want, matrix)
 		}
 	}
+}
+
+func boolString(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
+}
+
+func anySliceToStrings(t *testing.T, raw any) []string {
+	t.Helper()
+	items, ok := raw.([]any)
+	if !ok {
+		t.Fatalf("expected []any, got %#v", raw)
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		text, ok := item.(string)
+		if !ok {
+			t.Fatalf("expected string item, got %#v", item)
+		}
+		out = append(out, text)
+	}
+	return out
 }
 
 func TestFindXAgentPackagesExposePluginConfigMetadataIncludesHTTPProviderRefs(t *testing.T) {

@@ -20,7 +20,7 @@
 ## 上下文收集规范
 
 ### 结构化快速扫描
-输出到 `.claude/context-initial.json`：
+输出到 `.codex/context-initial.json`：
 - 位置：功能在哪个模块/文件
 - 现状：现在如何实现，找 1-2 个相似案例
 - 技术栈：使用的框架、语言、关键依赖
@@ -28,13 +28,13 @@
 - 观察报告：异常、信息不足、建议深入方向
 
 ### 针对性深挖（≤3 次）
-输出到 `.claude/context-question-N.json`：
+输出到 `.codex/context-question-N.json`：
 - 聚焦单个疑问，不发散
 - 提供代码片段证据，而非猜测
 
 ## 质量审查规范
 
-输出到 `.claude/review-report.md`：
+输出到 `.codex/review-report.md`：
 - 技术维度评分（代码质量 30% + 测试覆盖 25% + 规范遵循 20%）
 - 战略维度评分（需求匹配 + 架构一致 + 风险评估）
 - 综合评分（0-100）
@@ -49,6 +49,34 @@
 - 采用小步修改，每次变更保持可编译可验证
 - Go 文件 ≤ 400 行，Vue 文件 ≤ 300 行
 - 单函数 ≤ 50 行
+
+## 减少常见 LLM 编码错误的行为约束
+
+本节是 Codex 主代理和所有 Codex 子代理的项目级硬规则。执行时偏向谨慎而非速度；简单任务可裁剪流程，但不得裁剪边界说明、必要验证和如实报告。
+
+### 编码前先思考
+- 不假设、不掩盖困惑；实现前先明确关键假设、目标模块、影响面、成功标准和验证方式。
+- 需求存在多种解释时，必须列出选项、权衡和选择理由；不能默默选择。
+- 如果有更简单方案，必须说明更简单方案及限制；发现需求会引入明显技术债时要提出异议。
+- API、数据、权限、运行态、用户体验或成熟源码事实源不清楚时，先暂停并指出具体困惑点。
+
+### 简单优先
+- 写最少的代码解决已确认的问题，不做超出要求的功能。
+- 不为单次使用代码做抽象，不做未要求的灵活性、配置化或未来扩展。
+- 不为没有证据会发生的情况堆叠错误处理。
+- 如果实现显著超过问题复杂度，应主动简化；资深工程师会认为过度设计的实现不得提交。
+
+### 精准修改
+- 只修改与本次请求、阻断修复或验证门禁直接相关的部分。
+- 不顺手优化邻近代码、注释、格式或未损坏结构；保持现有风格。
+- 只清理自己改动造成的未使用 import、变量、函数或孤立入口；无关死代码只记录，不擅自删除。
+- 每一行修改都必须能对应到用户请求、成熟源码证据、契约缺口或验证失败修复。
+
+### 目标闭环
+- 把任务转为可验证目标：修 bug 先复现，重构前后跑同一验证，新增校验覆盖无效输入。
+- 多步骤任务必须给出“步骤 -> 验证”的简要计划。
+- 自己运行测试、lint、构建和 MCP/Playwright 浏览器回归；根据报错修复，不能把未执行写成 PASS。
+- 成功标准模糊时，必须明确记录 PASS、FAIL、BLOCKED、NOT_RUN 或 RISK，不得用“看起来能用”结束。
 
 ## 项目上下文
 
@@ -79,12 +107,12 @@
 - 两边不是同一个目录；改动 `D:\ai-workbench` 后，需要按任务范围同步到 `/opt/ai-workbench` 再做 WSL 编译或浏览器回归。
 - 不修改 `C:\Users\十七\.claude` 下的敏感配置、会话、历史、项目状态文件。
 
-## Claude 不在时的主代理接管模式
+## Codex 主代理接管模式
 
-本章节定义 Claude 不在场时的项目级协作准则。项目级规则无法修改运行时系统提示词，但本文件作为仓库协作准则生效；所有主代理和子代理在本仓库内执行任务时必须按本章节约束协作。
+本章节定义 Codex 主代理作为编排者、决策者、验收者时的项目级协作准则。项目级规则无法修改运行时系统提示词，但本文件作为仓库协作准则生效；所有主代理和子代理在本仓库内执行任务时必须按本章节约束协作。
 
 ### 接管定位
-- Claude 不在时，主代理临时代行 Claude 的编排者、决策者、验收者职责。
+- Codex 主代理负责项目内编排者、决策者、验收者职责。
 - 主代理负责需求理解、上下文收集、任务拆分、子代理派发、审计门禁、回派修正、WSL 验证、Git 门禁和最终交付说明。
 - 子代理是唯一执行层，负责编码、文档、QA、诊断设计、测试执行等明确 work unit。
 - 主代理不直接写业务代码，这是默认硬约束；主代理的主要产出是计划、派发、审查、验收、记录和门禁结论。
@@ -92,7 +120,7 @@
 ### 主代理可执行范围
 - 可做只读审计、代码检索、风险识别、方案对比、上下文收集和验收判断。
 - 可执行构建、编译、测试、浏览器回归、接口验证、同步到 WSL、Git diff/status/stage/commit 前检查等验证与门禁动作。
-- 可维护 `.claude/operations-log.md` 等允许范围内的协作留痕；涉及本次任务授权之外的路径时必须先停止并请求确认。
+- 可维护 `.codex/operations-log.md` 等允许范围内的协作留痕；涉及本次任务授权之外的路径时必须先停止并请求确认。
 - 不得绕过子代理直接堆功能，不得在 QA FAIL、P0/P1 阻断、敏感信息风险未关闭时继续推进新功能。
 
 ### 执行层派发规则
@@ -110,11 +138,11 @@
 ### 阻断与回派
 - QA FAIL、P0/P1 缺陷、P0/P1 RISK、敏感信息泄露、权限绕过、API_CONTRACT_CHANGE/DATA_CHANGE 未验证均为阻断项。
 - 阻断项必须回派给归属子代理修正；不得通过主代理手工补丁绕过，也不得继续堆叠新功能。
-- 同一问题最多回派修正 3 轮；仍失败时停止自动修复，标记人工处理或请求用户/Claude 裁决。
+- 同一问题最多回派修正 3 轮；仍失败时停止自动修复，标记人工处理或请求用户裁决。
 
 ## 默认多代理策略
 - 后续本项目默认子代理优先，所有可派发子代理必须使用 `model: "gpt-5.5"`。
-- Claude 不在时，主代理接管编排、决策、验收、审计门禁、WSL 验证和 Git 门禁；子代理承担唯一执行层。
+- Codex 主代理接管编排、决策、验收、审计门禁、WSL 验证和 Git 门禁；子代理承担唯一执行层。
 - 主代理负责初始判断、任务拆分、写集互斥、关键路径、结果合并、最终验证和交付。
 - 子代理负责边界明确的实现、探索、测试、设计或文档工作；prompt 必须自包含上下文。
 - 同一批并行子代理不得修改同一文件或同一不可分割模块。
@@ -131,7 +159,7 @@
 - 子代理异常不得成为项目停滞理由。若执行层句柄不可用但任务边界清晰，主代理必须先记录异常，再选择：重新派发同一任务、回退到只读验证、或在用户明确授权范围内接管修复。
 - 若异常原因为模型容量不可用，主代理不得反复重试堆积线程；必须关闭失败句柄并转入只读审计、验证准备、执行包整理或等待容量恢复。
 - 严禁把“子代理未回包”“静态检查通过”“带 P0/P1 RISK 的 PASS”作为停止条件。代码切片必须以 Linux/WSL 构建、必要的浏览器真实回归、敏感扫描和 Git 范围检查作为准出门禁。
-- 每次触发反卡死策略后，必须在 `.claude/operations-log.md` 记录：触发条件、受影响 agent id、主代理采取的动作、验证结果、是否影响 Git 门禁。
+- 每次触发反卡死策略后，必须在 `.codex/operations-log.md` 记录：触发条件、受影响 agent id、主代理采取的动作、验证结果、是否影响 Git 门禁。
 
 ## 子代理角色
 
@@ -185,7 +213,7 @@
 
 ## 标准工作流
 1. 主代理先读需求、读相关文档和代码，判断是否需要 WSL 运行态确认。
-2. Claude 不在时，主代理先明确自己接管编排者、决策者、验收者职责，并确认子代理作为唯一执行层。
+2. Codex 主代理先明确自己承担编排者、决策者、验收者职责，并确认子代理作为唯一执行层。
 3. 拆分 work units，标注角色、允许路径、禁止路径、依赖关系、验收标准、审计门禁和 Git 门禁要求。
 4. 用 `spawn_agent` 并行派发可独立任务，所有子代理显式设置 `model: "gpt-5.5"`，并保证写集互斥。
 5. 主代理继续推进只读审计、验证准备、风险检查或本地验证，不因子代理运行而空等。
@@ -246,9 +274,9 @@
 ### React-only 前端架构边界
 
 - FindX 前端最终架构固定为 React-only；Vue 只允许作为 `TEMP_BRIDGE`、`REPLACED` 或 `REMOVE_AFTER_REACT`，不再作为最终页面结构和功能点验收基线。
-- 基础监控页面必须按 `D:\平台源码\fe-main` 的 React 路由、菜单、组件拆分、状态流、请求层和交互语义迁移；不得继续在 Vue workbench 上补成完成态。
-- 链路监控必须按 `D:\平台源码\skywalking-booster-ui-main` 与 `D:\平台源码\skywalking-master` 的页面结构、store、GraphQL/query、Trace/Topology/Profiling 状态流做 React 等价迁移；不得用 iframe 或静态 BLOCKED 壳层冒充完成。
-- 日志中心必须按 `D:\平台源码\signoz-develop\frontend` 的 Logs Explorer、字段筛选、上下文、Pipeline、Saved Views、Trace 关联状态流做 React 等价迁移。
+- 基础监控页面必须按 `D:\项目迁移文件\平台源码\fe-main` 的 React 路由、菜单、组件拆分、状态流、请求层和交互语义迁移；不得继续在 Vue workbench 上补成完成态。
+- 链路监控必须按 `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` 与 `D:\项目迁移文件\平台源码\skywalking-master` 的页面结构、store、GraphQL/query、Trace/Topology/Profiling 状态流做 React 等价迁移；不得用 iframe 或静态 BLOCKED 壳层冒充完成。
+- 日志中心必须按 `D:\项目迁移文件\平台源码\signoz-develop\frontend` 的 Logs Explorer、字段筛选、上下文、Pipeline、Saved Views、Trace 关联状态流做 React 等价迁移。
 - React Shell 只负责 FindX 自有登录、导航、主题、权限、审计、错误脱敏、数据源配置和品牌替换；成熟页面内部结构、查询、抽屉、弹窗、表格、图表、变量、模板导入、历史记录、联想和按钮动作必须同源迁移。
 - 当前主线优先完成 P0-P4 React-only 前端功能闭环；Agent 生命周期深度调优在前端闭环后作为主线推进，但 SkyWalking Agent 的源码矩阵、Agent 管理中心入口、状态展示、接入向导和链路联动必须提前纳入。
 - 引入 React 依赖、Vite React 插件、React 入口或大规模迁移时必须单独作为任务板任务登记，标记依赖变更、构建影响、回滚方式和 WSL/MCP 验证结果。
@@ -274,6 +302,14 @@
 Agent 相关功能只有在以下链路全部具备实现和测试证据时才可标记完成：安装计划、凭据引用、远程执行、包校验、服务注册、配置下发、心跳上报、数据到达、异常恢复、升级、回滚、卸载、审计和 Evidence Chain。
 
 Linux、Windows、Kubernetes 场景必须分别说明支持范围和缺口。SkyWalking 多语言 Agent、网关 Agent、Browser Agent、采集插件、巡检工具作为 FindX Agent 能力包管理，用户侧统一使用 FindX Agent 命名。
+
+Agent 生命周期新增硬门禁：
+- 本机安装、远程下发、远程安装、卸载、配置下发、插件下发都必须证明真实执行成功，不能只展示脚本文案、复制按钮、预览命令或 `409 BLOCKED_BY_CONTRACT`。
+- Linux `curl -kfsSL`、Windows CMD `certutil -urlcache -f`、PowerShell `Invoke-WebRequest` 三类本机安装入口都必须有真实安装、服务注册、心跳、数据到达、卸载和失败恢复证据。
+- SSH、WinRM、systemd、Windows Service、IIS、Docker、Helm、Operator、DaemonSet、Sidecar、InitContainer 必须按适用平台分别闭环安装、升级、回滚、卸载、审计和 Evidence Chain。
+- SkyWalking Agent、Categraf 插件、Catpaw 巡检诊断以及所有 FindX Agent 监控插件必须覆盖 Windows 和 Linux 双实现、双验证；缺少测试环境时先安装或恢复环境，再测试监控和数据到达。
+- Categraf 插件配置必须支持按 Agent、CMDB 主机、业务组、namespace/workload 远程修改、灰度下发、全量下发、回滚和漂移检测；契约或执行器缺失时只能显示 `BLOCKED_BY_CONTRACT`，不得伪装修改成功。
+- 数据到达验收必须按 metrics、logs、traces、profiling、inspection、RUM、gateway trace 等信号逐项验证，不能用 heartbeat、能力声明或任务创建成功替代。
 
 ### FX-NIGHT 任务领取制
 
@@ -301,10 +337,10 @@ Linux、Windows、Kubernetes 场景必须分别说明支持范围和缺口。Sky
 ### 文档与任务板持续维护规则
 
 - 每次代码、配置、依赖、路由、测试、验证、反卡死处理或需求边界变更，都必须同步维护对应文档，防止上下文压缩或新会话后丢失约束。
-- 当前会话级执行状态必须维护在 `.claude/codex-task-board.md`：记录任务 ID、状态、agent id、写集、证据源、验证门禁和阻断项。
-- 每次派发、关闭、超时、回派、接管、验证通过、验证失败和 P0/P1 风险处理，都必须追加到 `.claude/operations-log.md`。
-- 长期方向或硬约束变化必须同步 `AGENTS.md`、`README.md`、`docs/aiops/README.md`、`docs/aiops/findx_full_stack_observability_long_term_plan.md`；前端技术栈、React/Vue 边界或页面迁移规则变化还必须同步 `docs/aiops/findx_react_only_frontend_long_term_plan.md`；源码事实变化必须同步对应 `docs/aiops/source-matrix/*` 或 `.claude/context-question-*.json`。
+- 当前会话级执行状态必须维护在 `.codex/codex-task-board.md`：记录任务 ID、状态、agent id、写集、证据源、验证门禁和阻断项。
+- 每次派发、关闭、超时、回派、接管、验证通过、验证失败和 P0/P1 风险处理，都必须追加到 `.codex/operations-log.md`。
+- 长期方向或硬约束变化必须同步 `AGENTS.md`、`README.md`、`docs/aiops/README.md`、`docs/aiops/findx_full_stack_observability_long_term_plan.md`；前端技术栈、React/Vue 边界或页面迁移规则变化还必须同步 `docs/aiops/findx_react_only_frontend_long_term_plan.md`；源码事实变化必须同步对应 `docs/aiops/source-matrix/*` 或 `.codex/context-question-*.json`。
 - 任何最终交付或 Git 门禁前必须检查文档是否覆盖本轮改动；若文档未更新，只能标记 `BLOCKED` 或 `RISK`，不得写 PASS。
 - 每个变更记录必须写清：变更内容、成熟源码或项目证据、影响的路由/API/数据/配置/依赖、已同步的文档、验证状态、未覆盖项和下一步归属。
 - 只改代码不更新任务板、执行日志和必要文档，视为门禁失败；主代理必须先补齐文档记录，再继续派发或进入下一切片。
-- 上下文压缩、新会话、恢复执行或接手他人改动时，必须先读取本文件、长期主计划、React-only 前端闭环计划、AIOps 文档索引、`.claude/codex-task-board.md` 和 `.claude/operations-log.md`，不得依赖对话记忆。
+- 上下文压缩、新会话、恢复执行或接手他人改动时，必须先读取本文件、长期主计划、React-only 前端闭环计划、AIOps 文档索引、`.codex/codex-task-board.md` 和 `.codex/operations-log.md`，不得依赖对话记忆。

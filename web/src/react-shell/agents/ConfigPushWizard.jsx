@@ -51,7 +51,13 @@ export function ConfigPushWizard({ onClose }) {
       setResults(res?.results || [])
       setStep(4)
     } catch (err) {
-      setError(err?.message || '下发失败')
+      setResults((err?.body?.results || []).length ? err.body.results : [{
+        agent_id: selectedAgents.join(', '),
+        plugin_id: selectedPlugins.join(', '),
+        status: err?.body?.status || 'PENDING',
+        message: err?.body?.message || err?.message || '配置预检被后端契约阻断',
+      }])
+      setStep(4)
     } finally { setLoading(false) }
   }
 
@@ -146,7 +152,7 @@ export function ConfigPushWizard({ onClose }) {
 
       {step === 4 && results && (
         <div className='fx-plugin-wizard-body'>
-          <h4>下发结果</h4>
+          <h4>契约预检结果</h4>
           <table className='fx-plugin-result-table'>
             <thead><tr><th>Agent</th><th>插件</th><th>状态</th><th>信息</th></tr></thead>
             <tbody>
@@ -154,7 +160,7 @@ export function ConfigPushWizard({ onClose }) {
                 <tr key={i}>
                   <td>{r.agent_id}</td>
                   <td>{r.plugin_id}</td>
-                  <td className={r.status === 'success' ? 'is-ok' : 'is-fail'}>{r.status}</td>
+                  <td className='is-fail'>{r.status}</td>
                   <td>{r.message || '-'}</td>
                 </tr>
               ))}
@@ -173,7 +179,7 @@ export function ConfigPushWizard({ onClose }) {
           )}
           {step === 3 && (
             <button type='button' disabled={loading} onClick={handleExecute}>
-              {loading ? '执行中...' : '确认下发'}
+              {loading ? '预检中...' : '确认预检'}
             </button>
           )}
         </div>

@@ -4,7 +4,7 @@ import { capabilityPackages } from './agentModel.js'
 import { Blocked, ErrorBox, Field, Status, Tags } from './AgentShared.jsx'
 import { PluginDeliveryMatrix, ProbeEnvironmentMatrix } from './ProbeEnvironmentMatrix.jsx'
 
-const BLOCKED = 'BLOCKED_BY_CONTRACT'
+const BLOCKED = 'PENDING'
 const blockedEnvironment = ['install_environment 契约未返回，不能判定平台自带安装能力。']
 
 const sourceStateText = state => ({

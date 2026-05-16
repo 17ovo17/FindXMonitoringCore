@@ -1,12 +1,12 @@
 import { del, get, normalizeList, post, put, redactText } from './http.js'
 
 export const ORG_BLOCKERS = {
-  create: 'BLOCKED_BY_CONTRACT: 缺少该 section 的创建、输入校验、权限点和审计契约，已禁止保存。',
-  edit: 'BLOCKED_BY_CONTRACT: 缺少该 section 的单条详情或更新契约，已禁止保存。',
-  delete: 'BLOCKED_BY_CONTRACT: 缺少该 section 的删除、幂等和审计契约，已禁止删除。',
-  members: 'BLOCKED_BY_CONTRACT: 缺少成员增删、批量选择和回滚契约，已禁止成员变更。',
-  status: 'BLOCKED_BY_CONTRACT: 缺少启停状态、权限点和审计契约，已禁止状态变更。',
-  roleOps: 'BLOCKED_BY_CONTRACT: 缺少角色操作点保存契约时仅展示权限矩阵，不执行保存。',
+  create: 'PENDING: 缺少该 section 的创建、输入校验、权限点和审计契约，已禁止保存。',
+  edit: 'PENDING: 缺少该 section 的单条详情或更新契约，已禁止保存。',
+  delete: 'PENDING: 缺少该 section 的删除、幂等和审计契约，已禁止删除。',
+  members: 'PENDING: 缺少成员增删、批量选择和回滚契约，已禁止成员变更。',
+  status: 'PENDING: 缺少启停状态、权限点和审计契约，已禁止状态变更。',
+  roleOps: 'PENDING: 缺少角色操作点保存契约时仅展示权限矩阵，不执行保存。',
 }
 
 const cleanParams = (params = {}) => Object.fromEntries(
@@ -15,7 +15,7 @@ const cleanParams = (params = {}) => Object.fromEntries(
 
 const contractBlocked = (error, label) => {
   if ([404, 405, 501].includes(error?.status)) {
-    const blocked = new Error(`BLOCKED_BY_CONTRACT: ${label} 未接入或未开放。`)
+    const blocked = new Error(`PENDING: ${label} 未接入或未开放。`)
     blocked.status = error.status
     blocked.blocked = true
     return blocked

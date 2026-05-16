@@ -63,7 +63,7 @@ export function ContextSection({ query, onOpenTrace, onOpenAgent }) {
       const rows = await agentApi.dataArrival()
       const logsRow = findLogsArrival(rows)
       setArrival(logsRow)
-      if (!logsRow) setBlocked('BLOCKED_BY_CONTRACT: FindX Agent 数据到达契约未返回日志通道。')
+      if (!logsRow) setBlocked('PENDING: FindX Agent 数据到达契约未返回日志通道。')
       if (logsRow && logsRow.status !== 'reported') setBlocked(logsRow.blocker || LOG_BLOCKERS.agentLinkage)
     } catch (err) {
       setArrival(null)

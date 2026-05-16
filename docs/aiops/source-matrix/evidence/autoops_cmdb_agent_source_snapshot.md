@@ -8,7 +8,7 @@
 
 源码根目录：
 
-- `D:\平台源码\AutoOps-main\AutoOps-main`
+- `D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main`
 
 前端关键目录：
 

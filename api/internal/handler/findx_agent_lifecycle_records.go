@@ -59,11 +59,34 @@ func ListFindXAgentConfigRollouts(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "config rollout not found"})
 			return
 		}
-		c.JSON(http.StatusOK, item)
+		if gate := configRolloutRuntimeReadGateForItem(item); gate.Blocked {
+			writeConfigRolloutRuntimeReadBlocked(c, item, gate)
+			return
+		}
+		c.JSON(http.StatusOK, safeConfigRolloutRuntimeReadDetail(item))
 		return
 	}
 	items, err := store.ListFindXAgentConfigRollouts()
 	writeAgentLifecycleList(c, items, err, "config rollout list unavailable")
+}
+
+func safeConfigRolloutRuntimeReadDetail(item model.FindXAgentConfigRollout) model.FindXAgentConfigRollout {
+	metadata := make(map[string]string, len(item.Metadata))
+	for key, value := range item.Metadata {
+		cleanKey := strings.ToLower(strings.TrimSpace(key))
+		if cleanKey == "writer_request_ref" || cleanKey == "cmdb_agent_rollout_writer_request_ref_contract" {
+			continue
+		}
+		metadata[key] = value
+	}
+	if isCMDBHostPluginDispatchRolloutRecord(item) {
+		missing := cmdbAgentRolloutRuntimeExecutorGapContractsForItem(item)
+		metadata["runtime_read_status"] = "blocked"
+		metadata["runtime_read_contract"] = cmdbAgentRolloutRuntimeReadContract
+		metadata["runtime_read_missing_contracts"] = configRolloutRuntimeReadMissingJSON(missing)
+	}
+	item.Metadata = metadata
+	return item
 }
 
 func ListFindXAgentTasks(c *gin.Context) {
@@ -85,6 +108,12 @@ func ListFindXAgentTasks(c *gin.Context) {
 }
 
 func ListFindXAgentDataArrivalEvidence(c *gin.Context) {
+	if handled, err := listFindXAgentDataArrivalEvidenceRuntimeRead(c); handled {
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "data arrival evidence runtime read unavailable"})
+		}
+		return
+	}
 	items, err := store.ListFindXAgentDataArrivalEvidence()
 	writeAgentLifecycleList(c, items, err, "data arrival evidence list unavailable")
 }
@@ -124,9 +153,9 @@ func saveBlockedAgentTask(c *gin.Context, req model.FindXAgentTaskRequest, actio
 func blockedAgentTaskReason(action string, metadata map[string]string, credentialRefPresent bool) string {
 	missing := missingAgentTaskRefs(action, metadata, credentialRefPresent)
 	if len(missing) > 0 {
-		return fmt.Sprintf("BLOCKED_BY_CONTRACT: missing %s", strings.Join(missing, ", "))
+		return fmt.Sprintf("PENDING: missing %s", strings.Join(missing, ", "))
 	}
-	return "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open"
+	return "PENDING: executor not enabled / execution protocol not open"
 }
 
 func missingAgentTaskRefs(action string, metadata map[string]string, credentialRefPresent bool) []string {

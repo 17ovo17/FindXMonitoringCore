@@ -189,7 +189,7 @@ func findStringField(value any, key string) (string, bool) {
 
 func assertProductionContractMatrixBlockedShape(t *testing.T, body, gapID string) {
 	t.Helper()
-	for _, required := range []string{`"code":"BLOCKED_BY_CONTRACT"`, `"message"`, `"contract_gap_id":"` + gapID + `"`, `"status":"missing_executor"`, `"safe_to_retry":false`} {
+	for _, required := range []string{`"code":"PENDING"`, `"message"`, `"contract_gap_id":"` + gapID + `"`, `"status":"missing_executor"`, `"safe_to_retry":false`} {
 		if !strings.Contains(body, required) {
 			t.Fatalf("production blocked response missing %s: %s", required, body)
 		}

@@ -8,9 +8,9 @@
 
 本地源码：
 
-- UI：`D:\平台源码\skywalking-booster-ui-main`
-- OAP query protocol：`D:\平台源码\skywalking-master\oap-server\server-query-plugin`
-- WebApp proxy：`D:\平台源码\skywalking-master\apm-webapp`
+- UI：`D:\项目迁移文件\平台源码\skywalking-booster-ui-main`
+- OAP query protocol：`D:\项目迁移文件\平台源码\skywalking-master\oap-server\server-query-plugin`
+- WebApp proxy：`D:\项目迁移文件\平台源码\skywalking-master\apm-webapp`
 
 ## 2. UI 路由与页面证据
 
@@ -96,7 +96,7 @@
 
 OAP query plugin：
 
-- `D:\平台源码\skywalking-master\oap-server\server-query-plugin\query-graphql-plugin`
+- `D:\项目迁移文件\平台源码\skywalking-master\oap-server\server-query-plugin\query-graphql-plugin`
 - `logql-plugin`
 - `promql-plugin`
 - `traceql-plugin`
@@ -105,9 +105,9 @@ OAP query plugin：
 
 WebApp proxy：
 
-- `D:\平台源码\skywalking-master\apm-webapp\src\main\java\org\apache\skywalking\oap\server\webapp\OapProxyService.java`
-- `D:\平台源码\skywalking-master\apm-webapp\src\main\java\org\apache\skywalking\oap\server\webapp\Configuration.java`
-- `D:\平台源码\skywalking-master\apm-webapp\src\main\resources\application.yml`
+- `D:\项目迁移文件\平台源码\skywalking-master\apm-webapp\src\main\java\org\apache\skywalking\oap\server\webapp\OapProxyService.java`
+- `D:\项目迁移文件\平台源码\skywalking-master\apm-webapp\src\main\java\org\apache\skywalking\oap\server\webapp\Configuration.java`
+- `D:\项目迁移文件\平台源码\skywalking-master\apm-webapp\src\main\resources\application.yml`
 
 关键事实：
 

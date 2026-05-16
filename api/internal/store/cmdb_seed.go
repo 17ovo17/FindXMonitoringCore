@@ -103,3 +103,113 @@ func seedOSAttributes() {
 	}
 }
 
+// SeedCmdbContractProbeTopology creates a stable, real CMDB relation graph for
+// contract-probe so remote browser/API checks can exercise the ready path.
+func SeedCmdbContractProbeTopology() {
+	visible := true
+	objects := []model.CmdbObject{
+		{ID: "OperatingSystem1", Name: "操作系统", CategoryID: "cat-system", Icon: "desktop", ObjectType: 101},
+		{ID: "j6p8Wb2xkV1666171515", Name: "用户", CategoryID: "cat-org", Icon: "user", ObjectType: 101},
+	}
+	for i := range objects {
+		if err := upsertCmdbObject(objects[i]); err != nil {
+			logrus.WithError(err).WithField("object_id", objects[i].ID).Warn("cmdb: seed contract probe object failed")
+			return
+		}
+	}
+
+	instances := []model.CmdbInstance{
+		{
+			ID:       "contract-probe",
+			ObjectID: "OperatingSystem1",
+			Data:     `{"name":"FindX contract probe OS","ip_address":"198.18.126.10","OS001":"198.18.126.10","os_version":"Debian compatible","agent_status":"contract_blocked"}`,
+			Creator:  "contract-seed",
+			Updater:  "contract-seed",
+		},
+		{
+			ID:       "contract-probe-user",
+			ObjectID: "j6p8Wb2xkV1666171515",
+			Data:     `{"name":"FindX contract probe owner","user_code":"contract-probe-owner"}`,
+			Creator:  "contract-seed",
+			Updater:  "contract-seed",
+		},
+	}
+	for i := range instances {
+		if err := upsertCmdbInstance(instances[i]); err != nil {
+			logrus.WithError(err).WithField("instance_id", instances[i].ID).Warn("cmdb: seed contract probe instance failed")
+			return
+		}
+	}
+
+	relationType := model.CmdbRelationType{
+		ID:             "OperatingSystem1_default_j6p8Wb2xkV1666171515",
+		Name:           "default",
+		Label:          "关联",
+		Mapping:        "n:1",
+		Visible:        &visible,
+		RuleLogic:      "and",
+		RuleExpression: "A",
+		RulesJSON:      `[{"left_attr":"x5qvHkM1Bz1661218322","logic":"=","right_attr":"Ndg2mVtTas1666171547","tag":"A"}]`,
+		LeftMin:        0,
+		RightMin:       0,
+		LeftMax:        1,
+		RightMax:       -1,
+		Source:         2,
+		LeftAsstName:   "关联",
+		RightAsstName:  "关联",
+	}
+	if err := upsertCmdbRelationType(relationType); err != nil {
+		logrus.WithError(err).WithField("relation_type_id", relationType.ID).Warn("cmdb: seed contract probe relation type failed")
+		return
+	}
+
+	relation := model.CmdbInstanceRelation{
+		ID:               "contract-probe-relation-default-user",
+		SourceInstanceID: "contract-probe",
+		TargetInstanceID: "contract-probe-user",
+		RelationTypeID:   relationType.ID,
+	}
+	if err := upsertCmdbInstanceRelation(relation); err != nil {
+		logrus.WithError(err).WithField("relation_id", relation.ID).Warn("cmdb: seed contract probe relation failed")
+	}
+}
+
+func upsertCmdbObject(obj model.CmdbObject) error {
+	if existing, ok := GetCmdbObject(obj.ID); ok {
+		existing.Name = obj.Name
+		existing.CategoryID = obj.CategoryID
+		existing.Icon = obj.Icon
+		existing.ObjectType = obj.ObjectType
+		return UpdateCmdbObject(existing)
+	}
+	return CreateCmdbObject(&obj)
+}
+
+func upsertCmdbInstance(inst model.CmdbInstance) error {
+	if existing, ok := GetCmdbInstance(inst.ID); ok {
+		existing.ObjectID = inst.ObjectID
+		existing.Data = inst.Data
+		existing.Updater = inst.Updater
+		if existing.Creator == "" {
+			existing.Creator = inst.Creator
+		}
+		return UpdateCmdbInstance(existing)
+	}
+	return CreateCmdbInstance(&inst)
+}
+
+func upsertCmdbRelationType(rel model.CmdbRelationType) error {
+	if _, ok := GetCmdbRelationType(rel.ID); ok && GormOK() {
+		return GetDB().Save(&rel).Error
+	}
+	return CreateCmdbRelationType(&rel)
+}
+
+func upsertCmdbInstanceRelation(rel model.CmdbInstanceRelation) error {
+	for _, existing := range ListCmdbInstanceRelations(rel.SourceInstanceID) {
+		if existing.ID == rel.ID {
+			return nil
+		}
+	}
+	return CreateCmdbInstanceRelation(&rel)
+}

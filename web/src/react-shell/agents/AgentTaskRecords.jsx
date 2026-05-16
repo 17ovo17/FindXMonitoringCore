@@ -7,7 +7,7 @@ const TASK_ACTION_RE = /(uninstall|upgrade|rollback|restart|package)/i
 const SENSITIVE_KEY_RE = /(token|cookie|session|password|passwd|secret|dsn|private[_-]?key|credential|bearer|api[_-]?key|access[_-]?key|authorization)/i
 const SAFE_REF_RE = /(^|_)(audit|evidence|receipt|checksum|fingerprint|ref|refs|safe_refs?)$/i
 const MAX_REF_LENGTH = 96
-const BLOCKED_NOTE = '任务审计面板只展示 status=blocked 的 uninstall / upgrade / rollback / restart / package 记录；真实执行仍为 BLOCKED_BY_CONTRACT。'
+const BLOCKED_NOTE = '任务审计面板只展示 status=blocked 的 uninstall / upgrade / rollback / restart / package 记录；真实执行仍为 PENDING。'
 
 const isBlocked = record => String(record?.status || '').toLowerCase() === 'blocked'
 const recordId = record => record?.id || record?.task_id || record?.record_id || ''
@@ -17,8 +17,8 @@ const pick = (record, ...keys) => keys.map(key => record?.[key]).find(value => v
 const actionText = record => String(pick(record, 'action', 'task_action', 'type') || '').toLowerCase()
 const isVisibleAction = record => TASK_ACTION_RE.test(actionText(record))
 const normalizeRecords = rows => rows.filter(record => isBlocked(record) && isVisibleAction(record))
-const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message', 'error_summary') || 'BLOCKED_BY_CONTRACT'
-const statusText = record => isBlocked(record) ? 'blocked' : 'BLOCKED_BY_CONTRACT'
+const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message', 'error_summary') || 'PENDING'
+const statusText = record => isBlocked(record) ? 'blocked' : 'PENDING'
 const packageText = record => displayText(pick(record, 'package_id', 'package', 'package_name'), '-')
 const configText = record => displayText(pick(record, 'config_version', 'version', 'template_version'), '-')
 
@@ -49,7 +49,7 @@ const collectSafeRefs = record => {
   const pushRef = (scope, key, value) => {
     if (!SAFE_REF_RE.test(key) || SENSITIVE_KEY_RE.test(key)) return
     if (value && typeof value === 'object' && !Array.isArray(value)) return
-    rows.push({ scope, key, value: redactValue(key, value) || 'BLOCKED_BY_CONTRACT' })
+    rows.push({ scope, key, value: redactValue(key, value) || 'PENDING' })
   }
   Object.entries(safeObject(record)).forEach(([key, value]) => pushRef('record', key, value))
   Object.entries(safeObject(record?.safe_refs)).forEach(([key, value]) => pushRef('safe_refs', key, value))
@@ -83,7 +83,7 @@ function RecordRow({ record, loadingDetail, onSelect }) {
   const id = recordId(record)
   return (
     <tr>
-      <td>{displayText(actionText(record), 'BLOCKED_BY_CONTRACT')}</td>
+      <td>{displayText(actionText(record), 'PENDING')}</td>
       <td>{targetText(record)}</td>
       <td>{packageText(record)}</td>
       <td>{configText(record)}</td>
@@ -103,7 +103,7 @@ function Detail({ record }) {
       <h3>blocked task detail</h3>
       <p>{BLOCKED_NOTE}</p>
       <div className='fx-agent-summary-row'><Status ok={false}>{statusText(record)}</Status><span>task {displayText(recordId(record))}</span></div>
-      <div className='fx-agent-summary-row'><strong>action</strong><span>{displayText(actionText(record), 'BLOCKED_BY_CONTRACT')}</span></div>
+      <div className='fx-agent-summary-row'><strong>action</strong><span>{displayText(actionText(record), 'PENDING')}</span></div>
       <div className='fx-agent-summary-row'><strong>target_ids</strong><span>{listText(record?.target_ids || pick(record, 'target_id', 'target'))}</span></div>
       <div className='fx-agent-summary-row'><strong>agent_ids</strong><span>{listText(record?.agent_ids || pick(record, 'agent_id'))}</span></div>
       <div className='fx-agent-summary-row'><strong>package_id</strong><span>{packageText(record)}</span></div>
@@ -152,7 +152,7 @@ export function AgentTaskRecords() {
     agentApi.getTask(id)
       .then(value => {
         if (isBlocked(value) && isVisibleAction(value)) setDetail(value)
-        else setError('BLOCKED_BY_CONTRACT: task detail 不是 blocked 生命周期任务，已拒绝展示。')
+        else setError('PENDING: task detail 不是 blocked 生命周期任务，已拒绝展示。')
       })
       .catch(err => setError(formatAgentError(err)))
       .finally(() => setLoadingDetail(''))

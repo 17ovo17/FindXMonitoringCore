@@ -2,8 +2,8 @@ import React, { useRef, useState } from 'react'
 import { sections } from './agentModel.js'
 
 export function Blocked({ children }) {
-  const text = typeof children === 'string' ? children.replace(/^BLOCKED_BY_CONTRACT:\s*/, '') : children
-  return <div className='fx-agent-blocked'><strong>BLOCKED_BY_CONTRACT</strong> {text}</div>
+  const text = typeof children === 'string' ? children.replace(/^PENDING:\s*/, '') : children
+  return <div className='fx-agent-blocked'><strong>PENDING</strong> {text}</div>
 }
 
 export function ErrorBox({ children }) {

@@ -7,8 +7,11 @@ import (
 )
 
 func configRolloutReceiptContract(req model.FindXAgentConfigRolloutRequest, metadata map[string]string, credentialProvided bool, missing []string) model.FindXAgentReceiptContract {
+	if isCMDBHostPluginRollout(req, metadata) {
+		return cmdbHostPluginConfigRolloutReceiptContract(req, metadata, credentialProvided, missing)
+	}
 	return model.FindXAgentReceiptContract{
-		ID:                 "categraf_plugin_config_rollout_receipt_contract",
+		ID:                 "findx_agent_plugin_config_rollout_receipt_contract",
 		Scope:              configRolloutReceiptScope(req, metadata),
 		Transport:          configRolloutReceiptTransport(metadata),
 		Runner:             configRolloutReceiptRunner(metadata),
@@ -18,6 +21,28 @@ func configRolloutReceiptContract(req model.FindXAgentConfigRolloutRequest, meta
 		CredentialProvided: credentialProvided,
 		Status:             model.FindXAgentExecutionStateBlockedByContract,
 		Blocker:            agentBlocked + ": config rollout executor and receipt protocol are not open",
+	}
+}
+
+func cmdbHostPluginConfigRolloutReceiptContract(req model.FindXAgentConfigRolloutRequest, metadata map[string]string, credentialProvided bool, missing []string) model.FindXAgentReceiptContract {
+	mode := configRolloutOperationMode(req, metadata)
+	contractID := "cmdb_agent_plugin_dispatch_receipt_contract"
+	blocker := agentBlocked + ": cmdb plugin dispatch executor and receipt protocol are not open"
+	if mode == configRolloutPluginOperationAssign {
+		contractID = "cmdb_agent_plugin_assignment_receipt_contract"
+		blocker = agentBlocked + ": cmdb plugin assignment store and audit protocol are not open"
+	}
+	return model.FindXAgentReceiptContract{
+		ID:                 contractID,
+		Scope:              configRolloutScopeCMDBHost,
+		Transport:          configRolloutReceiptTransport(metadata),
+		Runner:             configRolloutReceiptRunner(metadata),
+		RequiredReceipts:   configRolloutOperationRequiredReceipts(mode),
+		MissingContracts:   configRolloutOperationMissingContracts(req, missing, mode),
+		CredentialRequired: true,
+		CredentialProvided: credentialProvided,
+		Status:             model.FindXAgentExecutionStateBlockedByContract,
+		Blocker:            blocker,
 	}
 }
 
@@ -31,9 +56,9 @@ func configRolloutReceiptMissingContracts(missing []string) []string {
 func configRolloutReceiptScope(req model.FindXAgentConfigRolloutRequest, metadata map[string]string) string {
 	if isPluginConfigRollout(req) {
 		if scope := configRolloutAllowedScope(metadata["scope"]); scope != "" {
-			return "categraf_plugin_config_rollout_" + scope
+			return "findx_agent_plugin_config_rollout_" + scope
 		}
-		return "categraf_plugin_config_rollout"
+		return "findx_agent_plugin_config_rollout"
 	}
 	return "config_rollout"
 }
@@ -97,7 +122,7 @@ func configRolloutReceiptContractMatrix() []model.FindXAgentReceiptContractMatri
 		"evidence_chain_contract",
 	}
 	return []model.FindXAgentReceiptContractMatrixRow{
-		configRolloutReceiptMatrixRow("writer", "all", "Categraf plugin config writer", missing),
+		configRolloutReceiptMatrixRow("writer", "all", "FindX plugin config writer", missing),
 		configRolloutReceiptMatrixRow("reload", "linux/windows/kubernetes", "plugin reload or rollout reload", missing),
 		configRolloutReceiptMatrixRow("restart", "linux/windows/kubernetes", "service or workload restart", missing),
 		configRolloutReceiptMatrixRow("drift", "all", "post-rollout drift detection", missing),

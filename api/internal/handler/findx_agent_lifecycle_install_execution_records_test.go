@@ -69,7 +69,7 @@ func TestFindXAgentInstallExecutionDetailReturnsBlockedSafeRefs(t *testing.T) {
 			EvidenceRef: "install-step-ref",
 		}},
 		EvidenceRefs: []string{"install-plan:plan-blocked", "blocked-contract:linux-lifecycle"},
-		ErrorSummary: "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open",
+		ErrorSummary: "PENDING: executor not enabled / execution protocol not open",
 	})
 	if err != nil {
 		t.Fatalf("save blocked execution: %v", err)

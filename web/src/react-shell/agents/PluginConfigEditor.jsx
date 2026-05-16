@@ -31,7 +31,7 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
   const [config, setConfig] = useState(plugin?.default_config || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [feedback, setFeedback] = useState('')
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -42,10 +42,10 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
     }).catch(() => { /* 使用默认配置 */ })
   }, [agentId, plugin])
 
-  const showSuccess = (msg) => {
-    setSuccess(msg)
+  const showFeedback = (msg) => {
+    setFeedback(msg)
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setSuccess(''), 3000)
+    timerRef.current = setTimeout(() => setFeedback(''), 3000)
   }
 
   const handleSave = async () => {
@@ -54,7 +54,7 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
     setError('')
     try {
       await pluginApi.updatePluginConfig(agentId, plugin.id, config)
-      showSuccess('配置已保存')
+      showFeedback('配置已保存为控制面记录；真实下发仍需 config-rollouts 回执契约。')
     } catch (err) {
       setError(err?.message || '保存失败')
     } finally { setSaving(false) }
@@ -65,14 +65,14 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
     setSaving(true)
     setError('')
     try {
-      await pluginApi.configPush({
+      const res = await pluginApi.configPush({
         agent_ids: [agentId],
         plugins: [{ id: plugin.id, enabled: true, config }],
         strategy: 'all',
       })
-      showSuccess('配置已下发')
+      showFeedback(`PENDING: 配置预检返回 ${res?.status || 'non-blocked'}；不显示完成态。`)
     } catch (err) {
-      setError(err?.message || '下发失败')
+      showFeedback(`PENDING: ${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
     } finally { setSaving(false) }
   }
 
@@ -85,7 +85,7 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
         <h3>{plugin?.name} - 配置编辑</h3>
       </div>
       <ErrorBox>{error}</ErrorBox>
-      {success && <div className='fx-agent-success'>{success}</div>}
+      {feedback && <div className='fx-agent-blocked'><strong>PENDING</strong> {feedback.replace(/^PENDING:\s*/, '')}</div>}
       <div className='fx-plugin-editor-layout'>
         <div className='fx-plugin-editor-main'>
           <LazyMonacoEditor language={language} value={config}

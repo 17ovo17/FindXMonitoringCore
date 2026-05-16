@@ -51,7 +51,7 @@ func TestFindXAgentConfigRolloutListCoercesNonBlockedRecords(t *testing.T) {
 		TemplateID: "host-plugin",
 		TargetIDs:  []string{"target-blocked"},
 		Status:     "blocked",
-		Blocker:    "BLOCKED_BY_CONTRACT: executor not enabled",
+		Blocker:    "PENDING: executor not enabled",
 		Metadata:   map[string]string{"evidence_chain_ref": "evidence-ref"},
 	})
 	if err != nil {
@@ -100,7 +100,7 @@ func TestFindXAgentConfigRolloutDetailReturnsBlockedSafeRefs(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &detail); err != nil {
 		t.Fatalf("invalid detail response: %v body=%s", err, w.Body.String())
 	}
-	if detail.ID != payload.Data.ID || detail.Status != "blocked" || !strings.Contains(detail.Blocker, "BLOCKED_BY_CONTRACT") {
+	if detail.ID != payload.Data.ID || detail.Status != "blocked" || !strings.Contains(detail.Blocker, "PENDING") {
 		t.Fatalf("detail should return the blocked rollout record, got %#v", detail)
 	}
 	for _, key := range []string{
@@ -268,7 +268,7 @@ func assertLifecycleListReadsBlockedRecord(t *testing.T, tt lifecycleListReadCas
 		t.Fatalf("%s should return 200, got %d body=%s", tt.path, w.Code, w.Body.String())
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, tt.wantStatus) || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if !strings.Contains(body, tt.wantStatus) || !strings.Contains(body, "PENDING") {
 		t.Fatalf("%s should read back blocked record, body=%s", tt.path, body)
 	}
 	assertNoCredentialEcho(t, body)

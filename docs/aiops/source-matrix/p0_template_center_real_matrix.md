@@ -20,9 +20,9 @@
 
 | 模块 | 源码路径 | 作用 |
 | --- | --- | --- |
-| 模板中心入口 | `D:\平台源码\fe-main\src\pages\builtInComponents\List.tsx` | 图标网格、搜索、创建、抽屉、Tabs、Readme 编辑 |
-| API 服务 | `D:\平台源码\fe-main\src\pages\builtInComponents\services.ts` | builtin components / payloads CRUD |
-| 类型 | `D:\平台源码\fe-main\src\pages\builtInComponents\types.ts` | `Component`、`Payload`、`TypeEnum` |
+| 模板中心入口 | `D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\List.tsx` | 图标网格、搜索、创建、抽屉、Tabs、Readme 编辑 |
+| API 服务 | `D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\services.ts` | builtin components / payloads CRUD |
+| 类型 | `D:\项目迁移文件\平台源码\fe-main\src\pages\builtInComponents\types.ts` | `Component`、`Payload`、`TypeEnum` |
 | 组件创建编辑 | `components\ComponentFormModal`、`LogoPicker` | 组件 ident、logo、readme、disabled |
 | Payload 创建编辑 | `components\PayloadFormModal`、`ResultModal` | JSON/YAML CodeMirror、cate、name、uuid、批量结果 |
 | 采集说明 | `Instructions\index.tsx` | Markdown/编辑 readme |

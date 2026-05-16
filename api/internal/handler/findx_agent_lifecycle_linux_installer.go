@@ -94,6 +94,7 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 		"data_arrival_receipt_contract",
 		"evidence_chain_contract",
 	}
+	missing = append(missing, realPluginInstallContractInventory()...)
 	for _, key := range []string{
 		"package_repository_ref",
 		"signature_ref",
@@ -146,6 +147,20 @@ func installExecutionMissingContracts(scope string, reason string) []string {
 		missing = append(missing, "systemd_unit_contract")
 	}
 	return uniquePackageRepositoryBlockers(missing)
+}
+
+func realPluginInstallContractInventory() []string {
+	return []string{
+		"cmdb_agent_plugin_package_trust_verifier_contract",
+		"cmdb_agent_plugin_remote_writer_contract",
+		"cmdb_agent_plugin_delivery_executor_contract",
+		"cmdb_agent_plugin_effect_executor_contract",
+		"cmdb_agent_plugin_rollback_executor_contract",
+		"cmdb_agent_plugin_service_registration_receipt_contract",
+		"cmdb_agent_plugin_data_arrival_receiver_ingestion_contract",
+		"cmdb_agent_plugin_evidence_chain_attestation_contract",
+		"cmdb_agent_plugin_credential_policy_approval_contract",
+	}
 }
 
 func linuxInstallerPrerequisitesFromRequest(req model.FindXAgentInstallPlanRequest) security.LinuxInstallerPrerequisites {

@@ -67,7 +67,7 @@ func assertTaskMissingRefBlocker(t *testing.T, tt taskActionMissingRefCase, task
 	if task.Status != "blocked" || task.Blocker == "" {
 		t.Fatalf("%s should persist blocked task, got %#v", tt.action, task)
 	}
-	if !strings.Contains(task.Blocker, "BLOCKED_BY_CONTRACT") {
+	if !strings.Contains(task.Blocker, "PENDING") {
 		t.Fatalf("%s blocker should include contract marker: %s", tt.action, task.Blocker)
 	}
 	for _, ref := range tt.missingRefs {
@@ -86,7 +86,7 @@ func TestFindXAgentTaskRemotePreflightMissingRefs(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("remote preflight gaps should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	want := "BLOCKED_BY_CONTRACT: missing audit_ref_or_evidence_chain_ref, credential_ref, data_arrival_validator_ref, execution_receipt_ref_or_receipt_ref, idempotency_key, target_os, timeout_policy_ref, transport_or_runner"
+	want := "PENDING: missing audit_ref_or_evidence_chain_ref, credential_ref, data_arrival_validator_ref, execution_receipt_ref_or_receipt_ref, idempotency_key, target_os, timeout_policy_ref, transport_or_runner"
 	if payload.Data.Blocker != want {
 		t.Fatalf("missing refs should be stable sorted, want %q got %q", want, payload.Data.Blocker)
 	}
@@ -132,7 +132,7 @@ func TestFindXAgentTaskCompleteRefsStillBlocked(t *testing.T) {
 			if w.Code != http.StatusConflict {
 				t.Fatalf("%s complete refs should stay blocked 409, got %d body=%s", tt.action, w.Code, w.Body.String())
 			}
-			if payload.Data.Status != "blocked" || payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+			if payload.Data.Status != "blocked" || payload.Data.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 				t.Fatalf("%s complete refs should still honest-block, got %#v", tt.action, payload.Data)
 			}
 			for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {
@@ -168,7 +168,7 @@ func TestFindXAgentTaskKubernetesMissingRefs(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("kubernetes missing refs should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	want := "BLOCKED_BY_CONTRACT: missing cluster_ref, data_arrival_validator_ref, namespace_ref, rbac_ref, restart_strategy_ref, rollout_receipt_ref, rollout_strategy_ref, service_account_ref, workload_selector_ref"
+	want := "PENDING: missing cluster_ref, data_arrival_validator_ref, namespace_ref, rbac_ref, restart_strategy_ref, rollout_receipt_ref, rollout_strategy_ref, service_account_ref, workload_selector_ref"
 	if payload.Data.Blocker != want {
 		t.Fatalf("kubernetes missing refs should be stable sorted, want %q got %q", want, payload.Data.Blocker)
 	}
@@ -197,7 +197,7 @@ func TestFindXAgentTaskKubernetesCompleteRefsStillExecutorBlocked(t *testing.T) 
 	if w.Code != http.StatusConflict {
 		t.Fatalf("complete kubernetes refs should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	if payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+	if payload.Data.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 		t.Fatalf("complete kubernetes refs should still executor-block, got %#v", payload.Data)
 	}
 	for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {
@@ -235,7 +235,7 @@ func TestFindXAgentTaskHelmUpgradeMissingChoiceRef(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("helm upgrade without chart or manifest should stay blocked 409, got %d body=%s", w.Code, w.Body.String())
 	}
-	want := "BLOCKED_BY_CONTRACT: missing helm_chart_ref_or_manifest_bundle_ref"
+	want := "PENDING: missing helm_chart_ref_or_manifest_bundle_ref"
 	if payload.Data.Blocker != want {
 		t.Fatalf("helm upgrade choice ref should be explicit, want %q got %q", want, payload.Data.Blocker)
 	}
@@ -268,7 +268,7 @@ func TestFindXAgentTaskKubernetesSensitiveMetadataNotEchoed(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("kubernetes sensitive metadata task should stay blocked, got %d body=%s", w.Code, w.Body.String())
 	}
-	if payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+	if payload.Data.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 		t.Fatalf("complete safe kubernetes metadata should not be blocked by dropped sensitive refs, got %#v", payload.Data)
 	}
 	if payload.Data.Metadata["ticket"] != "CHG-1" {
@@ -350,7 +350,7 @@ func saveNonBlockedTaskForCoercionTest(t *testing.T) model.FindXAgentExecutionTa
 	if err != nil {
 		t.Fatalf("save non-blocked task: %v", err)
 	}
-	if nonBlocked.Status != "blocked" || nonBlocked.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+	if nonBlocked.Status != "blocked" || nonBlocked.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 		t.Fatalf("store must coerce execution task to blocked, got %#v", nonBlocked)
 	}
 	return nonBlocked

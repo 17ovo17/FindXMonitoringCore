@@ -5,15 +5,15 @@ const cleanParams = (params = {}) => Object.fromEntries(
 )
 
 export const PROBE_BLOCKERS = {
-  contract: 'BLOCKED_BY_CONTRACT: 业务拨测接口尚未返回可验收的状态页、检查项、运行证据或事故维护契约。',
-  subscription: 'BLOCKED_BY_CONTRACT: 订阅入口需要 Webhook、邮件和 RSS 的后端订阅契约。',
-  dryRun: 'BLOCKED_BY_CONTRACT: 测试拨测需要后端执行器返回真实探测结果、耗时、错误和 evidence。',
-  incidents: 'BLOCKED_BY_CONTRACT: 事故维护入口需要事故创建、更新、关闭和审计契约。',
+  contract: 'PENDING: 业务拨测接口尚未返回可验收的状态页、检查项、运行证据或事故维护契约。',
+  subscription: 'PENDING: 订阅入口需要 Webhook、邮件和 RSS 的后端订阅契约。',
+  dryRun: 'PENDING: 测试拨测需要后端执行器返回真实探测结果、耗时、错误和 evidence。',
+  incidents: 'PENDING: 事故维护入口需要事故创建、更新、关闭和审计契约。',
 }
 
 export const formatProbeError = (error) => {
   if (isPermissionError(error)) return error.status === 401 ? '登录状态已过期，请重新登录。' : '当前账号没有业务拨测权限。'
-  if ([404, 405, 409, 501].includes(error?.status)) return `BLOCKED_BY_CONTRACT: ${redactText(error.message || '业务拨测接口未开放。')}`
+  if ([404, 405, 409, 501].includes(error?.status)) return `PENDING: ${redactText(error.message || '业务拨测接口未开放。')}`
   return redactText(error?.message || '业务拨测请求失败。')
 }
 

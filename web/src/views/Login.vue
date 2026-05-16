@@ -21,6 +21,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { setDefaultAuthHeader } from '../api/authHeaders'
 
 const router = useRouter()
 const form = ref({ username: '', password: '' })
@@ -34,7 +35,7 @@ const handleLogin = async () => {
     const { data } = await axios.post('/api/v1/auth/login', form.value)
     localStorage.setItem('aiw-token', data.token)
     localStorage.setItem('aiw-user', JSON.stringify(data.user))
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+    setDefaultAuthHeader(axios, data.token)
     if (data.user.must_change_pwd) {
       router.push('/settings/change-password')
     } else {

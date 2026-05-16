@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const evidenceChainBlockedByContract = "BLOCKED_BY_CONTRACT"
+const evidenceChainBlockedByContract = "pending"
 const evidenceChainRedactedBlocker = evidenceChainBlockedByContract + ": evidence detail redacted"
 
 type aiopsEvidenceChainResponse struct {

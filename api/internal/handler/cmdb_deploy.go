@@ -60,7 +60,7 @@ func CmdbCreateDeployTask(c *gin.Context) {
 
 	now := time.Now()
 	contractID := "cmdb.deploy.executor.v1"
-	missing := []string{"remote_executor_contract", "credential_ref_resolver", "artifact_transfer_contract", "deploy_audit_contract"}
+	missing := cmdbHighRiskMissingContracts("remote_executor_contract", "credential_ref_resolver", "artifact_transfer_contract", "deploy_audit_contract")
 	task := deployTask{
 		Name:             strings.TrimSpace(req.Name),
 		TargetHosts:      append([]string(nil), req.TargetHosts...),
@@ -68,7 +68,7 @@ func CmdbCreateDeployTask(c *gin.Context) {
 		ScriptDigest:     deployScriptDigest(req.Script),
 		Status:           strings.ToLower(cmdbBlockedByContract),
 		Progress:         0,
-		Creator:          "admin",
+		Creator:          requestActor(c),
 		CreatedAt:        now.Format(time.RFC3339),
 		UpdatedAt:        now.Format(time.RFC3339),
 		Logs:             []string{"preflight blocked: remote deploy executor contract is not connected"},
@@ -100,9 +100,28 @@ func CmdbCreateDeployTask(c *gin.Context) {
 		"action":  "deploy_task_blocked",
 	}).Warn("cmdb: deploy task blocked by missing executor contract")
 
+	gate := cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
+		ContractID:   contractID,
+		ResourceType: "cmdb_deploy_task",
+		ResourceID:   task.ID,
+		Action:       "deploy",
+		RiskLevel:    "critical",
+		Title:        "CMDB deploy task review",
+		Summary:      "Deploy task requires approval, transfer and execution receipts before execution.",
+		Reason:       "missing remote executor, credential resolver, artifact transfer and deploy audit contracts",
+		Context: map[string]any{
+			"task_id":       task.ID,
+			"name":          task.Name,
+			"target_count":  len(task.TargetHosts),
+			"script_length": task.ScriptLength,
+			"script_digest": task.ScriptDigest,
+		},
+		Missing:        []string{"remote_executor_contract", "credential_ref_resolver", "artifact_transfer_contract", "deploy_audit_contract"},
+		ExecutionState: "deploy executor remains blocked",
+	})
 	c.JSON(http.StatusConflict, gin.H{
 		"task": task,
-		"gate": cmdbBlockedContractEnvelope(contractID, missing),
+		"gate": gate,
 	})
 }
 

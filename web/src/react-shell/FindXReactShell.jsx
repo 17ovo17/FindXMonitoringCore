@@ -1,20 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { matchPath, useHistory, useLocation } from 'react-router-dom'
-import { AiSrePage } from './ai-sre/AiSrePage.jsx'
-import { AgentPage } from './agents/AgentPage.jsx'
-import { AssetsPage } from './cmdb/AssetsPage.jsx'
-import { AlertsPage } from './base-monitoring/alerts/AlertsPage.jsx'
-import { DashboardsPage } from './base-monitoring/dashboards/DashboardsPage.jsx'
-import { IntegrationsPage } from './base-monitoring/integrations/IntegrationsPage.jsx'
-import { MetricExplorerPage } from './base-monitoring/query/MetricExplorerPage.jsx'
-import { NotificationsPage } from './base-monitoring/notifications/NotificationsPage.jsx'
-import { OverviewPage } from './base-monitoring/OverviewPage.jsx'
-import { LogsPage } from './logs/LogsPage.jsx'
-import { OrgPage } from './org/OrgPage.jsx'
-import { PlatformPage } from './platform/PlatformPage.jsx'
-import { BusinessProbePage } from './probes/BusinessProbePage.jsx'
-import { TracingPage } from './tracing/TracingPage.jsx'
-import { NotFoundPage } from './system/NotFoundPage.jsx'
 import { AuthBoundaryProvider, ThemeBoundaryProvider } from './contexts.jsx'
 import { createNavigationRegistry, findNavByRoute, quickOptions as defaultQuickOptions } from './navigation.js'
 import { AUTH_EXPIRED_EVENT, get, post, redactText } from './api/http.js'
@@ -23,8 +8,31 @@ import { useI18n } from './i18n/useI18n.js'
 import { ThemeToggle } from './shared/ThemeToggle.jsx'
 import { FindXIcon } from './shared/FindXIcon.jsx'
 import { ParticleBackground } from './shared/ParticleBackground.jsx'
+import { ErrorBoundary } from './shared/ErrorBoundary.jsx'
+import { CommandPalette } from './shared/CommandPalette.jsx'
 import './shared/fx-base.css'
 import './styles.css'
+
+// React.lazy 路由分割 — 减少初始 bundle 体积
+const AiSrePage = React.lazy(() => import('./ai-sre/AiSrePage.jsx').then((m) => ({ default: m.AiSrePage })))
+const AgentPage = React.lazy(() => import('./agents/AgentPage.jsx').then((m) => ({ default: m.AgentPage })))
+const AssetsPage = React.lazy(() => import('./cmdb/AssetsPage.jsx').then((m) => ({ default: m.AssetsPage })))
+const AlertsPage = React.lazy(() => import('./base-monitoring/alerts/AlertsPage.jsx').then((m) => ({ default: m.AlertsPage })))
+const DashboardsPage = React.lazy(() => import('./base-monitoring/dashboards/DashboardsPage.jsx').then((m) => ({ default: m.DashboardsPage })))
+const IntegrationsPage = React.lazy(() => import('./base-monitoring/integrations/IntegrationsPage.jsx').then((m) => ({ default: m.IntegrationsPage })))
+const MetricExplorerPage = React.lazy(() => import('./base-monitoring/query/MetricExplorerPage.jsx').then((m) => ({ default: m.MetricExplorerPage })))
+const NotificationsPage = React.lazy(() => import('./base-monitoring/notifications/NotificationsPage.jsx').then((m) => ({ default: m.NotificationsPage })))
+const OverviewPage = React.lazy(() => import('./base-monitoring/OverviewPage.jsx').then((m) => ({ default: m.OverviewPage })))
+const LogsPage = React.lazy(() => import('./logs/LogsPage.jsx').then((m) => ({ default: m.LogsPage })))
+const OrgPage = React.lazy(() => import('./org/OrgPage.jsx').then((m) => ({ default: m.OrgPage })))
+const PlatformPage = React.lazy(() => import('./platform/PlatformPage.jsx').then((m) => ({ default: m.PlatformPage })))
+const BusinessProbePage = React.lazy(() => import('./probes/BusinessProbePage.jsx').then((m) => ({ default: m.BusinessProbePage })))
+const TracingPage = React.lazy(() => import('./tracing/TracingPage.jsx').then((m) => ({ default: m.TracingPage })))
+const NotFoundPage = React.lazy(() => import('./system/NotFoundPage.jsx').then((m) => ({ default: m.NotFoundPage })))
+
+function LazyFallback() {
+  return <div className="fx-lazy-loading">加载中...</div>
+}
 
 const readJson = (key, fallback = {}) => {
   try {
@@ -248,7 +256,20 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
   const [openKeys, setOpenKeys] = useState(() => navGroups.map((item) => item.key))
   const [collapsed, setCollapsed] = useState(false)
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const { lang, setLang, t } = useI18n()
+
+  // Cmd+K / Ctrl+K 打开命令面板
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCmdPaletteOpen((v) => !v)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   const clearAuth = useCallback(() => {
     localStorage.removeItem('aiw-token')
@@ -419,9 +440,16 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
                 <button type='button' className='fx-user' onClick={logout}><span>{userInitial}</span>{user?.username || '用户'} / 退出</button>
               </div>
             </header>
-            <main className='fx-content'>{content}</main>
+            <main className='fx-content'>
+              <ErrorBoundary>
+                <Suspense fallback={<LazyFallback />}>
+                  {content}
+                </Suspense>
+              </ErrorBoundary>
+            </main>
           </section>
           <ChangePasswordModal user={user} open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} onDone={onPasswordModalDone} />
+          <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} onNavigate={navigate} />
         </div>
       </ThemeBoundaryProvider>
     </AuthBoundaryProvider>

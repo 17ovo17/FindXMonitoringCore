@@ -116,6 +116,7 @@ func TestCmdbInstanceDetailCompatibleMasksPII(t *testing.T) {
 
 func TestCmdbCompatibleBlockedGates(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	emptyTopologyID := createCmdbCompatibleFixture(t, "cmdb-compatible-empty-topology")
 	router := gin.New()
 	router.GET("/api/v1/cmdb/instances/:id/topology", GetCmdbInstanceTopologyBlocked)
 	router.GET("/api/v1/cmdb/monitor-bindings/*path", GetCmdbMonitorBindingsBlocked)
@@ -125,7 +126,7 @@ func TestCmdbCompatibleBlockedGates(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodGet, "/api/v1/cmdb/instances/inst-1/topology"},
+		{http.MethodGet, "/api/v1/cmdb/instances/" + emptyTopologyID + "/topology"},
 		{http.MethodGet, "/api/v1/cmdb/monitor-bindings/inst-1"},
 		{http.MethodPost, "/api/v1/cmdb/monitor-bindings/inst-1"},
 	}
@@ -160,10 +161,11 @@ func TestCmdbCompatibleBlockedGates(t *testing.T) {
 
 func TestCmdbInstanceTopologyBlockedContractFields(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	instanceID := createCmdbCompatibleFixture(t, "cmdb-compatible-blocked-contract")
 	router := gin.New()
 	router.GET("/api/v1/cmdb/instances/:id/topology", GetCmdbInstanceTopologyBlocked)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/cmdb/instances/inst-1/topology", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cmdb/instances/"+instanceID+"/topology", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -182,6 +184,20 @@ func TestCmdbInstanceTopologyBlockedContractFields(t *testing.T) {
 		t.Fatalf("safe_to_retry = %v, want false", body["safe_to_retry"])
 	}
 	assertCmdbTestStringContainsAll(t, w.Body.String(), []string{
+		"FX-NIGHT-126C-CMDB-RELATION-GRAPH-TOPOLOGY-UI-CONTRACT",
+		"contract_matrix",
+		"topology_request_path",
+		"relation_path_levels",
+		"relation_in_edges",
+		"relation_out_edges",
+		"relation_descriptor_matrix",
+		"topology_success_response",
+		"ready",
+		"blocked",
+		"missing_backend",
+		"missing_datasource",
+		"missing_relation_store",
+		"unsafe",
 		"cmdb_topology_field_mapping_contract",
 		"expected_schema",
 		"field_matrix",
@@ -195,7 +211,18 @@ func TestCmdbInstanceTopologyBlockedContractFields(t *testing.T) {
 		"direction",
 		"location",
 	})
-	assertCmdbTestStringExcludesAll(t, w.Body.String(), []string{`"nodes"`, `"edges"`})
+	assertCmdbTestStringExcludesAll(t, w.Body.String(), []string{`"nodes":[`, `"edges":[`, `"code":0`})
+	matrix := body["contract_matrix"].([]any)
+	assertCmdbContractMatrixStatuses(t, matrix, map[string]string{
+		"topology_request_path":      "ready",
+		"relation_path_levels":       "missing_backend",
+		"relation_in_edges":          "missing_relation_store",
+		"relation_out_edges":         "missing_relation_store",
+		"relation_descriptor_matrix": "missing_datasource",
+		"topology_success_response":  "unsafe",
+		"topology_document_envelope": "blocked",
+		"topology_instance_identity": "ready",
+	})
 }
 
 func TestCmdbMonitorBindingsReadBlockedContractFields(t *testing.T) {
@@ -348,6 +375,20 @@ func assertCmdbTestStringExcludesAll(t *testing.T, text string, blocked []string
 	for _, token := range blocked {
 		if strings.Contains(text, token) {
 			t.Fatalf("response contains forbidden token %q: %s", token, text)
+		}
+	}
+}
+
+func assertCmdbContractMatrixStatuses(t *testing.T, matrix []any, wants map[string]string) {
+	t.Helper()
+	got := make(map[string]string, len(matrix))
+	for _, raw := range matrix {
+		item := raw.(map[string]any)
+		got[item["name"].(string)] = item["status"].(string)
+	}
+	for name, status := range wants {
+		if got[name] != status {
+			t.Fatalf("contract_matrix[%s].status = %q, want %q; matrix=%#v", name, got[name], status, matrix)
 		}
 	}
 }

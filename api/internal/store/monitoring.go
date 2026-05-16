@@ -137,6 +137,35 @@ func GetFindXAgent(id string) (*model.FindXAgent, bool) {
 	return copyFindXAgent(agent), true
 }
 
+func DeleteFindXAgent(id string) (bool, error) {
+	found := false
+	mu.Lock()
+	if _, ok := findxAgents[id]; ok {
+		delete(findxAgents, id)
+		found = true
+	}
+	for key, agent := range findxAgents {
+		if agent.Ident == id {
+			delete(findxAgents, key)
+			found = true
+		}
+	}
+	mu.Unlock()
+	if mysqlOK {
+		res, err := db.Exec(`DELETE FROM findx_agents WHERE id=? OR ident=?`, id, id)
+		if err != nil {
+			return found, err
+		}
+		if res == nil {
+			return found, fmt.Errorf("delete findx agent returned no result")
+		}
+		if rows, err := res.RowsAffected(); err == nil && rows > 0 {
+			found = true
+		}
+	}
+	return found, nil
+}
+
 func ListFindXAgents() []*model.FindXAgent {
 	if mysqlOK {
 		if rows, err := db.Query(`SELECT id,ident,target_id,ip,hostname,os,arch,version,collector,status,COALESCE(capabilities,'[]'),COALESCE(global_labels,'{}'),config_version,last_seen,created_at,updated_at FROM findx_agents ORDER BY last_seen DESC LIMIT 1000`); err == nil {

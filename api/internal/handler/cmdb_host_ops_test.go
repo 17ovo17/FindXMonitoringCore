@@ -175,6 +175,10 @@ func TestCmdbHostOpsMonitorTargetWithoutCmdbMappingReturnsContractBlocked(t *tes
 
 			body := assertCmdbBlockedResponse(t, w, tt.contractID)
 			assertCmdbMissingContract(t, body, cmdbHostInstanceMappingContract)
+			assertCmdbMissingContract(t, body, "cmdb_resource_approval_runtime_contract")
+			assertCmdbMissingContract(t, body, "cmdb_operation_risk_policy_contract")
+			assertCmdbMissingContract(t, body, "cmdb_action_preflight_contract")
+			assertCmdbMissingContract(t, body, "cmdb_action_audit_receipt_contract")
 			for _, forbidden := range []string{"password=<SECRET>", "token=<TOKEN>", "private_key=<KEY>"} {
 				if strings.Contains(w.Body.String(), forbidden) {
 					t.Fatalf("mapping blocked response leaked sensitive marker %q: %s", forbidden, w.Body.String())
@@ -208,6 +212,10 @@ func TestCmdbHostExecMappingBlockedDoesNotLogRawCommand(t *testing.T) {
 
 	body := assertCmdbBlockedResponse(t, w, "cmdb.host.command_exec.v1")
 	assertCmdbMissingContract(t, body, cmdbHostInstanceMappingContract)
+	assertCmdbMissingContract(t, body, "cmdb_resource_approval_runtime_contract")
+	assertCmdbMissingContract(t, body, "cmdb_operation_risk_policy_contract")
+	assertCmdbMissingContract(t, body, "cmdb_action_preflight_contract")
+	assertCmdbMissingContract(t, body, "cmdb_action_audit_receipt_contract")
 	logText := logBuf.String()
 	for _, forbidden := range []string{"password=<SECRET>", "token=<TOKEN>", "private_key=<KEY>", "echo password"} {
 		if strings.Contains(logText, forbidden) {

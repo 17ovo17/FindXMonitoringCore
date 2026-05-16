@@ -257,7 +257,7 @@ func decodePluginRemoteMutationRollout(t *testing.T, w *httptest.ResponseRecorde
 func assertPluginRemoteMutationMetadata(t *testing.T, payload pluginRemoteMutationRolloutPayload) {
 	t.Helper()
 	if !strings.Contains(payload.Error, agentBlocked) || payload.Data.Status != "blocked" {
-		t.Fatalf("rollout should keep BLOCKED_BY_CONTRACT semantics: %#v", payload)
+		t.Fatalf("rollout should keep PENDING semantics: %#v", payload)
 	}
 	if payload.Data.TemplateID != "host-plugin" || payload.Data.PluginID != "input.cpu" || payload.Data.ProviderMode != "http" || !payload.Data.RemoteMutation || payload.Data.CanaryPercent != 10 {
 		t.Fatalf("rollout response should echo plugin remote mutation metadata: %#v", payload.Data)
@@ -286,7 +286,7 @@ func TestFindXAgentLifecyclePhasesDoNotPromoteInventoryToReady(t *testing.T) {
 		if phase.Status == "ready" {
 			t.Fatalf("phase %s should stay blocked until contract evidence exists", phase.Key)
 		}
-		if !strings.Contains(phase.Blocker, "BLOCKED_BY_CONTRACT") {
+		if !strings.Contains(phase.Blocker, "PENDING") {
 			t.Fatalf("phase %s should expose blocked contract, got %q", phase.Key, phase.Blocker)
 		}
 	}
@@ -307,7 +307,7 @@ func TestFindXAgentDataArrivalRequiresValidatorEvidence(t *testing.T) {
 		if row.EvidenceCount != 0 {
 			t.Fatalf("data arrival %s must not synthesize evidence count, got %d", row.Kind, row.EvidenceCount)
 		}
-		if !strings.Contains(row.Blocker, "BLOCKED_BY_CONTRACT") {
+		if !strings.Contains(row.Blocker, "PENDING") {
 			t.Fatalf("data arrival %s should be blocked, got %q", row.Kind, row.Blocker)
 		}
 	}

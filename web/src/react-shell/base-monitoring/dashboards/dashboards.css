@@ -256,6 +256,43 @@
   gap: 10px;
 }
 
+.fx-dash-template-title,
+.fx-dash-template-preview-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.fx-dash-template-title > div,
+.fx-dash-template-preview-title > div {
+  min-width: 0;
+}
+
+.fx-dash-template-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #c9dbff;
+  border-radius: 8px;
+  color: #1769ff;
+  background: #eef5ff;
+}
+
+.fx-dash-template-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.fx-dash-template-icon.is-preview {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
 .fx-dash-template-card strong {
   display: block;
   color: #17233c;

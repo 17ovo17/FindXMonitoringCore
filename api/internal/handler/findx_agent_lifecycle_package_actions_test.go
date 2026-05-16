@@ -41,7 +41,7 @@ func TestFindXAgentPackageActionsPersistBlockedTasks(t *testing.T) {
 			if payload.Data.Action != tt.action || payload.Data.Status != "blocked" {
 				t.Fatalf("%s should persist blocked task, got %#v", tt.action, payload.Data)
 			}
-			if !strings.Contains(payload.Data.Blocker, "BLOCKED_BY_CONTRACT") ||
+			if !strings.Contains(payload.Data.Blocker, "PENDING") ||
 				!strings.Contains(payload.Data.Blocker, tt.missingRef) {
 				t.Fatalf("%s blocker should name missing %s: %s", tt.action, tt.missingRef, payload.Data.Blocker)
 			}

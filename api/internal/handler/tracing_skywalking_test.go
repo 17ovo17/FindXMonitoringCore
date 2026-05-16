@@ -223,7 +223,7 @@ func assertAPMBlockedEnvelope(t *testing.T, w *httptest.ResponseRecorder, wantSt
 
 func assertAPMBlockedShape(t *testing.T, body string) {
 	t.Helper()
-	for _, want := range []string{`"code":"BLOCKED_BY_CONTRACT"`, `"status":"blocked"`, `"contract_id"`, `"missing_contracts"`, `"safe_to_retry":false`} {
+	for _, want := range []string{`"code":"PENDING"`, `"status":"blocked"`, `"contract_id"`, `"missing_contracts"`, `"safe_to_retry":false`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("blocked response missing %s: %s", want, body)
 		}

@@ -108,7 +108,7 @@ const normalizePluginConfig = value => value ? {
   reloadStrategy: value.reloadStrategy || value.reload_strategy || '',
   restartStrategy: value.restartStrategy || value.restart_strategy || '',
   remoteMutation: value.remoteMutation ?? value.remote_mutation ?? false,
-  remoteMutationStatus: value.remoteMutationStatus || value.remote_mutation_status || 'BLOCKED_BY_CONTRACT',
+  remoteMutationStatus: value.remoteMutationStatus || value.remote_mutation_status || 'PENDING',
   rolloutMetadata: value.rolloutMetadata || value.rollout_metadata || [],
 } : null
 const templateFallbacks = new Map(configTemplates.map(item => [item.id, item]))
@@ -155,7 +155,7 @@ const mergeHostAgents = (hosts, agents) => {
 
 function Feedback({ children }) {
   if (!children) return null
-  return String(children).startsWith('BLOCKED_BY_CONTRACT') ? <Blocked>{children}</Blocked> : <ErrorBox>{children}</ErrorBox>
+  return String(children).startsWith('PENDING') ? <Blocked>{children}</Blocked> : <ErrorBox>{children}</ErrorBox>
 }
 
 export function HostsSection({ rows, hosts = [], packages, dataArrival = [], dataArrivalEvidence = [], focus, error, q, onRefresh }) {
@@ -273,7 +273,7 @@ function ConfigDrawer({ targets, templates, onClose }) {
   return <Drawer title={T.configPlugin} targets={targets} onClose={onClose}><div className='fx-agent-drawer-body'><Field label={T.target}><TargetPicker targets={targets} selectedKeys={selectedTargetKeys} onToggle={toggleTarget} /></Field><Field label={T.template}><select value={templateId} onChange={event => chooseTemplate(event.target.value)}>{templates.map(item => <option key={item.id} value={item.id}>{cleanName(item.name)}</option>)}</select></Field><Field label={T.deliveryMode}><select value={targetMode} onChange={event => setTargetMode(event.target.value)}>{(selected.targetModes || []).map(item => <option key={item} value={item}>{item}</option>)}</select></Field><Field label={T.deliveryStrategy}><select value={strategy} onChange={event => setStrategy(event.target.value)}>{(selected.rolloutStrategies || []).map(item => <option key={item} value={item}>{item}</option>)}</select></Field><div className='fx-agent-subtitle'>{T.abilityPackage}</div><Tags items={(selected.capabilityPackages || []).map(cleanName)} /><div className='fx-agent-subtitle'>{T.fields}</div><Tags items={selected.fields || []} />{selected.pluginConfig && <PluginConfigTags pluginConfig={selected.pluginConfig} />}<HostProviderRefs rolloutMetadata={selected.pluginConfig?.rolloutMetadata} /><CopyBlock>{JSON.stringify(payload, null, 2)}</CopyBlock><div className='fx-agent-actions'><button type='button' onClick={() => rollout(T.saveTemplate)}>{T.saveTemplate}</button><button type='button' onClick={() => rollout(T.canary)}>{T.canary}</button><button type='button' onClick={() => rollout(T.rollout)}>{T.rollout}</button><button type='button' onClick={() => rollout(T.rollback)}>{T.rollback}</button></div><Feedback>{feedback}</Feedback><Blocked>{AGENT_BLOCKERS.configLifecycle}</Blocked></div></Drawer>
 }
 
-function PluginConfigTags({ pluginConfig }) { return <><div className='fx-agent-subtitle'>{T.pluginMutation}</div><Tags items={[`${T.format} ${pluginConfig.configFormat}`, `${T.provider} ${(pluginConfig.providerModes || []).join('/')}`, pluginConfig.remoteMutationStatus === 'BLOCKED_BY_CONTRACT' ? T.mutationBlocked : T.pluginMutation]} /></> }
+function PluginConfigTags({ pluginConfig }) { return <><div className='fx-agent-subtitle'>{T.pluginMutation}</div><Tags items={[`${T.format} ${pluginConfig.configFormat}`, `${T.provider} ${(pluginConfig.providerModes || []).join('/')}`, pluginConfig.remoteMutationStatus === 'PENDING' ? T.mutationBlocked : T.pluginMutation]} /></> }
 
 function buildRolloutBody(template, strategy, targetIds, agentIds, targetMode = undefined) {
   return { template_id: template.id, target_mode: targetMode, rollout_strategy: strategy, credential_ref: '<CREDENTIAL_REF>', config_version: '<CONFIG_ID>', config_snippet_ref: template.pluginConfig?.configSnippetRef || '<CONFIG_SNIPPET_REF>', config_format: template.pluginConfig?.configFormat || 'toml', provider_mode: template.pluginConfig?.providerModes?.[1] || template.pluginConfig?.providerModes?.[0] || 'local', plugin_id: template.pluginConfig?.pluginId || '<PLUGIN_ID>', plugin_version: template.pluginConfig?.pluginVersion || '<PLUGIN_VERSION>', reload_strategy: template.pluginConfig?.reloadStrategy || '<RELOAD_STRATEGY>', restart_strategy: template.pluginConfig?.restartStrategy || '<RESTART_STRATEGY>', remote_mutation: Boolean(template.pluginConfig?.remoteMutation), canary_percent: strategy === T.canary ? 10 : 100, rollback_ref: '<ROLLBACK_REF>', audit_reason: '<AUDIT_REASON>', change_ticket: '<CHANGE_TICKET>', cluster_ref: '<CLUSTER_REF>', namespace_ref: '<NAMESPACE_REF>', workload_ref: '<WORKLOAD_REF>', config_map_ref: '<CONFIG_MAP_REF>', executor_ref: '<EXECUTOR_REF>', metadata: buildSafeMetadataRefs(template.pluginConfig?.rolloutMetadata), agent_ids: agentIds, target_ids: targetIds }

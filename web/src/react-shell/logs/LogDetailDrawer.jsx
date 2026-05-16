@@ -39,7 +39,7 @@ export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimila
     } catch (err) {
       setContextRows([])
       if (err?.status === 404 || err?.status === 501) {
-        setContextError('BLOCKED_BY_CONTRACT: 后端不支持 /api/v1/logs/context 接口。')
+        setContextError('PENDING: 后端不支持 /api/v1/logs/context 接口。')
       } else {
         setContextError(formatLogError(err))
       }

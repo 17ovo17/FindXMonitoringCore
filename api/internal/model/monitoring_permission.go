@@ -111,12 +111,15 @@ func monitorPermissionResult(known, allowed bool, resource, action, reason strin
 func monitorUserPermissionAllowed(resource, action string) bool {
 	switch resource {
 	case "monitor.health", "monitor.datasource", "monitor.metric", "monitor.label",
-		"monitor.audit_log", "monitor.dashboard", "monitor.integration", "monitor.builtin", "findx_agent":
+		"monitor.audit_log", "monitor.dashboard", "monitor.integration", "monitor.builtin", "findx_agent",
+		"cmdb.model", "cmdb.attribute", "cmdb.instance", "cmdb.resource.projection", "cmdb.relation", "cmdb.stats", "cmdb.database":
 		return action == "read"
 	case "monitor.query":
 		return action == "execute" || action == "execute_range"
 	case "monitor.target", "monitor.alert_rule", "monitor.alert_event":
 		return action == "read"
+	case "aiops.session":
+		return action == "read" || action == "create"
 	default:
 		return false
 	}
@@ -124,18 +127,33 @@ func monitorUserPermissionAllowed(resource, action string) bool {
 
 func monitorPermissionMatrix() map[string]map[string]bool {
 	return map[string]map[string]bool{
-		"monitor.health":      {"read": true},
-		"monitor.datasource":  {"read": true},
-		"monitor.query":       {"execute": true, "execute_range": true},
-		"monitor.metric":      {"read": true},
-		"monitor.label":       {"read": true},
-		"monitor.target":      {"read": true, "create": true, "update": true, "delete": true},
-		"monitor.dashboard":   {"read": true, "create": true, "update": true, "delete": true, "clone": true, "share": true},
-		"monitor.integration": {"read": true, "create": true, "update": true, "delete": true, "sort": true, "hide": true, "write": true},
-		"monitor.builtin":     {"read": true, "create": true, "update": true, "delete": true},
-		"monitor.alert_rule":  {"read": true, "create": true, "update": true, "delete": true, "enable": true, "disable": true, "clone": true, "tryrun": true, "rollback": true},
-		"monitor.alert_event": {"read": true, "ack": true, "assign": true, "resolve": true, "archive": true},
-		"monitor.audit_log":   {"read": true},
-		"findx_agent":         {"read": true, "write": true},
+		"monitor.health":           {"read": true},
+		"monitor.datasource":       {"read": true},
+		"monitor.query":            {"execute": true, "execute_range": true},
+		"monitor.metric":           {"read": true},
+		"monitor.label":            {"read": true},
+		"monitor.target":           {"read": true, "create": true, "update": true, "delete": true},
+		"monitor.dashboard":        {"read": true, "create": true, "update": true, "delete": true, "clone": true, "share": true},
+		"monitor.integration":      {"read": true, "create": true, "update": true, "delete": true, "sort": true, "hide": true, "write": true},
+		"monitor.builtin":          {"read": true, "create": true, "update": true, "delete": true},
+		"monitor.alert_rule":       {"read": true, "create": true, "update": true, "delete": true, "enable": true, "disable": true, "clone": true, "tryrun": true, "rollback": true},
+		"monitor.alert_event":      {"read": true, "ack": true, "assign": true, "resolve": true, "archive": true},
+		"monitor.audit_log":        {"read": true},
+		"credential":               {"read": true},
+		"findx_agent":              {"read": true, "write": true},
+		"cmdb.model":               {"read": true, "create": true, "update": true, "delete": true},
+		"cmdb.attribute":           {"read": true, "create": true, "update": true, "delete": true},
+		"cmdb.instance":            {"read": true, "create": true, "update": true, "delete": true},
+		"cmdb.resource.projection": {"read": true},
+		"cmdb.import":              {"import": true, "confirm": true},
+		"cmdb.relation":            {"read": true, "create": true, "update": true, "delete": true},
+		"cmdb.stats":               {"read": true},
+		"cmdb.approval":            {"read": true, "approve": true, "review": true},
+		"cmdb.terminal":            {"open": true},
+		"cmdb.command":             {"read": true, "exec": true},
+		"cmdb.file":                {"upload": true},
+		"cmdb.database":            {"read": true, "create": true, "delete": true, "test": true},
+		"aiops.session":            {"read": true, "create": true, "update": true, "delete": true},
+		"aiops.action":             {"execute": true},
 	}
 }

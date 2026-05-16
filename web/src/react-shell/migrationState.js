@@ -14,7 +14,7 @@ const blocked = (id, title, path, sourceEvidence) =>
     id,
     title,
     path,
-    'BLOCKED_BY_CONTRACT',
+    'PENDING',
     '该页面仅建立 React-only final 迁移边界，尚未接入 FindX 后端契约、权限、审计和真实交互。',
     sourceEvidence,
   )

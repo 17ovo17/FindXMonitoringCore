@@ -48,14 +48,14 @@ func EvaluateWindowsInstallerPrerequisites(input WindowsInstallerPrerequisites) 
 		return WindowsInstallerGateResult{
 			Allowed: false,
 			Status:  "blocked",
-			Reason:  "BLOCKED_BY_CONTRACT: Windows installer prerequisites missing: " + strings.Join(missing, ", "),
+			Reason:  "PENDING: Windows installer prerequisites missing: " + strings.Join(missing, ", "),
 			Runner:  runner,
 		}
 	}
 	return WindowsInstallerGateResult{
 		Allowed: false,
 		Status:  "blocked",
-		Reason:  "BLOCKED_BY_CONTRACT: Windows executor/service lifecycle protocol not enabled",
+		Reason:  "PENDING: Windows executor/service lifecycle protocol not enabled",
 		Runner:  runner,
 	}
 }

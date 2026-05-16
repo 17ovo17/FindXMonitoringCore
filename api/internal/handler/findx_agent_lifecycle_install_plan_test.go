@@ -48,7 +48,7 @@ func TestFindXAgentInstallPlanListCoercesNonBlockedRecords(t *testing.T) {
 		PackageID: "agent-core",
 		TargetIDs: []string{"target-blocked"},
 		Status:    "blocked",
-		Blocker:   "BLOCKED_BY_CONTRACT: executor not enabled",
+		Blocker:   "PENDING: executor not enabled",
 		Metadata:  map[string]string{"evidence_chain_ref": "evidence-ref"},
 	})
 	if err != nil {
@@ -92,7 +92,7 @@ func TestFindXAgentInstallPlanDetailReturnsBlockedSafeRefs(t *testing.T) {
 		t.Fatalf("install plan detail should return 200, got %d body=%s", w.Code, w.Body.String())
 	}
 	detail := decodeBlockedInstallPlanDetail(t, w)
-	if detail.ID != payload.Data.ID || detail.Status != "blocked" || !strings.Contains(detail.Blocker, "BLOCKED_BY_CONTRACT") {
+	if detail.ID != payload.Data.ID || detail.Status != "blocked" || !strings.Contains(detail.Blocker, "PENDING") {
 		t.Fatalf("detail should return the blocked install plan record, got %#v", detail)
 	}
 	for _, key := range []string{"package_repository_ref", "signature_ref", "checksum", "script_manifest_ref", "executor_ref", "provider_auth_ref"} {

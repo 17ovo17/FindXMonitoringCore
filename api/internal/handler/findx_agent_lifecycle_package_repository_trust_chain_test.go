@@ -23,7 +23,7 @@ func TestTrustChainBlocksProductionLikePackageDownload(t *testing.T) {
 	if w.Code != http.StatusConflict {
 		t.Fatalf("production-like package fixture must stay blocked, got %d body=%s", w.Code, w.Body.String())
 	}
-	for _, want := range []string{"BLOCKED_BY_CONTRACT", "package_repository_artifact", "signature", "public_key"} {
+	for _, want := range []string{"PENDING", "package_repository_artifact", "signature", "public_key"} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Fatalf("blocked package download should include %q, body=%s", want, w.Body.String())
 		}
@@ -44,7 +44,7 @@ func TestTrustChainBlocksProductionLikeInstallerDownload(t *testing.T) {
 	)
 
 	body := w.Body.String()
-	if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 		t.Fatalf("production-like installer fixture must stay blocked, got %d body=%s", w.Code, body)
 	}
 	for _, want := range []string{
@@ -52,7 +52,7 @@ func TestTrustChainBlocksProductionLikeInstallerDownload(t *testing.T) {
 		"TRUST_CHAIN_PRODUCTION_KEY_MISSING",
 		"TRUST_CHAIN_CHECKSUM_VERIFICATION_MISSING",
 		"TRUST_CHAIN_SIGNATURE_VERIFICATION_MISSING",
-		"TRUST_CHAIN_BLOCKED_BY_CONTRACT",
+		"TRUST_CHAIN_PENDING",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("installer blocker should include %q, body=%s", want, body)
@@ -90,9 +90,9 @@ func assertTrustChainVerifierBlocked(t *testing.T, name string, code int, body s
 		t.Fatalf("%s must stay blocked without production verifier, got %d body=%s", name, code, body)
 	}
 	for _, want := range []string{
-		"BLOCKED_BY_CONTRACT",
+		"PENDING",
 		"TRUST_CHAIN_VERIFICATION_NOT_IMPLEMENTED",
-		"TRUST_CHAIN_BLOCKED_BY_CONTRACT",
+		"TRUST_CHAIN_PENDING",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("%s blocker should include %q, body=%s", name, want, body)

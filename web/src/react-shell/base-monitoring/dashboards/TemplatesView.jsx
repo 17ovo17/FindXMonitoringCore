@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { FindXIcon } from '../../shared/FindXIcon.jsx'
 import { displayText } from './dashboardModel.js'
 
 export default function TemplatesView({ templates, onBack, onPreview, onImport, loading, error }) {
@@ -52,9 +53,12 @@ export default function TemplatesView({ templates, onBack, onPreview, onImport, 
             <article className={`fx-dash-template-card${selectedTemplate?.id === tpl.id ? ' is-selected' : ''}`} key={tpl.id}>
               <button type='button' className='fx-dash-template-card__pick' onClick={() => setSelectedId(tpl.id)}>
                 <header>
-                  <div>
-                    <strong>{tpl.title}</strong>
-                    <p>{tpl.description || '无说明'}</p>
+                  <div className='fx-dash-template-title'>
+                    <span className='fx-dash-template-icon' aria-hidden='true'><FindXIcon name='template' /></span>
+                    <div>
+                      <strong>{tpl.title}</strong>
+                      <p>{tpl.description || '无说明'}</p>
+                    </div>
                   </div>
                   <span className='fx-dash-template-count'>{tpl.panelCount} Panel</span>
                 </header>
@@ -77,10 +81,13 @@ export default function TemplatesView({ templates, onBack, onPreview, onImport, 
           {selectedTemplate ? (
             <>
               <header>
-                <div>
-                  <p>预览</p>
-                  <h2>{selectedTemplate.title}</h2>
-                  <span>{selectedTemplate.description || '无说明'}</span>
+                <div className='fx-dash-template-preview-title'>
+                  <span className='fx-dash-template-icon is-preview' aria-hidden='true'><FindXIcon name='template' /></span>
+                  <div>
+                    <p>预览</p>
+                    <h2>{selectedTemplate.title}</h2>
+                    <span>{selectedTemplate.description || '无说明'}</span>
+                  </div>
                 </div>
                 <button type='button' className='is-primary' onClick={() => onImport(selectedTemplate)}>导入</button>
               </header>

@@ -1,5 +1,106 @@
 {
   "chat_sessions": {},
   "chat_messages": {},
-  "topology_businesses": {}
+  "topology_businesses": {},
+  "users": {
+    "admin": {
+      "id": "1778950657714239300-1",
+      "username": "admin",
+      "password_hash": "$2a$10$ErOEDyAQorQaU1yvPKbZdeq4J.aeuBrH2UQ4lFvr/snl9fogLUIYq",
+      "role": "admin",
+      "must_change_pwd": true,
+      "created_at": "2026-05-17T00:57:37.7142393+08:00",
+      "updated_at": "2026-05-17T00:57:37.7142393+08:00"
+    },
+    "fallback-change-user": {
+      "id": "1778950657932634000-2",
+      "username": "fallback-change-user",
+      "password_hash": "$2a$10$S8LRPrenUqaSZDHVNVDdfus7ZaCsDxz/DjAJTY/WqcunhThWjEj1K",
+      "role": "admin",
+      "must_change_pwd": false,
+      "created_at": "2026-05-17T00:57:37.932634+08:00",
+      "updated_at": "2026-05-17T00:57:38.1509571+08:00"
+    }
+  },
+  "org_roles": {
+    "admin": {
+      "id": "admin",
+      "name": "admin",
+      "note": "系统管理员",
+      "builtin": true,
+      "created_at": "2026-05-17T00:57:37.6418584+08:00",
+      "updated_at": "2026-05-17T00:57:37.6418584+08:00"
+    },
+    "viewer": {
+      "id": "viewer",
+      "name": "viewer",
+      "note": "只读用户",
+      "builtin": true,
+      "created_at": "2026-05-17T00:57:37.6418584+08:00",
+      "updated_at": "2026-05-17T00:57:37.6418584+08:00"
+    }
+  },
+  "org_role_operations": {
+    "admin": {
+      "aiops.action.execute": true,
+      "aiops.session.create": true,
+      "aiops.session.read": true,
+      "audit.read": true,
+      "cmdb.approval.approve": true,
+      "cmdb.approval.read": true,
+      "cmdb.approval.review": true,
+      "cmdb.attribute.create": true,
+      "cmdb.attribute.delete": true,
+      "cmdb.attribute.read": true,
+      "cmdb.attribute.update": true,
+      "cmdb.command.exec": true,
+      "cmdb.command.read": true,
+      "cmdb.database.create": true,
+      "cmdb.database.delete": true,
+      "cmdb.database.read": true,
+      "cmdb.database.test": true,
+      "cmdb.file.upload": true,
+      "cmdb.import.confirm": true,
+      "cmdb.import.import": true,
+      "cmdb.instance.create": true,
+      "cmdb.instance.delete": true,
+      "cmdb.instance.read": true,
+      "cmdb.instance.update": true,
+      "cmdb.model.create": true,
+      "cmdb.model.delete": true,
+      "cmdb.model.read": true,
+      "cmdb.model.update": true,
+      "cmdb.relation.create": true,
+      "cmdb.relation.delete": true,
+      "cmdb.relation.read": true,
+      "cmdb.relation.update": true,
+      "cmdb.stats.read": true,
+      "cmdb.terminal.open": true,
+      "credential.write": true,
+      "findx_agent.read": true,
+      "findx_agent.write": true,
+      "knowledge.read": true,
+      "knowledge.write": true,
+      "monitor.alert_event.write": true,
+      "monitor.alert_rule.read": true,
+      "monitor.alert_rule.write": true,
+      "monitor.dashboard.read": true,
+      "monitor.dashboard.write": true,
+      "monitor.datasource.read": true,
+      "monitor.datasource.write": true,
+      "monitor.query.execute": true,
+      "org.business.read": true,
+      "org.business.write": true,
+      "org.role.read": true,
+      "org.role.write": true,
+      "org.team.read": true,
+      "org.team.write": true,
+      "org.user.read": true,
+      "org.user.write": true,
+      "settings.read": true,
+      "settings.write": true,
+      "workflow.read": true,
+      "workflow.write": true
+    }
+  }
 }

@@ -76,7 +76,7 @@ func TestFindXAgentTaskExecutorReceiptMatrixCompleteRefsStillBlocked(t *testing.
 			resetAgentLifecycleRecordsForTest(t)
 			payload := postAgentTaskForContract(t, tt.metadata)
 			body := mustMarshalAgentTaskContractResponse(t, payload)
-			if payload.Data.Status != "blocked" || payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+			if payload.Data.Status != "blocked" || payload.Data.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 				t.Fatalf("%s complete refs should stay executor-blocked, got %#v", tt.name, payload.Data)
 			}
 			if !containsLifecycleTestString(payload.Blockers, "EXECUTOR_DISABLED_BY_CONTRACT") || len(payload.MissingContracts) != 0 {

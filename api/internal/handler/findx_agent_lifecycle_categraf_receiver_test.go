@@ -74,6 +74,50 @@ func TestCategrafPrometheusRemoteWritePersistsIngestionEvidence(t *testing.T) {
 	}
 }
 
+func TestCategrafPrometheusRemoteWriteLinksCmdbDispatchDataArrivalEvidence(t *testing.T) {
+	resetCategrafReceiverTestState(t)
+	rollout := saveConfigRolloutRuntimeReadRollout(t, map[string]string{
+		"delivery_request_ref": "delivery-task",
+		"effect_request_ref":   "effect-task",
+		"rollback_request_ref": "rollback-task",
+	})
+	saveConfigRolloutRuntimeReadTask(t, "delivery-task", rollout, "delivery", nil)
+	saveConfigRolloutRuntimeReadTask(t, "effect-task", rollout, "effect", nil)
+	saveConfigRolloutRuntimeReadTask(t, "rollback-task", rollout, "rollback", nil)
+
+	path := "/prometheus/v1/write?agent_id=agent-a&target_id=host-a&rollout_id=" + rollout.ID + "&request_ref=delivery-task&plugin_id=" + rollout.PluginID
+	w := performCategrafReceiverPost(path, strings.NewReader("prometheus-snappy-protobuf-bytes"), "application/x-protobuf", "snappy", CategrafPrometheusRemoteWrite)
+	if w.Code != http.StatusOK {
+		t.Fatalf("remote write should accept dispatch evidence refs, got %d body=%s", w.Code, w.Body.String())
+	}
+	if strings.Contains(strings.ToLower(w.Body.String()), "token") || strings.Contains(strings.ToLower(w.Body.String()), "cookie") {
+		t.Fatalf("receiver response must stay small and sanitized: %s", w.Body.String())
+	}
+
+	read := performAgentLifecycleGet("/api/v1/findx-agents/data-arrival/evidence?rollout_id="+rollout.ID+"&request_ref=delivery-task", ListFindXAgentDataArrivalEvidence)
+	payload := decodeDataArrivalRuntimeReadOK(t, read)
+	if read.Code != http.StatusOK || payload.Status != "blocked" || payload.Contract != cmdbAgentRolloutDataArrivalReadContract {
+		t.Fatalf("runtime read should link receiver evidence while staying blocked, code=%d payload=%#v body=%s", read.Code, payload, read.Body.String())
+	}
+	if payload.EvidenceCount != 1 || payload.RolloutRef != rollout.ID {
+		t.Fatalf("runtime read should expose exactly one receiver evidence row, payload=%#v", payload)
+	}
+	for _, want := range []string{
+		"cmdb_agent_rollout_remote_executor_contract",
+		"cmdb_agent_rollout_delivery_receipt_contract",
+		"cmdb_agent_rollout_effect_receipt_contract",
+		"cmdb_agent_rollout_rollback_receipt_contract",
+		"cmdb_agent_rollout_data_arrival_receipt_contract",
+		"cmdb_agent_rollout_evidence_chain_contract",
+	} {
+		if !containsLifecycleTestString(payload.MissingContracts, want) {
+			t.Fatalf("receiver-linked read should keep real execution gap %q, payload=%#v", want, payload)
+		}
+	}
+	assertNoWriterRequestRefRuntimeReadLeak(t, read.Body.String())
+	assertNoDataArrivalRuntimeReadForbidden(t, read.Body.String())
+}
+
 func TestCategrafPrometheusRemoteWriteRejectsEmptyBody(t *testing.T) {
 	resetCategrafReceiverTestState(t)
 	w := performCategrafReceiverPost("/prometheus/v1/write", strings.NewReader(""), "application/x-protobuf", "", CategrafPrometheusRemoteWrite)

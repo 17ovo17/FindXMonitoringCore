@@ -9,14 +9,14 @@
 
 | 项目 | 事实 |
 | --- | --- |
-| 页面源码 | `D:\平台源码\fe-main\src\pages\explorer\Metric.tsx` |
-| 面板源码 | `D:\平台源码\fe-main\src\pages\explorer\Explorer.tsx` |
-| Prometheus 查询源码 | `D:\平台源码\fe-main\src\pages\explorer\Prometheus\index.tsx` |
-| 图表组件源码 | `D:\平台源码\fe-main\src\components\PromGraphCpt` |
-| PromQL 输入源码 | `D:\平台源码\fe-main\src\components\PromQLInputNG` |
-| 内置指标源码 | `D:\平台源码\fe-main\src\components\PromQLInput\BuiltinMetrics` |
-| 历史记录源码 | `D:\平台源码\fe-main\src\pages\explorer\Prometheus\HistoricalRecords\index.tsx` |
-| API 源码 | `D:\平台源码\fe-main\src\services\metric.ts`、`PromGraphCpt\services.ts`、`metricsBuiltin\services.ts` |
+| 页面源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\explorer\Metric.tsx` |
+| 面板源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\explorer\Explorer.tsx` |
+| Prometheus 查询源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\explorer\Prometheus\index.tsx` |
+| 图表组件源码 | `D:\项目迁移文件\平台源码\fe-main\src\components\PromGraphCpt` |
+| PromQL 输入源码 | `D:\项目迁移文件\平台源码\fe-main\src\components\PromQLInputNG` |
+| 内置指标源码 | `D:\项目迁移文件\平台源码\fe-main\src\components\PromQLInput\BuiltinMetrics` |
+| 历史记录源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\explorer\Prometheus\HistoricalRecords\index.tsx` |
+| API 源码 | `D:\项目迁移文件\平台源码\fe-main\src\services\metric.ts`、`PromGraphCpt\services.ts`、`metricsBuiltin\services.ts` |
 | 参考 DOM | `docs\aiops\source-matrix\evidence\n9e_metric_explorer_snapshot.md` |
 
 ## 2. 页面结构
@@ -44,7 +44,7 @@
 
 ## 4. Table 语义
 
-事实源：`D:\平台源码\fe-main\src\components\PromGraphCpt\Table.tsx`
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\components\PromGraphCpt\Table.tsx`
 
 | 控件/状态 | 行为 |
 | --- | --- |
@@ -60,7 +60,7 @@
 
 ## 5. Graph 语义
 
-事实源：`D:\平台源码\fe-main\src\components\PromGraphCpt\Graph.tsx`
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\components\PromGraphCpt\Graph.tsx`
 
 | 控件/状态 | 行为 |
 | --- | --- |

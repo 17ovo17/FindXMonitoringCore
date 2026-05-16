@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { applyStoredAuthHeader } from './authHeaders'
 
 const http = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 const BEARER_RE = /(bearer\s+)[^"',\s}]+/ig
@@ -43,12 +44,7 @@ const wrapError = error => {
   return wrapped
 }
 
-http.interceptors.request.use(config => {
-  const token = localStorage.getItem('aiw-token')
-  config.headers = config.headers || {}
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+http.interceptors.request.use(applyStoredAuthHeader)
 
 http.interceptors.response.use(
   resp => resp.data,

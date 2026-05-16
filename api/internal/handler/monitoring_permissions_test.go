@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -46,11 +47,20 @@ func TestMonitorPermissionMeForUserIsReadOnly(t *testing.T) {
 	if !permissionListed(resp.Permissions, "monitor.query", "execute") {
 		t.Fatalf("user should include query execute permission: %+v", resp.Permissions)
 	}
+	if !permissionListed(resp.Permissions, "cmdb.resource.projection", "read") {
+		t.Fatalf("user should include cmdb resource projection read permission: %+v", resp.Permissions)
+	}
 	if permissionListed(resp.Permissions, "monitor.alert_rule", "tryrun") {
 		t.Fatalf("user must not include alert_rule tryrun permission")
 	}
 	if resp.Matrix["monitor.alert_rule"]["tryrun"] {
 		t.Fatalf("user matrix should deny alert_rule tryrun")
+	}
+	if permissionListed(resp.Permissions, "credential", "read") {
+		t.Fatalf("user must not include credential read permission")
+	}
+	if resp.Matrix["credential"]["read"] {
+		t.Fatalf("user matrix should deny credential read")
 	}
 	for _, forbidden := range []string{"password", "token", "admin_token"} {
 		if strings.Contains(strings.ToLower(w.Body.String()), forbidden) {
@@ -85,6 +95,35 @@ func TestRequireMonitorPermissionMiddleware(t *testing.T) {
 	if adminResp.Code != http.StatusOK || !strings.Contains(adminResp.Body.String(), `"entered":true`) {
 		t.Fatalf("admin should enter handler, got %d body=%s", adminResp.Code, adminResp.Body.String())
 	}
+}
+
+func TestCredentialListRequiresMonitorReadPermissionAndMasksSecrets(t *testing.T) {
+	r := monitorPermissionTestRouter()
+	seedPermissionToken("user-token", "u1", "alice", "user")
+	seedPermissionToken("admin-token", "a1", "root", "admin")
+	credentialID := "unit-monitor-credential-read"
+	store.SaveCredential(&model.Credential{
+		ID:       credentialID,
+		Name:     "unit credential",
+		Protocol: "ssh",
+		Username: "ops-user",
+		Password: "unit-secret-password",
+		SSHKey:   "unit-secret-ssh-key",
+		Port:     22,
+		Remark:   "credential read gate",
+	})
+	t.Cleanup(func() {
+		store.DeleteCredential(credentialID)
+	})
+
+	if w := performPermissionRequest(r, http.MethodGet, "/credentials", "", nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("credential list without auth should be 401, got %d body=%s", w.Code, w.Body.String())
+	}
+	if w := performPermissionRequest(r, http.MethodGet, "/credentials", "user-token", nil); w.Code != http.StatusForbidden {
+		t.Fatalf("credential list for normal user should be 403, got %d body=%s", w.Code, w.Body.String())
+	}
+	adminResp := performPermissionRequest(r, http.MethodGet, "/credentials", "admin-token", nil)
+	assertCredentialListMasked(t, adminResp, credentialID)
 }
 
 func TestMonitorPermissionAllowsLegacyAdminTokenHeader(t *testing.T) {
@@ -132,6 +171,7 @@ func monitorPermissionTestRouter() *gin.Engine {
 	r := gin.New()
 	r.GET("/monitor/permissions/me", RequireAuth(), GetMonitorPermissionMe)
 	r.POST("/monitor/permissions/check", RequireAuth(), CheckMonitorPermission)
+	r.GET("/credentials", RequireMonitorPermission("credential", "read"), ListCredentials)
 	r.POST("/monitor/alert-rules/:id/tryrun", RequireMonitorPermission("monitor.alert_rule", "tryrun"), func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"actor":    requestActor(c),
@@ -212,6 +252,25 @@ func assertPermissionCheck(t *testing.T, w *httptest.ResponseRecorder, code int,
 	}
 	if resp.Known != known || resp.Allowed != allowed || resp.Reason != reason {
 		t.Fatalf("unexpected check response: %+v", resp)
+	}
+}
+
+func assertCredentialListMasked(t *testing.T, w *httptest.ResponseRecorder, credentialID string) {
+	t.Helper()
+	if w.Code != http.StatusOK {
+		t.Fatalf("credential list should be 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, credentialID) {
+		t.Fatalf("credential list should include seeded credential reference, body=%s", body)
+	}
+	for _, forbidden := range []string{"unit-secret-password", "unit-secret-ssh-key", "password_hash", "cookie", "dsn"} {
+		if strings.Contains(strings.ToLower(body), forbidden) {
+			t.Fatalf("credential list leaked sensitive marker %q: %s", forbidden, body)
+		}
+	}
+	if !strings.Contains(body, `"password":"******"`) || !strings.Contains(body, `"ssh_key":"******"`) {
+		t.Fatalf("credential list should mask password and ssh_key, body=%s", body)
 	}
 }
 

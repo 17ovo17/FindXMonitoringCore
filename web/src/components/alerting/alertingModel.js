@@ -195,6 +195,6 @@ export const toCsv = rows => {
 export const blockedPayload = (action, context = {}) => safeJson({
   action,
   context,
-  status: 'BLOCKED_BY_CONTRACT',
+  status: 'PENDING',
   next_contract_needed: blockedContracts[action] || '后端 contract 未暴露',
 })

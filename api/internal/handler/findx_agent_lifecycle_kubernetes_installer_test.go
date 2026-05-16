@@ -85,7 +85,7 @@ func TestFindXAgentInstallPlanKubernetesCompleteRefsStillBlocked(t *testing.T) {
 	if payload.Execution.Runner != "kubernetes-daemonset" {
 		t.Fatalf("expected daemonset runner, got %#v", payload.Execution)
 	}
-	if payload.Execution.ErrorSummary != "BLOCKED_BY_CONTRACT: Kubernetes executor not enabled / lifecycle protocol not open" {
+	if payload.Execution.ErrorSummary != "PENDING: Kubernetes executor not enabled / lifecycle protocol not open" {
 		t.Fatalf("executor must remain blocked, got %q", payload.Execution.ErrorSummary)
 	}
 	for _, forbidden := range []string{`"status":"queued"`, `"status":"running"`, `"status":"succeeded"`} {

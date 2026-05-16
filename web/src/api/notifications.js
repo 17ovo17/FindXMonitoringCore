@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { applyStoredAuthHeader } from './authHeaders'
 
 const http = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 const BEARER_RE = /(bearer\s+)[^"',\s}]+/ig
@@ -40,12 +41,7 @@ const wrapError = error => {
   return wrapped
 }
 
-http.interceptors.request.use(config => {
-  const token = localStorage.getItem('aiw-token')
-  config.headers = config.headers || {}
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+http.interceptors.request.use(applyStoredAuthHeader)
 
 http.interceptors.response.use(
   response => response.data,
@@ -53,9 +49,30 @@ http.interceptors.response.use(
 )
 
 const channelPath = id => `/notifications/channels/${encodeURIComponent(id)}`
+const rulePath = id => `/notifications/rules/${encodeURIComponent(id)}`
+const templatePath = id => `/notifications/templates/${encodeURIComponent(id)}`
 
 export const notificationsApi = {
   listChannels: () => http.get('/notifications/channels'),
   saveChannel: body => http.post('/notifications/channels', body),
   deleteChannel: id => http.delete(channelPath(id)),
+  listRules: () => http.get('/notifications/rules'),
+  getRule: id => http.get(rulePath(id)),
+  saveRules: body => http.post('/notifications/rules', Array.isArray(body) ? body : [body]),
+  updateRule: body => http.put(rulePath(body.id), body),
+  deleteRules: ids => http.delete('/notifications/rules', { data: { ids } }),
+  toggleRule: (id, enabled) => http.post(`${rulePath(id)}/${enabled ? 'enable' : 'disable'}`),
+  cloneRule: id => http.post(`${rulePath(id)}/clone`),
+  testRule: body => http.post('/notifications/rules/test', body),
+  getRuleStatistics: (id, days = 7) => http.get(`${rulePath(id)}/statistics`, { params: { days } }),
+  getRuleEvents: id => http.get(`${rulePath(id)}/events`),
+  getRuleAlertRules: id => http.get(`${rulePath(id)}/alert-rules`),
+  listTemplates: notifyChannelIdent => http.get('/notifications/templates', { params: notifyChannelIdent ? { notify_channel_ident: notifyChannelIdent } : {} }),
+  getTemplate: id => http.get(templatePath(id)),
+  saveTemplates: body => http.post('/notifications/templates', Array.isArray(body) ? body : [body]),
+  updateTemplate: body => http.put(templatePath(body.id), body),
+  deleteTemplates: ids => http.delete('/notifications/templates', { data: { ids } }),
+  cloneTemplate: id => http.post(`${templatePath(id)}/clone`),
+  previewTemplate: body => http.post('/notifications/templates/preview', body),
+  previewTemplateByID: (id, body = {}) => http.post(`${templatePath(id)}/preview`, body),
 }

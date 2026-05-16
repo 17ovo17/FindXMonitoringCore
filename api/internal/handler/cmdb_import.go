@@ -2,14 +2,11 @@ package handler
 
 import (
 	"encoding/csv"
-	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	"ai-workbench-api/internal/model"
 	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +23,7 @@ type importPreviewRow struct {
 	Raw      map[string]any `json:"raw,omitempty"`
 }
 
-// CmdbImportExcel Excel/CSV 文件导入主机预览。
+// CmdbImportExcel previews Excel/CSV host import rows.
 func CmdbImportExcel(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -69,7 +66,7 @@ func CmdbImportExcel(c *gin.Context) {
 	})
 }
 
-// CmdbImportConfirm 确认导入，保留抓包动态属性码和 FindX 标准键双写。
+// CmdbImportConfirm keeps bulk host import fail-closed until approval, diff, rollback and audit contracts exist.
 func CmdbImportConfirm(c *gin.Context) {
 	var req struct {
 		Hosts []map[string]any `json:"hosts" binding:"required"`
@@ -79,51 +76,32 @@ func CmdbImportConfirm(c *gin.Context) {
 		return
 	}
 
-	var created, failed int
-	var errors []string
-
-	for _, row := range req.Hosts {
-		data := normalizeImportHostRow(row)
-		if isEmptyCmdbValue(data["ip_address"]) && isEmptyCmdbValue(data["name"]) {
-			failed++
-			errors = append(errors, "跳过空行")
-			continue
-		}
-		dataJSON, err := json.Marshal(data)
-		if err != nil {
-			failed++
-			errors = append(errors, fmt.Sprintf("%s: 字段无法序列化", anyToString(data["ip_address"])))
-			continue
-		}
-		inst := &model.CmdbInstance{
-			ObjectID: "obj-os",
-			Data:     string(dataJSON),
-			Creator:  "excel-import",
-			Updater:  "excel-import",
-		}
-		if err := store.CreateCmdbInstance(inst); err != nil {
-			failed++
-			errors = append(errors, fmt.Sprintf("%s: %v", anyToString(data["ip_address"]), err))
-		} else {
-			created++
-		}
-	}
-
 	logrus.WithFields(logrus.Fields{
-		"created": created,
-		"failed":  failed,
-		"action":  "excel_import_confirm",
-	}).Info("cmdb: excel import confirmed")
+		"hosts":  len(req.Hosts),
+		"action": "excel_import_confirm_blocked",
+	}).Warn("cmdb: import confirm blocked by missing approval runtime")
 
-	c.JSON(http.StatusOK, gin.H{
-		"created": created,
-		"failed":  failed,
-		"errors":  errors,
-		"meta":    cmdbImportPersistenceMeta(),
-	})
+	c.JSON(http.StatusConflict, cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
+		ContractID:   "cmdb.import.confirm.v1",
+		ResourceType: "cmdb_import_confirm",
+		ResourceID:   "cmdb-import-" + store.NewID(),
+		Action:       "import_confirm",
+		RiskLevel:    "high",
+		Title:        "CMDB import confirmation review",
+		Summary:      "Bulk CMDB import requires approval, preview diff, rollback snapshot and write audit before execution.",
+		Reason:       "missing approval runtime, preview diff, rollback snapshot and write audit contracts",
+		Context: map[string]any{
+			"host_count": len(req.Hosts),
+		},
+		Diff: map[string]any{
+			"requested_rows": len(req.Hosts),
+		},
+		Missing:        []string{"cmdb_import_preview_diff_contract", "cmdb_import_rollback_snapshot_contract", "cmdb_import_write_audit_contract"},
+		ExecutionState: "cmdb import writer remains blocked",
+	}))
 }
 
-// CmdbImportCloud 云 API 导入。缺少云 SDK、凭据引用解析和审计链路时阻断。
+// CmdbImportCloud blocks cloud import until SDK, credential reference and audit contracts exist.
 func CmdbImportCloud(c *gin.Context) {
 	var req struct {
 		Provider      string `json:"provider" binding:"required"`
@@ -232,12 +210,4 @@ func normalizeImportHostRow(row map[string]any) map[string]any {
 	data["source"] = "excel_import"
 	data["import_at"] = time.Now().Format(time.RFC3339)
 	return data
-}
-
-func cmdbImportPersistenceMeta() gin.H {
-	return gin.H{
-		"persistence": cmdbPersistenceStatus(),
-		"object_id":   "obj-os",
-		"risk":        cmdbPersistenceRisk(),
-	}
 }

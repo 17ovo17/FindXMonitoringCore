@@ -22,8 +22,8 @@ export function BlockedPanel({ message }) {
   const text = sanitizeDisplayText(message || '')
   return (
     <div className='fx-int-alert is-warning'>
-      <strong>BLOCKED_BY_CONTRACT</strong>
-      <span>{text.replace(/^BLOCKED_BY_CONTRACT[：:]\s*/, '')}</span>
+      <strong>PENDING</strong>
+      <span>{text.replace(/^PENDING[：:]\s*/, '')}</span>
     </div>
   )
 }
@@ -65,7 +65,7 @@ export function SystemsSection(props) {
         <div>
           <p>FindX 集成中心</p>
           <h1>系统集成</h1>
-          <span>管理 FindX 内部系统入口、可见范围、菜单显示元数据和排序。嵌入打开与动态菜单嵌入仍保持 BLOCKED_BY_CONTRACT。</span>
+          <span>管理 FindX 内部系统入口、可见范围、菜单显示元数据和排序。嵌入打开与动态菜单嵌入仍保持 PENDING。</span>
         </div>
         <div className='fx-int-actions'>
           <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder='搜索名称、团队、配置' />
@@ -128,7 +128,7 @@ export function SystemsSection(props) {
             </tbody>
           </table>
           {loading && <div className='fx-int-empty'>系统集成加载中...</div>}
-          {!loading && rows.length === 0 && <div className='fx-int-empty'>暂无系统集成；后端契约不可用时保持 BLOCKED_BY_CONTRACT。</div>}
+          {!loading && rows.length === 0 && <div className='fx-int-empty'>暂无系统集成；后端契约不可用时保持 PENDING。</div>}
         </div>
       </section>
       <SystemDetailPanel row={selected} onClose={onClosePreview} onBlocked={onBlocked} onEdit={onEdit} onDelete={onDelete} onToggleMenu={onToggleMenu} saving={saving} />
@@ -140,7 +140,7 @@ export function SystemsSection(props) {
 
 function SystemNotice({ message }) {
   const text = sanitizeDisplayText(message || '')
-  if (/BLOCKED_BY_CONTRACT/.test(text)) return <BlockedPanel message={text} />
+  if (/PENDING/.test(text)) return <BlockedPanel message={text} />
   return <div className='fx-int-alert is-success'><span>{text}</span></div>
 }
 
@@ -622,7 +622,7 @@ export function ImportModal(props) {
         <header className='fx-int-modal__head'>
           <div>
             <h2 id='fx-int-import-title'>导入仪表盘模板</h2>
-            <p>仅对 FindX 仪表盘模板调用同源导入接口；业务组是必选目标，其他 builtin payload 导入仍保持 BLOCKED_BY_CONTRACT。</p>
+            <p>仅对 FindX 仪表盘模板调用同源导入接口；业务组是必选目标，其他 builtin payload 导入仍保持 PENDING。</p>
           </div>
           <button type='button' className='fx-int-icon-button' onClick={onClose} aria-label='关闭'>x</button>
         </header>
@@ -681,7 +681,7 @@ export function ImportModal(props) {
         )}
         {businessGroupBlocked && (
           <div className='fx-int-alert is-warning'>
-            <strong>BLOCKED_BY_CONTRACT</strong>
+            <strong>PENDING</strong>
             <span>业务组列表不可用或为空。成熟源码导入语义要求业务组必选，当前不会发送导入请求。</span>
           </div>
         )}

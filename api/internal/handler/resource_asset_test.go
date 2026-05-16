@@ -132,6 +132,21 @@ func TestHostAssetsFromHeartbeatAndAssignments(t *testing.T) {
 	if boundWorkspace.WorkspaceID != "ws-1" {
 		t.Fatalf("workspace binding should be trimmed: %+v", boundWorkspace)
 	}
+	auditResp, err := store.QueryFindXAuditLogs(model.LogQueryRequest{
+		Source:       model.LogsSourceFindXAudit,
+		Limit:        20,
+		ResourceType: "host_asset",
+		ResourceID:   target.ID,
+		Scope:        "cmdb",
+	})
+	if err != nil {
+		t.Fatalf("query FindX audit logs for host assignment: %v", err)
+	}
+	assertAuditActions(t, auditResp.Items, []string{
+		"cmdb.host.tags.assign",
+		"cmdb.host.resource_group.assign",
+		"cmdb.host.workspace.assign",
+	})
 
 	other, err := store.UpsertMonitorTarget(&model.MonitorTarget{
 		Ident:  "asset-2",
@@ -150,6 +165,135 @@ func TestHostAssetsFromHeartbeatAndAssignments(t *testing.T) {
 	assertHostAssetIDs(t, r, "host-admin-token", "/host-assets?tags=stage&status=offline&online=false", []string{other.ID})
 	assertHostAssetIDs(t, r, "host-admin-token", "/host-assets?online=true&keyword=host-one", []string{target.ID})
 	assertHostAssetIDs(t, r, "host-admin-token", "/host-assets?keyword=10.20.9", []string{other.ID})
+}
+
+func TestHostAssetsExposeCmdbModelFields(t *testing.T) {
+	r := resourceAssetTestRouter(t)
+	seedResourceAssetToken("host-cmdb-token", "a1", "root", "admin")
+
+	_, target, err := store.UpsertFindXAgentHeartbeat(model.FindXAgentHeartbeat{
+		Ident:    "cmdb-host-1",
+		IP:       "10.40.1.8",
+		Hostname: "cmdb-host-one",
+		OS:       "linux",
+		Arch:     "amd64",
+		Version:  "2.0.0",
+	})
+	if err != nil {
+		t.Fatalf("seed heartbeat failed: %v", err)
+	}
+	attrs := []model.CmdbAttribute{
+		{ID: "host-cmdb-attr-name", ObjectID: "obj-os", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 1},
+		{ID: "host-cmdb-attr-ip", ObjectID: "obj-os", Label: "管理IP", Attr: "ip_address", ValueType: "ip", Tag: "基本信息", Discovery: true, Sort: 2},
+		{ID: "host-cmdb-attr-cpu", ObjectID: "obj-os", Label: "CPU核数", Attr: "cpu_cores", ValueType: "int", Tag: "系统资源", Discovery: true, Sort: 3},
+		{ID: "host-cmdb-attr-owner", ObjectID: "obj-os", Label: "负责人", Attr: "owner", ValueType: "char", Tag: "基本信息", Sort: 4},
+	}
+	for i := range attrs {
+		if err := store.CreateCmdbAttribute(&attrs[i]); err != nil {
+			t.Fatalf("create cmdb attr %s: %v", attrs[i].Attr, err)
+		}
+	}
+	if err := store.CreateCmdbInstance(&model.CmdbInstance{
+		ID:       target.ID,
+		ObjectID: "obj-os",
+		Data:     `{"name":"cmdb-host-one","ip_address":"10.40.1.8","cpu_cores":8,"owner":"secret-owner-marker","password":"secret-password-marker"}`,
+		Creator:  "test",
+		Updater:  "test",
+	}); err != nil {
+		t.Fatalf("create cmdb instance: %v", err)
+	}
+
+	resp := performResourceAssetRequest(t, r, http.MethodGet, "/host-assets?keyword=cmdb-host-one", "host-cmdb-token", nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("list host assets should be 200, got %d body=%s", resp.Code, resp.Body.String())
+	}
+	assets := decodeHostAssets(t, resp)
+	if len(assets) != 1 {
+		t.Fatalf("expected one host asset, got %+v", assets)
+	}
+	asset := assets[0]
+	if asset.CmdbInstance == nil || asset.CmdbInstance.InstanceID != target.ID || asset.CmdbInstance.ObjectID != "obj-os" {
+		t.Fatalf("host asset should include cmdb instance ref: %+v", asset.CmdbInstance)
+	}
+	if len(asset.CmdbColumns) < 3 {
+		t.Fatalf("host asset should include cmdb model columns: %+v", asset.CmdbColumns)
+	}
+	if asset.CmdbValues["cpu_cores"] != float64(8) {
+		t.Fatalf("host asset should include cmdb cpu value, got %#v", asset.CmdbValues["cpu_cores"])
+	}
+	if asset.CmdbValues["owner"] != cmdbMaskedValue {
+		t.Fatalf("sensitive cmdb owner should be masked, got %#v", asset.CmdbValues["owner"])
+	}
+	body := resp.Body.String()
+	for _, forbidden := range []string{"secret-owner-marker", "secret-password-marker", "password", "token", "dsn"} {
+		if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+			t.Fatalf("host asset cmdb fields should not leak %q: %s", forbidden, body)
+		}
+	}
+}
+
+func TestHostAssetsExposeCmdbModelFieldsWhenInstanceIDDiffersAndHostFieldsMatch(t *testing.T) {
+	r := resourceAssetTestRouter(t)
+	seedResourceAssetToken("host-cmdb-field-match-token", "a1", "root", "admin")
+
+	_, target, err := store.UpsertFindXAgentHeartbeat(model.FindXAgentHeartbeat{
+		Ident:    "cmdb-host-field-match",
+		IP:       "10.40.2.8",
+		Hostname: "cmdb-host-field-match-one",
+		OS:       "linux",
+		Arch:     "amd64",
+		Version:  "2.1.0",
+	})
+	if err != nil {
+		t.Fatalf("seed heartbeat failed: %v", err)
+	}
+	attrs := []model.CmdbAttribute{
+		{ID: "host-cmdb-field-match-attr-name", ObjectID: "obj-os", Label: "名称", Attr: "name", ValueType: "char", Tag: "基础信息", Discovery: true, Sort: 1},
+		{ID: "host-cmdb-field-match-attr-ip", ObjectID: "obj-os", Label: "管理IP", Attr: "ip_address", ValueType: "ip", Tag: "基础信息", Discovery: true, Sort: 2},
+		{ID: "host-cmdb-field-match-attr-cpu", ObjectID: "obj-os", Label: "CPU核数", Attr: "cpu_cores", ValueType: "int", Tag: "系统资源", Discovery: true, Sort: 3},
+	}
+	for i := range attrs {
+		if err := store.CreateCmdbAttribute(&attrs[i]); err != nil {
+			t.Fatalf("create cmdb attr %s: %v", attrs[i].Attr, err)
+		}
+	}
+	if err := store.CreateCmdbInstance(&model.CmdbInstance{
+		ID:       "cmdb-instance-field-match-only",
+		ObjectID: "obj-os",
+		Data:     `{"name":"cmdb-host-field-match-one","ip_address":"10.40.2.8","cpu_cores":16}`,
+		Creator:  "test",
+		Updater:  "test",
+	}); err != nil {
+		t.Fatalf("create cmdb instance: %v", err)
+	}
+
+	resp := performResourceAssetRequest(t, r, http.MethodGet, "/host-assets?keyword=cmdb-host-field-match-one", "host-cmdb-field-match-token", nil)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("list host assets should be 200, got %d body=%s", resp.Code, resp.Body.String())
+	}
+	assets := decodeHostAssets(t, resp)
+	if len(assets) != 1 {
+		t.Fatalf("expected one host asset, got %+v", assets)
+	}
+	asset := assets[0]
+	if asset.HostID != target.ID {
+		t.Fatalf("host asset should remain backed by monitor target: got=%s want=%s", asset.HostID, target.ID)
+	}
+	if asset.CmdbInstance == nil || asset.CmdbInstance.InstanceID != "cmdb-instance-field-match-only" || asset.CmdbInstance.ObjectID != "obj-os" {
+		t.Fatalf("host asset should include matched cmdb instance ref: %+v", asset.CmdbInstance)
+	}
+	if len(asset.CmdbColumns) < 3 {
+		t.Fatalf("host asset should include cmdb model columns: %+v", asset.CmdbColumns)
+	}
+	if asset.CmdbValues["cpu_cores"] != float64(16) {
+		t.Fatalf("host asset should include cmdb cpu value, got %#v", asset.CmdbValues["cpu_cores"])
+	}
+	body := strings.ToLower(resp.Body.String())
+	for _, forbidden := range []string{"password", "token", "cookie", "dsn"} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("host asset cmdb field match response should not leak %q: %s", forbidden, resp.Body.String())
+		}
+	}
 }
 
 func TestHostAssetMissingAndUnknownResourceGroup(t *testing.T) {
@@ -297,6 +441,11 @@ func clearResourceAssetState(t *testing.T) {
 			t.Fatalf("delete monitor target %s during cleanup: %v", target.ID, err)
 		}
 	}
+	for _, agent := range store.ListFindXAgents() {
+		if _, err := store.DeleteFindXAgent(agent.ID); err != nil {
+			t.Fatalf("delete FindX agent %s during cleanup: %v", agent.ID, err)
+		}
+	}
 }
 
 func decodeResourceGroup(t *testing.T, w *httptest.ResponseRecorder) model.ResourceGroup {
@@ -348,5 +497,23 @@ func assertHostAssetIDs(t *testing.T, r *gin.Engine, token, path string, want []
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("host asset filter %s mismatch: got=%+v want=%+v assets=%+v", path, got, want, assets)
+	}
+}
+
+func assertAuditActions(t *testing.T, rows []model.LogRecord, want []string) {
+	t.Helper()
+	got := map[string]bool{}
+	for _, row := range rows {
+		if action, ok := row.Attributes["action"].(string); ok {
+			got[action] = true
+		}
+		if strings.Contains(strings.ToLower(row.Body), "secret") {
+			t.Fatalf("assignment audit log should be sanitized: %+v", row)
+		}
+	}
+	for _, action := range want {
+		if !got[action] {
+			t.Fatalf("missing assignment audit action %q in rows=%+v", action, rows)
+		}
 	}
 }

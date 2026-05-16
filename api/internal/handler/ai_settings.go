@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"ai-workbench-api/internal/model"
@@ -130,4 +131,45 @@ func mapKeys(m map[string]string) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// AIConfigStatus GET /api/v1/ai/config/status — 返回 AI 配置状态
+func AIConfigStatus(c *gin.Context) {
+	hasEnvKey := usableSecret(os.Getenv("AI_WORKBENCH_API_KEY")) != ""
+	hasEnvURL := strings.TrimSpace(os.Getenv("AI_WORKBENCH_BASE_URL")) != ""
+	envModel := strings.TrimSpace(os.Getenv("AI_WORKBENCH_MODEL"))
+
+	hasDBKey := false
+	hasDBURL := false
+	if s, ok := store.GetAISetting("api_key"); ok && usableSecret(s.SettingValue) != "" {
+		hasDBKey = true
+	}
+	if s, ok := store.GetAISetting("base_url"); ok && strings.TrimSpace(s.SettingValue) != "" {
+		hasDBURL = true
+	}
+
+	hasConfigKey := getAPIKey() != ""
+	hasConfigURL := getBaseURL() != ""
+	modelName := resolveDefaultModel()
+	if envModel != "" {
+		modelName = envModel
+	}
+
+	configured := hasConfigKey && hasConfigURL
+	c.JSON(http.StatusOK, gin.H{
+		"configured":     configured,
+		"source_env_key": hasEnvKey,
+		"source_env_url": hasEnvURL,
+		"source_db_key":  hasDBKey,
+		"source_db_url":  hasDBURL,
+		"model":          modelName,
+		"message":        aiConfigStatusMessage(configured),
+	})
+}
+
+func aiConfigStatusMessage(configured bool) string {
+	if configured {
+		return "AI 模型已配置"
+	}
+	return "请在系统配置 > AI 模型配置中设置 API Key"
 }

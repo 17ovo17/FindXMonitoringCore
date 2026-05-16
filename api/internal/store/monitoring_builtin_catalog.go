@@ -186,7 +186,7 @@ func staticRecordPayload() model.MonitoringBuiltinPayload {
 
 func blockedMonitoringBuiltinContent(reason string, preview map[string]any) json.RawMessage {
 	return mustMonitoringBuiltinJSON(map[string]any{
-		"status":  "BLOCKED_BY_CONTRACT",
+		"status":  "PENDING",
 		"reason":  reason,
 		"preview": preview,
 	})
@@ -195,7 +195,7 @@ func blockedMonitoringBuiltinContent(reason string, preview map[string]any) json
 func mustMonitoringBuiltinJSON(value any) json.RawMessage {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return json.RawMessage(`{"status":"BLOCKED_BY_CONTRACT","reason":"json_marshal_failed"}`)
+		return json.RawMessage(`{"status":"PENDING","reason":"json_marshal_failed"}`)
 	}
 	return data
 }

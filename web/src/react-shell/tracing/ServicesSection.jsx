@@ -172,7 +172,7 @@ export function ServicesSection({ onNavigate }) {
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('BLOCKED_BY_CONTRACT')) setBlocked(msg); else setError(msg)
+      if (msg.startsWith('PENDING')) setBlocked(msg); else setError(msg)
     } finally { setLoading(false) }
   }, [filters.layer, filters.duration])
 

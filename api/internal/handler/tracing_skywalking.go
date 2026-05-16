@@ -14,7 +14,7 @@ import (
 
 var swClient = tracing.NewSWClient()
 
-const apmBlockedCode = "BLOCKED_BY_CONTRACT"
+const apmBlockedCode = "pending"
 
 type apmBlockedContract struct {
 	ContractID       string   `json:"contract_id"`

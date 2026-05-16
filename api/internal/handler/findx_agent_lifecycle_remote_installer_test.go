@@ -97,7 +97,7 @@ func TestFindXAgentRemoteInstallCompleteRefsStillExecutorBlocked(t *testing.T) {
 			}
 			payload := decodeBlockedExecutionMatrixResponse(t, w.Body.String())
 			assertRemoteInstallBlockedEnvelope(t, payload, tt.scope, w.Body.String())
-			want := "BLOCKED_BY_CONTRACT: " + tt.scope + " remote executor contract is not enabled"
+			want := "PENDING: " + tt.scope + " remote executor contract is not enabled"
 			if payload.Execution.ErrorSummary != want {
 				t.Fatalf("%s complete refs should still executor-block, want %q got %#v", tt.scope, want, payload.Execution)
 			}
@@ -166,7 +166,7 @@ func TestFindXAgentTaskRemoteSSHAndWinRMUsePreflightSemantics(t *testing.T) {
 			if payload.ReceiptContract.Scope != tt.scope || payload.ReceiptContract.Transport != tt.wantTransport || payload.ReceiptContract.Runner != tt.scope {
 				t.Fatalf("%s task receipt should keep standard remote scope, got %#v", tt.scope, payload.ReceiptContract)
 			}
-			if payload.SafeToRetry || payload.Data.Blocker != "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open" {
+			if payload.SafeToRetry || payload.Data.Blocker != "PENDING: executor not enabled / execution protocol not open" {
 				t.Fatalf("%s task must be non-retryable executor-blocked, got %#v", tt.scope, payload)
 			}
 			if tt.forbiddenValue != "" && strings.Contains(w.Body.String(), tt.forbiddenValue) {

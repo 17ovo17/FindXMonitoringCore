@@ -1,12 +1,13 @@
 # FindX 源码矩阵索引
 
-更新时间：2026-05-08 01:17（UTC+8）
+更新时间：2026-05-10 03:16（UTC+8）
 
 本目录是 `P0-SOURCE-MATRIX-LOCK` 的证据入口。任何页面、API、Agent、日志、链路、CMDB、模板、工作流或 AI SRE 切片编码前，必须先补齐成熟源码证据和必要的运行态 DOM 证据。
 
 ## 当前矩阵
 
 - [P0 源码矩阵锁定表](p0_source_matrix_lock.md)
+- [P0 Nightingale 主仓库后端事实源矩阵](p0_nightingale_main_backend_matrix.md)
 - [P0 导航同源矩阵](p0_basic_monitoring_nav_matrix.md)
 - [P0 统一配置与数据源契约矩阵](p0_config_datasource_contract_matrix.md)
 - [P0 React-only Shell 与导航迁移矩阵](p0_web_react_shell_nav_matrix.md)

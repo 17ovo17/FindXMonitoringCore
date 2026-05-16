@@ -74,6 +74,10 @@ func newBlockedFindXAgentConfigRollout(req model.FindXAgentConfigRolloutRequest,
 
 func configRolloutBlocker(req model.FindXAgentConfigRolloutRequest, metadata map[string]string) string {
 	missing := missingConfigRolloutRefs(req, metadata)
+	return configRolloutBlockerFromMissing(missing)
+}
+
+func configRolloutBlockerFromMissing(missing []string) string {
 	if len(missing) > 0 {
 		return fmt.Sprintf("%s: missing %s", agentBlocked, strings.Join(missing, ", "))
 	}
@@ -86,7 +90,7 @@ func configRolloutResponseBlockers(missing []string) []string {
 	}
 	values := append([]string{agentBlocked, "MISSING_CONTRACTS"}, missing...)
 	if containsConfigRolloutRef(missing, "unsafe_plugin_policy_ref") {
-		values = append(values, "UNSAFE_PLUGIN_BLOCKED_BY_CONTRACT")
+		values = append(values, "UNSAFE_PLUGIN_PENDING")
 	}
 	return uniquePackageRepositoryBlockers(values)
 }
@@ -116,13 +120,21 @@ func missingConfigRolloutRefs(req model.FindXAgentConfigRolloutRequest, metadata
 			missingSet[key] = true
 		}
 	}
-	if isUnsafeCategrafPlugin(req.PluginID) {
+	if isUnsafeFindXPlugin(req.PluginID) {
 		missingSet["unsafe_plugin_policy_ref"] = true
+	}
+	if isCMDBHostPluginRollout(req, metadata) && configRolloutOperationIdentityConflict(req, metadata) {
+		missingSet[configRolloutPluginOperationConflict] = true
 	}
 	if requiresWindowsServiceRestartRefs(values) {
 		missingSet["data_arrival_validator_ref"] = true
 		missingSet["restart_strategy_ref"] = true
 		missingSet["service_restart_receipt_ref"] = true
+	}
+	if isCMDBHostPluginRollout(req, metadata) {
+		for _, key := range cmdbHostPluginRolloutRuntimeContracts(req, metadata) {
+			missingSet[key] = true
+		}
 	}
 	missing := make([]string, 0, len(missingSet))
 	for key := range missingSet {
@@ -289,11 +301,23 @@ func hasConfigRolloutTarget(req model.FindXAgentConfigRolloutRequest) bool {
 
 func isPluginConfigRollout(req model.FindXAgentConfigRolloutRequest) bool {
 	return req.RemoteMutation ||
-		isCategrafPluginTemplate(req.TemplateID) ||
+		isFindXPluginTemplate(req.TemplateID) ||
 		strings.TrimSpace(req.PluginID) != ""
 }
 
-func isCategrafPluginTemplate(templateID string) bool {
+func isCMDBHostPluginRollout(req model.FindXAgentConfigRolloutRequest, metadata map[string]string) bool {
+	template := strings.ToLower(strings.TrimSpace(req.TemplateID))
+	provider := strings.ToLower(strings.TrimSpace(req.ProviderMode))
+	return strings.HasPrefix(template, "cmdb-host-plugin") ||
+		provider == "cmdb_host_probe" ||
+		(strings.EqualFold(strings.TrimSpace(metadata["scope"]), configRolloutScopeCMDBHost) && strings.Contains(template, "cmdb"))
+}
+
+func cmdbHostPluginRolloutRuntimeContracts(req model.FindXAgentConfigRolloutRequest, metadata map[string]string) []string {
+	return cmdbHostPluginOperationMissingContracts(req, configRolloutOperationMode(req, metadata))
+}
+
+func isFindXPluginTemplate(templateID string) bool {
 	switch strings.TrimSpace(templateID) {
 	case configRolloutTemplateHostPlugin,
 		configRolloutTemplateContainerPlugin,
@@ -317,11 +341,16 @@ func containsConfigRolloutRef(values []string, want string) bool {
 	return false
 }
 
-func isUnsafeCategrafPlugin(pluginID string) bool {
+func isUnsafeFindXPlugin(pluginID string) bool {
 	clean := strings.ToLower(strings.TrimSpace(pluginID))
 	clean = strings.TrimPrefix(clean, "inputs.")
 	clean = strings.TrimPrefix(clean, "input.")
-	return clean == "exec"
+	switch clean {
+	case "exec", "smart", "ipmi":
+		return true
+	default:
+		return false
+	}
 }
 
 func requiresWindowsServiceRestartRefs(values map[string]string) bool {

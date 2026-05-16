@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { applyStoredAuthHeader } from './authHeaders'
 
 const http = axios.create({ baseURL: '/api/v1', timeout: 15000 })
 const BEARER_RE = /(bearer\s+)[^"',\s}]+/ig
@@ -54,12 +55,7 @@ const wrapError = error => {
   return wrapped
 }
 
-http.interceptors.request.use(config => {
-  const token = localStorage.getItem('aiw-token')
-  config.headers = config.headers || {}
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+http.interceptors.request.use(applyStoredAuthHeader)
 
 http.interceptors.response.use(
   response => response.data,
@@ -71,7 +67,7 @@ const rulePath = id => `/monitor/alert-rules/${encodeURIComponent(id)}`
 const eventPath = id => `/monitor/events/${encodeURIComponent(id)}`
 
 export const blockedContractError = (action, reason) => {
-  const error = new Error(`BLOCKED_BY_CONTRACT：${reason || action}`)
+  const error = new Error(`PENDING：${reason || action}`)
   error.blocked = true
   error.action = action
   return error

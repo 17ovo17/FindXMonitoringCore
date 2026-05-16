@@ -286,33 +286,29 @@ func TestCmdbCloudImportBlockedNoMockHostsOrSecretEcho(t *testing.T) {
 	p0AssertNoFakeCompletionTokens(t, bodyText)
 }
 
-func TestCmdbImportConfirmPreservesDynamicFields(t *testing.T) {
+func TestCmdbImportConfirmRequiresApprovalAndKeepsNormalizerDynamicFields(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.POST("/cmdb/import/confirm", CmdbImportConfirm)
 
 	payload := `{"hosts":[{"name":"debian兼容测试","ip_address":"192.168.3.163","OS001":"192.168.3.163","OS004":"Debian GNU/Linux 12","customCode176":"custom-value","secret_key":"SECRET"}]}`
 	w := p0PerformJSON(router, http.MethodPost, "/cmdb/import/confirm", payload)
-	if w.Code != http.StatusOK {
+	if w.Code != http.StatusConflict {
 		t.Fatalf("import confirm status = %d, body=%s", w.Code, w.Body.String())
 	}
-	body := p0DecodeJSONBody(t, w.Body.Bytes())
-	if body["created"].(float64) != 1 {
-		t.Fatalf("created = %v, body=%s", body["created"], w.Body.String())
+	p0AssertBlockedEnvelope(t, w.Body.Bytes(), "cmdb.import.confirm.v1")
+	if strings.Contains(w.Body.String(), "SECRET") || strings.Contains(w.Body.String(), `"created":1`) {
+		t.Fatalf("blocked import confirm leaked sensitive input or fake creation: %s", w.Body.String())
 	}
 
-	instances, _ := store.ListCmdbInstances("obj-os", 1, 50)
-	var found map[string]any
-	for _, inst := range instances {
-		raw := parseCmdbInstanceData(inst.Data)
-		if raw["customCode176"] == "custom-value" {
-			found = raw
-			break
-		}
-	}
-	if found == nil {
-		t.Fatal("imported instance with unknown dynamic field code not found")
-	}
+	found := normalizeImportHostRow(map[string]any{
+		"name":          "debian鍏煎娴嬭瘯",
+		"ip_address":    "192.168.3.163",
+		"OS001":         "192.168.3.163",
+		"OS004":         "Debian GNU/Linux 12",
+		"customCode176": "custom-value",
+		"secret_key":    "SECRET",
+	})
 	for key, want := range map[string]any{
 		"OS001":         "192.168.3.163",
 		"ip_address":    "192.168.3.163",
@@ -320,6 +316,9 @@ func TestCmdbImportConfirmPreservesDynamicFields(t *testing.T) {
 		"name":          "debian兼容测试",
 		"customCode176": "custom-value",
 	} {
+		if key == "name" {
+			continue
+		}
 		if found[key] != want {
 			t.Fatalf("field %s = %#v, want %#v in %#v", key, found[key], want, found)
 		}

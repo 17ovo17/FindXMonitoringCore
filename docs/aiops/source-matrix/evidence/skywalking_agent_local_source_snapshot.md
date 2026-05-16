@@ -8,31 +8,31 @@
 
 检查目录：
 
-- `D:\平台源码`
+- `D:\项目迁移文件\平台源码`
 
 已确认存在：
 
 | 本地目录 | 结论 |
 | --- | --- |
-| `D:\平台源码\skywalking-booster-ui-main` | 链路监控前端 UI 源码存在 |
-| `D:\平台源码\skywalking-master` | OAP/API/WebApp proxy 源码存在 |
+| `D:\项目迁移文件\平台源码\skywalking-booster-ui-main` | 链路监控前端 UI 源码存在 |
+| `D:\项目迁移文件\平台源码\skywalking-master` | OAP/API/WebApp proxy 源码存在 |
 
 ## 2. 独立 Agent 仓库检查结果
 
-以下独立 Agent 仓库在本地 `D:\平台源码` 下未发现。进入 FindX Agent 包仓库、远程安装、配置下发、心跳、升级回滚、数据到达验证和 MCP 浏览器回归前，必须补齐本地源码、版本/commit、许可证、NOTICE、制品形态、配置项和安装方式。
+以下独立 Agent 仓库在本地 `D:\项目迁移文件\平台源码` 下未发现。进入 FindX Agent 包仓库、远程安装、配置下发、心跳、升级回滚、数据到达验证和 MCP 浏览器回归前，必须补齐本地源码、版本/commit、许可证、NOTICE、制品形态、配置项和安装方式。
 
 | 能力包 | 期望本地路径 | 当前状态 |
 | --- | --- | --- |
-| Java 探针 | `D:\平台源码\skywalking-java` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Python 探针 | `D:\平台源码\skywalking-python` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Node.js 探针 | `D:\平台源码\skywalking-nodejs` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| PHP 探针 | `D:\平台源码\skywalking-php` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Go 探针 | `D:\平台源码\skywalking-go` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Rust 探针 | `D:\平台源码\skywalking-rust` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Ruby 探针 | `D:\平台源码\skywalking-ruby` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Nginx Lua 网关探针 | `D:\平台源码\skywalking-nginx-lua` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Kong 网关探针 | `D:\平台源码\skywalking-kong` | `BLOCKED_LOCAL_SOURCE_MISSING` |
-| Browser Client JS | `D:\平台源码\skywalking-client-js` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Java 探针 | `D:\项目迁移文件\平台源码\skywalking-java` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Python 探针 | `D:\项目迁移文件\平台源码\skywalking-python` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Node.js 探针 | `D:\项目迁移文件\平台源码\skywalking-nodejs` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| PHP 探针 | `D:\项目迁移文件\平台源码\skywalking-php` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Go 探针 | `D:\项目迁移文件\平台源码\skywalking-go` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Rust 探针 | `D:\项目迁移文件\平台源码\skywalking-rust` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Ruby 探针 | `D:\项目迁移文件\平台源码\skywalking-ruby` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Nginx Lua 网关探针 | `D:\项目迁移文件\平台源码\skywalking-nginx-lua` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Kong 网关探针 | `D:\项目迁移文件\平台源码\skywalking-kong` | `BLOCKED_LOCAL_SOURCE_MISSING` |
+| Browser Client JS | `D:\项目迁移文件\平台源码\skywalking-client-js` | `BLOCKED_LOCAL_SOURCE_MISSING` |
 
 ## 3. FindX 实施门禁
 

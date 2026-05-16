@@ -10,7 +10,7 @@ const (
 	ContractStatusMissingExecutor   = "missing_executor"
 	ContractStatusUnsafe            = "unsafe"
 
-	ContractBlockedByContractCode = "BLOCKED_BY_CONTRACT"
+	ContractBlockedByContractCode = "PENDING"
 )
 
 type ContractMatrixEntry struct {

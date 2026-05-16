@@ -2,7 +2,7 @@ package model
 
 const (
 	MonitoringSystemIntegrationStatusActive            = "active"
-	MonitoringSystemIntegrationStatusBlockedByContract = "BLOCKED_BY_CONTRACT"
+	MonitoringSystemIntegrationStatusBlockedByContract = "PENDING"
 )
 
 type MonitoringSystemIntegration struct {

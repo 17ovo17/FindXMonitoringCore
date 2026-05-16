@@ -8,7 +8,7 @@ import (
 	"ai-workbench-api/internal/model"
 )
 
-const findXAgentExecutorBlockedReason = "BLOCKED_BY_CONTRACT: executor not enabled / execution protocol not open"
+const findXAgentExecutorBlockedReason = "PENDING: executor not enabled / execution protocol not open"
 
 func normalizeFindXAgentInstallPlan(item model.FindXAgentInstallPlan, now time.Time) model.FindXAgentInstallPlan {
 	if item.ID == "" {

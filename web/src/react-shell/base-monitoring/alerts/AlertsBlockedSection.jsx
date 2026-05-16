@@ -1,5 +1,5 @@
 import React from 'react'
-import { BLOCKED_BY_CONTRACT, blockedContracts, displayJson } from './alertModel.js'
+import { PENDING, blockedContracts, displayJson } from './alertModel.js'
 
 const blockedRows = {
   job: [
@@ -30,7 +30,7 @@ export function AlertsBlockedSection({ section }) {
   return (
     <section className='fx-alert-blocked'>
       <header>
-        <strong>{BLOCKED_BY_CONTRACT}</strong>
+        <strong>{PENDING}</strong>
         <p>{contract}</p>
       </header>
       <div className='fx-alert-filterbar'>
@@ -43,11 +43,11 @@ export function AlertsBlockedSection({ section }) {
         <table>
           <thead><tr>{rows[0].map((item) => <th key={item}>{item}</th>)}</tr></thead>
           <tbody>
-            <tr>{rows[0].map((item) => <td key={item}>{BLOCKED_BY_CONTRACT}</td>)}</tr>
+            <tr>{rows[0].map((item) => <td key={item}>{PENDING}</td>)}</tr>
           </tbody>
         </table>
       </div>
-      <pre>{displayJson({ status: BLOCKED_BY_CONTRACT, section, requiredContract: contract, expectedStructure: rows })}</pre>
+      <pre>{displayJson({ status: PENDING, section, requiredContract: contract, expectedStructure: rows })}</pre>
     </section>
   )
 }

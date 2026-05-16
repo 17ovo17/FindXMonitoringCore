@@ -18,53 +18,55 @@ import (
 )
 
 var (
-	mu                            sync.RWMutex
-	records                       []*model.DiagnoseRecord
-	agents                        = map[string]*model.CatpawAgent{}
-	credentials                   = map[string]*model.Credential{}
-	alerts                        []*model.AlertRecord
-	chatSessions                  = map[string]*model.ChatSession{}
-	chatMessages                  = map[string][]model.ChatMessage{}
-	topologyNodes                 = map[string]*model.TopologyNode{}
-	topologyEdges                 = map[string]*model.TopologyEdge{}
-	topologyBusinesses            = map[string]*model.TopologyBusiness{}
-	diagnosisCases                = map[string]*model.DiagnosisCase{}
-	metricsMappings               = map[string]*model.MetricsMapping{}
-	monitorTargets                = map[string]*model.MonitorTarget{}
-	findxAgents                   = map[string]*model.FindXAgent{}
-	findxAgentInstallPlans        = map[string]*model.FindXAgentInstallPlan{}
-	findxAgentInstallExecutions   = map[string]*model.FindXAgentInstallExecution{}
-	findxAgentConfigRollouts      = map[string]*model.FindXAgentConfigRollout{}
-	findxAgentExecutionTasks      = map[string]*model.FindXAgentExecutionTask{}
-	findxAgentDataArrivalEvidence = map[string]*model.FindXAgentDataArrivalEvidence{}
-	probeChecks                   = map[string]*model.ProbeCheck{}
-	probeCheckResults             = map[string]*model.ProbeCheckResult{}
-	probeStatusPages              = map[string]*model.ProbeStatusPage{}
-	probeIncidents                = map[string]*model.ProbeIncident{}
-	probeNotificationBindings     = map[string]*model.ProbeNotificationBinding{}
-	probeAlertBindings            = map[string]*model.ProbeAlertBinding{}
-	contractMatrixEntries         = map[string]*model.ContractMatrixEntry{}
-	monitorDashboards             = map[string]*model.MonitorDashboard{}
-	monitorBuiltinComponents      = map[string]*model.MonitoringBuiltinComponent{}
-	monitorBuiltinPayloads        = map[string]*model.MonitoringBuiltinPayload{}
-	monitorSystemIntegrations     = map[string]*model.MonitoringSystemIntegration{}
-	monitorAlertRules             = map[string]*model.MonitorAlertRule{}
-	monitorRuleVersions           = map[string][]model.MonitorAlertRuleVersion{}
-	monitorEventsCurrent          = map[string]*model.MonitorAlertEvent{}
-	monitorEventsHistory          = map[string]*model.MonitorAlertEvent{}
-	monitorEventActions           = map[string][]model.MonitorAlertAction{}
-	notificationRules             = map[string]*model.NotificationRule{}
-	notificationTemplates         = map[string]*model.NotificationTemplate{}
-	runbooks                      = map[string]*model.Runbook{}
-	runbookExecs                  = map[string]*model.RunbookExecution{}
-	diagnosisFeedbacks            []*model.DiagnosisFeedback
-	aiSettings                    = map[string]*model.AISetting{}
-	knowledgeDocs                 = map[string]*model.KnowledgeDocument{}
-	searchEvents                  []*model.KnowledgeSearchEvent
-	searchBadcases                []*model.KnowledgeSearchBadcase
-	auditEvents                   []AuditEvent
-	users                         = map[string]*model.User{}
-	maxRecs                       = 100
+	mu                             sync.RWMutex
+	records                        []*model.DiagnoseRecord
+	agents                         = map[string]*model.CatpawAgent{}
+	credentials                    = map[string]*model.Credential{}
+	alerts                         []*model.AlertRecord
+	chatSessions                   = map[string]*model.ChatSession{}
+	chatMessages                   = map[string][]model.ChatMessage{}
+	topologyNodes                  = map[string]*model.TopologyNode{}
+	topologyEdges                  = map[string]*model.TopologyEdge{}
+	topologyBusinesses             = map[string]*model.TopologyBusiness{}
+	diagnosisCases                 = map[string]*model.DiagnosisCase{}
+	metricsMappings                = map[string]*model.MetricsMapping{}
+	monitorTargets                 = map[string]*model.MonitorTarget{}
+	findxAgents                    = map[string]*model.FindXAgent{}
+	findxAgentInstallPlans         = map[string]*model.FindXAgentInstallPlan{}
+	findxAgentInstallExecutions    = map[string]*model.FindXAgentInstallExecution{}
+	findxAgentConfigRollouts       = map[string]*model.FindXAgentConfigRollout{}
+	findxAgentExecutionTasks       = map[string]*model.FindXAgentExecutionTask{}
+	findxAgentDataArrivalEvidence  = map[string]*model.FindXAgentDataArrivalEvidence{}
+	findxAgentPluginAssignments    = map[string]*model.FindXAgentPluginAssignment{}
+	findxAgentPluginTargetBindings = map[string]*model.FindXAgentPluginTargetBinding{}
+	probeChecks                    = map[string]*model.ProbeCheck{}
+	probeCheckResults              = map[string]*model.ProbeCheckResult{}
+	probeStatusPages               = map[string]*model.ProbeStatusPage{}
+	probeIncidents                 = map[string]*model.ProbeIncident{}
+	probeNotificationBindings      = map[string]*model.ProbeNotificationBinding{}
+	probeAlertBindings             = map[string]*model.ProbeAlertBinding{}
+	contractMatrixEntries          = map[string]*model.ContractMatrixEntry{}
+	monitorDashboards              = map[string]*model.MonitorDashboard{}
+	monitorBuiltinComponents       = map[string]*model.MonitoringBuiltinComponent{}
+	monitorBuiltinPayloads         = map[string]*model.MonitoringBuiltinPayload{}
+	monitorSystemIntegrations      = map[string]*model.MonitoringSystemIntegration{}
+	monitorAlertRules              = map[string]*model.MonitorAlertRule{}
+	monitorRuleVersions            = map[string][]model.MonitorAlertRuleVersion{}
+	monitorEventsCurrent           = map[string]*model.MonitorAlertEvent{}
+	monitorEventsHistory           = map[string]*model.MonitorAlertEvent{}
+	monitorEventActions            = map[string][]model.MonitorAlertAction{}
+	notificationRules              = map[string]*model.NotificationRule{}
+	notificationTemplates          = map[string]*model.NotificationTemplate{}
+	runbooks                       = map[string]*model.Runbook{}
+	runbookExecs                   = map[string]*model.RunbookExecution{}
+	diagnosisFeedbacks             []*model.DiagnosisFeedback
+	aiSettings                     = map[string]*model.AISetting{}
+	knowledgeDocs                  = map[string]*model.KnowledgeDocument{}
+	searchEvents                   []*model.KnowledgeSearchEvent
+	searchBadcases                 []*model.KnowledgeSearchBadcase
+	auditEvents                    []AuditEvent
+	users                          = map[string]*model.User{}
+	maxRecs                        = 100
 
 	db          *sql.DB
 	redisClient *redis.Client

@@ -102,6 +102,7 @@ func ListHostAssets(c *gin.Context) {
 	out := make([]model.HostAsset, 0, len(targets))
 	for _, target := range targets {
 		asset := hostAssetFromTarget(target, agents[target.ID])
+		applyCmdbHostFields(&asset)
 		if matchHostAssetQuery(c, asset) {
 			out = append(out, asset)
 		}
@@ -115,7 +116,9 @@ func GetHostAsset(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "host asset not found"})
 		return
 	}
-	c.JSON(http.StatusOK, hostAssetFromTarget(target, agentsByTarget()[target.ID]))
+	asset := hostAssetFromTarget(target, agentsByTarget()[target.ID])
+	applyCmdbHostFields(&asset)
+	c.JSON(http.StatusOK, asset)
 }
 
 func UpdateHostAssetTags(c *gin.Context) {
@@ -129,8 +132,11 @@ func UpdateHostAssetTags(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	updateTargetLabel(target, hostLabelTags, strings.Join(normalizeAssetStrings(input.Tags), ","))
-	respondUpdatedHost(c, target)
+	tags := normalizeAssetStrings(input.Tags)
+	updateTargetLabel(target, hostLabelTags, strings.Join(tags, ","))
+	respondUpdatedHost(c, target, "cmdb.host.tags.assign", "CMDB host tags assigned from resource list", map[string]any{
+		"tags": tags,
+	})
 }
 
 func UpdateHostAssetResourceGroup(c *gin.Context) {
@@ -155,7 +161,9 @@ func UpdateHostAssetResourceGroup(c *gin.Context) {
 		}
 	}
 	updateTargetLabel(target, hostLabelResourceGroupID, groupID)
-	respondUpdatedHost(c, target)
+	respondUpdatedHost(c, target, "cmdb.host.resource_group.assign", "CMDB host resource group assigned from resource list", map[string]any{
+		"resource_group_id": groupID,
+	})
 }
 
 func UpdateHostAssetWorkspace(c *gin.Context) {
@@ -171,7 +179,9 @@ func UpdateHostAssetWorkspace(c *gin.Context) {
 	}
 	workspaceID := strings.TrimSpace(input.WorkspaceID)
 	updateTargetLabel(target, hostLabelWorkspaceID, workspaceID)
-	respondUpdatedHost(c, target)
+	respondUpdatedHost(c, target, "cmdb.host.workspace.assign", "CMDB host business workspace assigned from resource list", map[string]any{
+		"workspace_id": workspaceID,
+	})
 }
 
 func bindResourceGroupInput(c *gin.Context, existing *model.ResourceGroup) (model.ResourceGroup, bool) {
@@ -320,13 +330,156 @@ func applyAgentSummary(asset *model.HostAsset, agent *model.FindXAgent) {
 	}
 }
 
-func respondUpdatedHost(c *gin.Context, target *model.MonitorTarget) {
+func respondUpdatedHost(c *gin.Context, target *model.MonitorTarget, action string, summary string, details map[string]any) {
 	saved, err := store.UpsertMonitorTarget(target)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid host asset"})
 		return
 	}
-	c.JSON(http.StatusOK, hostAssetFromTarget(saved, agentsByTarget()[saved.ID]))
+	if _, err := store.AddMonitorAuditLog(model.MonitorAuditLog{
+		Actor:        requestActor(c),
+		Action:       action,
+		ResourceType: "host_asset",
+		ResourceID:   saved.ID,
+		Scope:        "cmdb",
+		Status:       "ok",
+		ClientIP:     c.ClientIP(),
+		Summary:      summary,
+		Details: map[string]any{
+			"host_ident":        saved.Ident,
+			"host_name":         firstAssetValue(saved.Hostname, saved.Name),
+			"ip_count":          len(splitAssetValues(saved.IP)),
+			"assignment":        details,
+			"assignment_source": "cmdb_resource_list",
+		},
+	}); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "host asset audit unavailable"})
+		return
+	}
+	asset := hostAssetFromTarget(saved, agentsByTarget()[saved.ID])
+	applyCmdbHostFields(&asset)
+	c.JSON(http.StatusOK, asset)
+}
+
+func applyCmdbHostFields(asset *model.HostAsset) {
+	if asset == nil {
+		return
+	}
+	inst, attrs, ok := resolveHostCmdbInstance(*asset)
+	if !ok {
+		return
+	}
+	raw := parseCmdbInstanceData(inst.Data)
+	values := make(map[string]any, len(raw))
+	for key, value := range raw {
+		if isSensitiveCmdbKey(key) {
+			continue
+		}
+		values[key] = value
+	}
+	columns := make([]model.HostAssetCmdbColumn, 0, len(attrs))
+	for _, attr := range attrs {
+		sensitive, _ := cmdbAttrMaskPolicy(attr)
+		if sensitive {
+			values[attr.Attr] = cmdbMaskedValue
+		} else if value, ok := raw[attr.Attr]; ok {
+			values[attr.Attr] = value
+		}
+		columns = append(columns, model.HostAssetCmdbColumn{
+			Attr:      attr.Attr,
+			Label:     attr.Label,
+			ValueType: attr.ValueType,
+			Tag:       attr.Tag,
+			Unit:      attr.Unit,
+			Sort:      attr.Sort,
+			Visible:   attr.Sort <= 8 || attr.Discovery,
+			Sensitive: sensitive,
+			Masked:    sensitive,
+		})
+	}
+	asset.CmdbInstance = &model.HostAssetCmdbRef{
+		InstanceID: inst.ID,
+		ObjectID:   inst.ObjectID,
+		ObjectName: cmdbObjectName(inst.ObjectID),
+		Source:     "cmdb_instance",
+	}
+	asset.CmdbColumns = columns
+	asset.CmdbValues = values
+	if value := firstCmdbString(values, "name", "hostname", "host_name", "instance_name"); value != "" {
+		asset.Hostname = value
+	}
+	if value := firstCmdbString(values, "ip_address", "mgmt_ip", "ip", "host_ip", "OS001"); value != "" && len(asset.IPList) == 0 {
+		asset.IPList = splitAssetValues(value)
+	}
+	if value := firstCmdbString(values, "agent_status"); value != "" {
+		asset.AgentStatus = value
+	}
+}
+
+func resolveHostCmdbInstance(asset model.HostAsset) (model.CmdbInstance, []model.CmdbAttribute, bool) {
+	candidates := normalizeAssetStrings(append([]string{asset.HostID, asset.Ident, asset.Hostname}, asset.IPList...))
+	for _, objectID := range []string{"obj-os", "OperatingSystem1"} {
+		if inst, attrs, ok := findHostCmdbInstanceByObject(objectID, candidates); ok {
+			return inst, attrs, true
+		}
+	}
+	if inst, attrs, ok := findHostCmdbInstanceByAnyObject(candidates); ok {
+		return inst, attrs, true
+	}
+	return model.CmdbInstance{}, nil, false
+}
+
+func findHostCmdbInstanceByObject(objectID string, candidates []string) (model.CmdbInstance, []model.CmdbAttribute, bool) {
+	if objectID == "" {
+		return model.CmdbInstance{}, nil, false
+	}
+	attrs := store.ListCmdbAttributes(objectID)
+	items, total := store.ListCmdbInstances(objectID, 1, 500)
+	if total == 0 && len(items) == 0 {
+		return model.CmdbInstance{}, attrs, false
+	}
+	for _, inst := range items {
+		if cmdbInstanceMatchesHost(inst, candidates) {
+			return inst, attrs, true
+		}
+	}
+	return model.CmdbInstance{}, attrs, false
+}
+
+func findHostCmdbInstanceByAnyObject(candidates []string) (model.CmdbInstance, []model.CmdbAttribute, bool) {
+	for _, obj := range store.ListCmdbObjects("") {
+		inst, attrs, ok := findHostCmdbInstanceByObject(obj.ID, candidates)
+		if ok {
+			return inst, attrs, true
+		}
+	}
+	return model.CmdbInstance{}, nil, false
+}
+
+func cmdbInstanceMatchesHost(inst model.CmdbInstance, candidates []string) bool {
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		seen[strings.ToLower(strings.TrimSpace(candidate))] = true
+	}
+	if seen[strings.ToLower(strings.TrimSpace(inst.ID))] {
+		return true
+	}
+	raw := parseCmdbInstanceData(inst.Data)
+	for _, key := range []string{"name", "hostname", "host_name", "instance_name", "ip_address", "mgmt_ip", "ip", "host_ip", "OS001", "agent_id"} {
+		if seen[strings.ToLower(strings.TrimSpace(anyToString(raw[key])))] {
+			return true
+		}
+	}
+	return false
+}
+
+func firstCmdbString(values map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(anyToString(values[key])); value != "" && value != cmdbMaskedValue {
+			return value
+		}
+	}
+	return ""
 }
 
 func respondResourceGroupStorageError(c *gin.Context) {

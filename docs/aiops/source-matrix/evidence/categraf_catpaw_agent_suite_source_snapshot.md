@@ -7,8 +7,8 @@
 
 事实源目录：
 
-- `D:\平台源码\categraf-main (1)\categraf-main`
-- `D:\平台源码\catpaw-master\catpaw-master`
+- `D:\项目迁移文件\平台源码\categraf-main (1)\categraf-main`
+- `D:\项目迁移文件\平台源码\catpaw-master\catpaw-master`
 
 用户侧命名要求：
 

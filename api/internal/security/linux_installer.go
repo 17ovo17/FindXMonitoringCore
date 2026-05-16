@@ -51,14 +51,14 @@ func EvaluateLinuxInstallerPrerequisites(input LinuxInstallerPrerequisites) Linu
 		return LinuxInstallerGateResult{
 			Allowed: false,
 			Status:  "blocked",
-			Reason:  "BLOCKED_BY_CONTRACT: Linux installer prerequisites missing: " + strings.Join(missing, ", "),
+			Reason:  "PENDING: Linux installer prerequisites missing: " + strings.Join(missing, ", "),
 			Runner:  runner,
 		}
 	}
 	return LinuxInstallerGateResult{
 		Allowed: false,
 		Status:  "blocked",
-		Reason:  "BLOCKED_BY_CONTRACT: Linux installer executor is not enabled; execution record captured only",
+		Reason:  "PENDING: Linux installer executor is not enabled; execution record captured only",
 		Runner:  runner,
 	}
 }

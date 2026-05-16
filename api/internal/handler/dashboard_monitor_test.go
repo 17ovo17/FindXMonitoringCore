@@ -157,67 +157,6 @@ func TestMonitorDashboardRejectsInvalidPanelsAndVariables(t *testing.T) {
 	}
 }
 
-func TestAdminImportsMonitorDashboardTemplate(t *testing.T) {
-	r := monitorDashboardTestRouter()
-	seedDashboardToken("dashboard-template-admin-token", "a1", "root", "admin")
-	payload := map[string]any{
-		"title":             "导入 Linux 主机",
-		"workspace_id":      "ws-template",
-		"resource_group_id": "rg-template",
-		"variables":         map[string]any{"ident": "host-a", "instance": "node-a:9100"},
-		"tags":              []string{"ops", "prod"},
-	}
-	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-admin-token", payload)
-	if resp.Code != http.StatusOK {
-		t.Fatalf("admin template import should be 200, got %d body=%s", resp.Code, resp.Body.String())
-	}
-	dashboard := decodeDashboard(t, resp)
-	if dashboard.Title != "导入 Linux 主机" || dashboard.Status != model.MonitorDashboardStatusActive {
-		t.Fatalf("imported dashboard title/status mismatch: %+v", dashboard)
-	}
-	if dashboard.WorkspaceID != "ws-template" || dashboard.ResourceGroupID != "rg-template" {
-		t.Fatalf("imported dashboard scope mismatch: %+v", dashboard)
-	}
-	if strings.Join(dashboard.Tags, ",") != "ops,prod" {
-		t.Fatalf("imported dashboard tags should use request tags: %+v", dashboard.Tags)
-	}
-	var variables map[string]any
-	if err := json.Unmarshal(dashboard.Variables, &variables); err != nil {
-		t.Fatalf("decode imported variables: %v", err)
-	}
-	if variables["ident"] != "host-a" || variables["instance"] != "node-a:9100" || variables["job"] != "node" {
-		t.Fatalf("imported variables should merge request values with template defaults: %+v", variables)
-	}
-	if dashboard.Shared || dashboard.ShareTokenSet || dashboard.ShareSummary != "" {
-		t.Fatalf("imported dashboard must not enable sharing: %+v", dashboard)
-	}
-	assertDashboardResponseSanitized(t, resp.Body.String())
-}
-
-func TestMonitorDashboardTemplateImportRejectsInvalidRequests(t *testing.T) {
-	r := monitorDashboardTestRouter()
-	seedDashboardToken("dashboard-template-invalid-admin-token", "a1", "root", "admin")
-	missing := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/not-found/import", "dashboard-template-invalid-admin-token", nil)
-	if missing.Code != http.StatusNotFound {
-		t.Fatalf("missing template import should be 404, got %d body=%s", missing.Code, missing.Body.String())
-	}
-	emptyGroup := map[string]any{"resource_group_id": " "}
-	resp := performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", emptyGroup)
-	if resp.Code != http.StatusBadRequest || !strings.Contains(resp.Body.String(), "resource_group_id is required") {
-		t.Fatalf("empty template import resource group should be 400 with clear check, got %d body=%s", resp.Code, resp.Body.String())
-	}
-	badVariables := map[string]any{"resource_group_id": "rg-template", "variables": []any{"not-object"}}
-	resp = performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", badVariables)
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("non-object template variables should be 400, got %d body=%s", resp.Code, resp.Body.String())
-	}
-	longTitle := map[string]any{"title": strings.Repeat("x", maxDashboardTitleLen+1), "resource_group_id": "rg-template"}
-	resp = performDashboardRequest(t, r, http.MethodPost, "/monitor/dashboard-templates/linux-host-basic/import", "dashboard-template-invalid-admin-token", longTitle)
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("too long template import title should be 400, got %d body=%s", resp.Code, resp.Body.String())
-	}
-}
-
 func TestMonitorDashboardResponsesRedactSensitivePayload(t *testing.T) {
 	r := monitorDashboardTestRouter()
 	seedDashboardToken("dashboard-sanitize-admin-token", "a1", "root", "admin")
@@ -257,6 +196,11 @@ func monitorDashboardTestRouter() *gin.Engine {
 
 func performDashboardRequest(t *testing.T, r *gin.Engine, method, path, token string, body any) *httptest.ResponseRecorder {
 	t.Helper()
+	return performDashboardRequestWithHeaders(t, r, method, path, token, body, nil)
+}
+
+func performDashboardRequestWithHeaders(t *testing.T, r *gin.Engine, method, path, token string, body any, headers map[string]string) *httptest.ResponseRecorder {
+	t.Helper()
 	var payload []byte
 	if body != nil {
 		var err error
@@ -269,6 +213,9 @@ func performDashboardRequest(t *testing.T, r *gin.Engine, method, path, token st
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

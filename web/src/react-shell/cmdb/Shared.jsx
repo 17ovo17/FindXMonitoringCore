@@ -2,7 +2,7 @@ import React from 'react'
 import { displayTags, rowText, sections } from './assetsModel.js'
 
 export function Blocked({ children }) {
-  return <div className='fx-assets-blocked'><strong>BLOCKED_BY_CONTRACT</strong> {children}</div>
+  return <div className='fx-assets-blocked'><strong>PENDING</strong> {children}</div>
 }
 
 export function ErrorBox({ children }) {

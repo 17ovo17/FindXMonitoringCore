@@ -30,7 +30,7 @@ export function OverviewSection({ onNavigate }) {
       </div>
       <div className='fx-tracing-table'>
         <table><tbody>
-          <tr><th>链路适配器</th><td><Status ok={!!summary}> {summary ? '已接入' : 'BLOCKED_BY_CONTRACT'} </Status></td></tr>
+          <tr><th>链路适配器</th><td><Status ok={!!summary}> {summary ? '已接入' : 'PENDING'} </Status></td></tr>
           <tr><th>链路查询服务</th><td>{summary?.query_status || '缺少代理契约'}</td></tr>
           <tr><th>Agent 联动</th><td>{summary?.agent_linkage || '缺少服务覆盖率和探针反查契约'}</td></tr>
         </tbody></table>

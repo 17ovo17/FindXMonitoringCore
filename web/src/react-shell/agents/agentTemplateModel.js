@@ -1,6 +1,6 @@
 import { pluginConfigSpec } from './agentPluginConfigModel.js'
 
-const KUBERNETES_BLOCKED_NOTICE = '# BLOCKED_BY_CONTRACT: Kubernetes 执行器、集群凭据、包签名、回执和数据到达验证未开放；以下内容仅用于复制预览，不会触发真实集群变更。'
+const KUBERNETES_BLOCKED_NOTICE = '# PENDING: Kubernetes 执行器、集群凭据、包签名、回执和数据到达验证未开放；以下内容仅用于复制预览，不会触发真实集群变更。'
 
 const kubernetesPreview = lines => [KUBERNETES_BLOCKED_NOTICE, ...lines].join('\n')
 

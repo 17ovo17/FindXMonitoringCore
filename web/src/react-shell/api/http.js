@@ -53,10 +53,12 @@ const safeError = (error) => {
 
 const wrapError = (error) => {
   const status = error?.response?.status
+  const body = error?.response?.data
   if (status === 401) emitAuthExpired()
   const wrapped = new Error(safeError(error))
   wrapped.status = status
   wrapped.code = error?.code
+  wrapped.body = body
   return wrapped
 }
 

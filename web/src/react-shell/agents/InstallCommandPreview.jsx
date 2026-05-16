@@ -37,7 +37,7 @@ const commandText = {
   },
   'kubernetes-initcontainer': {
     label: 'Kubernetes InitContainer',
-    desc: '预览初始化容器 patch；真实注入、升级和回滚仍由 BLOCKED_BY_CONTRACT 阻断。',
+    desc: '预览初始化容器 patch；真实注入、升级和回滚仍由 PENDING 阻断。',
   },
 }
 
@@ -53,7 +53,7 @@ export function InstallCommandPreview({ packageId, selectedMethod, onSelectMetho
             <p>能力包：<strong>{packageId || 'agent-core'}</strong>；安装器和包下载地址按当前站点 origin 渲染。</p>
             {selectedMethod === item.id ? <span className='fx-agent-tag'>当前计划方式</span> : null}
             {onSelectMethod && selectedMethod !== item.id ? <button type='button' onClick={() => onSelectMethod(item.id)}>设为计划方式</button> : null}
-            {kubernetesPreviewIds.has(item.id) ? <span className='fx-agent-tag'>BLOCKED_BY_CONTRACT</span> : null}
+            {kubernetesPreviewIds.has(item.id) ? <span className='fx-agent-tag'>PENDING</span> : null}
             <CopyBlock>{renderInstallCommand(item, { packageId, origin })}</CopyBlock>
           </article>
         )

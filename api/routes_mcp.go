@@ -15,5 +15,7 @@ func registerMcpRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 		mcp.PUT("/servers/:id", mw.adminRequired, handler.UpdateMcpServer)
 		mcp.DELETE("/servers/:id", mw.adminRequired, handler.DeleteMcpServer)
 		mcp.POST("/servers/:id/health-check", handler.McpServerHealthCheck)
+		mcp.POST("/servers/:id/list-tools", handler.McpListTools)
+		mcp.POST("/servers/:id/call-tool", handler.McpCallTool)
 	}
 }

@@ -15,19 +15,19 @@
 
 | 域 | 路由 | 源码事实源 | FindX 用户侧命名 |
 | --- | --- | --- | --- |
-| 人员组织 | `/users` | `D:\平台源码\fe-main\src\pages\user\users.tsx` | 用户管理 |
-| 人员组织 | `/user-groups` | `D:\平台源码\fe-main\src\pages\user\groups.tsx` | 团队管理 |
-| 人员组织 | `/roles` | `D:\平台源码\fe-main\src\pages\permissions\index.tsx` | 角色管理 |
-| 系统配置 | `/system/site-settings` | `D:\平台源码\fe-main\src\pages\siteSettings\index.tsx` | 站点设置 |
-| 系统配置 | `/system/variable-settings` | `D:\平台源码\fe-main\src\pages\variableConfigs\index.tsx` | 变量设置 |
-| 系统配置 | `/system/sso-settings` | `D:\平台源码\fe-main\src\pages\help\SSOConfigs` | 单点登录 |
-| 系统配置 | `/system/alerting-engines` | `D:\平台源码\fe-main\src\pages\help\servers` | 告警引擎 |
-| 系统配置增强 | `/system/ai-models` | `D:\平台源码\fe-main\src\pages\aiConfig\llmConfigs` + FindX AI 配置域 | AI 模型配置 |
+| 人员组织 | `/users` | `D:\项目迁移文件\平台源码\fe-main\src\pages\user\users.tsx` | 用户管理 |
+| 人员组织 | `/user-groups` | `D:\项目迁移文件\平台源码\fe-main\src\pages\user\groups.tsx` | 团队管理 |
+| 人员组织 | `/roles` | `D:\项目迁移文件\平台源码\fe-main\src\pages\permissions\index.tsx` | 角色管理 |
+| 系统配置 | `/system/site-settings` | `D:\项目迁移文件\平台源码\fe-main\src\pages\siteSettings\index.tsx` | 站点设置 |
+| 系统配置 | `/system/variable-settings` | `D:\项目迁移文件\平台源码\fe-main\src\pages\variableConfigs\index.tsx` | 变量设置 |
+| 系统配置 | `/system/sso-settings` | `D:\项目迁移文件\平台源码\fe-main\src\pages\help\SSOConfigs` | 单点登录 |
+| 系统配置 | `/system/alerting-engines` | `D:\项目迁移文件\平台源码\fe-main\src\pages\help\servers` | 告警引擎 |
+| 系统配置增强 | `/system/ai-models` | `D:\项目迁移文件\平台源码\fe-main\src\pages\aiConfig\llmConfigs` + FindX AI 配置域 | AI 模型配置 |
 | 系统配置增强 | `/system/audit-logs` | FindX 审计域 | 审计日志 |
 
 菜单事实源：
 
-- `D:\平台源码\fe-main\src\components\SideMenu\menu.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\components\SideMenu\menu.tsx`
 - 人员组织：`/users`、`/user-groups`、`/roles`
 - 系统配置：AI 配置 tab、站点设置、变量设置、单点登录、告警引擎、关于
 
@@ -41,10 +41,10 @@ FindX 实现要求：
 
 源码：
 
-- `D:\平台源码\fe-main\src\pages\user\users.tsx`
-- `D:\平台源码\fe-main\src\pages\user\component\createModal\index.tsx`
-- `D:\平台源码\fe-main\src\pages\user\component\userForm\index.tsx`
-- `D:\平台源码\fe-main\src\services\manage.ts`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\users.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\component\createModal\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\component\userForm\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\services\manage.ts`
 
 结构必须保留：
 
@@ -74,11 +74,11 @@ API 事实源：
 
 源码：
 
-- `D:\平台源码\fe-main\src\pages\user\groups.tsx`
-- `D:\平台源码\fe-main\src\pages\user\business.tsx`
-- `D:\平台源码\fe-main\src\pages\user\component\teamForm\index.tsx`
-- `D:\平台源码\fe-main\src\pages\user\component\businessForm\index.tsx`
-- `D:\平台源码\fe-main\src\pages\user\component\addUser\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\groups.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\business.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\component\teamForm\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\component\businessForm\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\user\component\addUser\index.tsx`
 
 结构必须保留：
 
@@ -112,10 +112,10 @@ API 事实源：
 
 源码：
 
-- `D:\平台源码\fe-main\src\pages\permissions\index.tsx`
-- `D:\平台源码\fe-main\src\pages\permissions\RoleFormModal.tsx`
-- `D:\平台源码\fe-main\src\pages\permissions\Operations.tsx`
-- `D:\平台源码\fe-main\src\pages\permissions\services.ts`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\permissions\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\permissions\RoleFormModal.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\permissions\Operations.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\permissions\services.ts`
 
 结构必须保留：
 
@@ -142,12 +142,12 @@ API 事实源：
 
 源码：
 
-- `D:\平台源码\fe-main\src\pages\siteSettings\index.tsx`
-- `D:\平台源码\fe-main\src\pages\siteSettings\services.ts`
-- `D:\平台源码\fe-main\src\pages\variableConfigs\index.tsx`
-- `D:\平台源码\fe-main\src\pages\variableConfigs\FormModal.tsx`
-- `D:\平台源码\fe-main\src\pages\help\SSOConfigs`
-- `D:\平台源码\fe-main\src\pages\help\servers`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\siteSettings\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\siteSettings\services.ts`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\variableConfigs\index.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\variableConfigs\FormModal.tsx`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\help\SSOConfigs`
+- `D:\项目迁移文件\平台源码\fe-main\src\pages\help\servers`
 
 结构必须保留：
 

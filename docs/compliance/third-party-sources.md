@@ -52,7 +52,7 @@
 | Kong Agent | `https://github.com/apache/skywalking-kong` | FindX Agent Kong 探针 | 记录源码路径、版本/commit、Kong 版本矩阵、插件安装、接入验证 |
 | Browser Client JS | `https://github.com/apache/skywalking-client-js` | FindX Browser Agent | 记录源码路径、版本/commit、SDK 引入方式、隐私脱敏、RUM 事件、SourceMap 策略 |
 
-当前本地 `D:\平台源码` 已确认存在 SkyWalking UI/OAP 相关源码目录；独立 Agent 仓库如未落地，P0 阶段必须补齐源码目录、版本登记或明确 `BLOCKED`，不能直接进入实现。
+当前本地成熟源码根目录为 `D:\项目迁移文件\平台源码`，已确认存在 SkyWalking UI/OAP 相关源码目录；旧路径 `D:\平台源码` 仅为迁移前历史绝对路径。独立 Agent 仓库如未落地，P0 阶段必须补齐源码目录、版本登记或明确 `BLOCKED`，不能直接进入实现。
 
 ## 品牌脱敏规则
 

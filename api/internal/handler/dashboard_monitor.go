@@ -38,7 +38,7 @@ func GetMonitorDashboardTemplate(c *gin.Context) {
 func ImportMonitorDashboardTemplate(c *gin.Context) {
 	tpl, ok := store.GetMonitorDashboardTemplate(c.Param("id"))
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "dashboard template not found"})
+		cmdbDashboardImportLookupBlocked(c, c.Param("id"))
 		return
 	}
 	var payload model.MonitorDashboardTemplateImportInput
@@ -51,12 +51,129 @@ func ImportMonitorDashboardTemplate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dashboard template import", "checks": checks})
 		return
 	}
-	out, err := store.SaveMonitorDashboard(item, requestActor(c))
+	existing, _, err := store.FindMonitorDashboardByTitleWorkspaceResourceGroup(item.Title, item.WorkspaceID, item.ResourceGroupID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "dashboard template import failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "dashboard import dedupe failed"})
 		return
 	}
-	c.JSON(http.StatusOK, sanitizeDashboard(*out))
+	cmdbDashboardImportBlocked(c, *tpl, *item, existing)
+}
+
+func cmdbDashboardImportLookupBlocked(c *gin.Context, templateID string) {
+	tpl := model.MonitorDashboardTemplate{
+		ID:    strings.TrimSpace(templateID),
+		Title: strings.TrimSpace(templateID),
+	}
+	cmdbDashboardImportBlocked(c, tpl, model.MonitorDashboard{
+		Title: strings.TrimSpace(templateID),
+	}, nil)
+}
+
+func cmdbDashboardImportBlocked(c *gin.Context, tpl model.MonitorDashboardTemplate, item model.MonitorDashboard, existing *model.MonitorDashboard) {
+	missing := []string{
+		"cmdb_dashboard_template_lookup_contract",
+		"cmdb_dashboard_import_runtime_contract",
+		"cmdb_dashboard_import_executor_contract",
+		"cmdb_dashboard_import_dedupe_contract",
+		"cmdb_dashboard_import_batch_result_contract",
+		"cmdb_dashboard_import_batch_receipt_contract",
+		"cmdb_dashboard_import_conflict_rollback_contract",
+		"cmdb_dashboard_import_rollback_receipt_contract",
+	}
+	if existing != nil {
+		missing = append(missing, "cmdb_dashboard_import_dedup_contract")
+	}
+	auditQuery := strings.Join([]string{
+		"scope=cmdb",
+		"resource_type=cmdb_dashboard_import",
+		"action=dashboard.template.import",
+		"template_id=" + tpl.ID,
+	}, "/")
+	auditLog, auditErr := auditDashboardTemplateImportRequest(c, tpl, item, existing)
+	if auditErr != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"code":          "DASHBOARD_IMPORT_AUDIT_UNAVAILABLE",
+			"error":         "dashboard import audit unavailable",
+			"safe_to_retry": false,
+		})
+		return
+	}
+	resp := gin.H{
+		"code":              "pending",
+		"status":            "pending",
+		"contract_id":       "cmdb.dashboard.import.runtime.v1",
+		"message":           "PENDING: dashboard import runtime, batch result and conflict rollback contracts are not open",
+		"missing_contracts": missing,
+		"blockers":          missing,
+		"safe_to_retry":     false,
+		"findx_audit_query": auditQuery,
+		"receipt_contract":  cmdbDashboardImportReceiptContract(missing),
+		"template": gin.H{
+			"id":    tpl.ID,
+			"title": tpl.Title,
+		},
+		"request_preview": gin.H{
+			"title":             item.Title,
+			"workspace_id":      item.WorkspaceID,
+			"resource_group_id": item.ResourceGroupID,
+			"tags":              item.Tags,
+		},
+		"audit_ref": auditLog.ID,
+	}
+	if existing != nil {
+		resp["dedupe"] = gin.H{
+			"reason": "existing_dashboard",
+			"existing_dashboard": gin.H{
+				"id":                existing.ID,
+				"title":             existing.Title,
+				"workspace_id":      existing.WorkspaceID,
+				"resource_group_id": existing.ResourceGroupID,
+			},
+		}
+	}
+	c.JSON(http.StatusConflict, resp)
+}
+
+func cmdbDashboardImportReceiptContract(missing []string) gin.H {
+	return gin.H{
+		"contract_id":       "cmdb.dashboard.import.receipts.v1",
+		"status":            "pending",
+		"required_receipts": []string{"dedupe_receipt", "batch_result_receipt", "rollback_receipt"},
+		"missing_contracts": uniquePackageRepositoryBlockers(missing),
+		"safe_to_retry":     false,
+	}
+}
+
+func auditDashboardTemplateImportRequest(c *gin.Context, tpl model.MonitorDashboardTemplate, item model.MonitorDashboard, existing *model.MonitorDashboard) (model.MonitorAuditLog, error) {
+	details := map[string]any{
+		"template_id":       tpl.ID,
+		"requested_title":   item.Title,
+		"workspace_id":      item.WorkspaceID,
+		"resource_group_id": item.ResourceGroupID,
+		"tag_count":         len(item.Tags),
+		"blocked_contract":  "cmdb.dashboard.import.runtime.v1",
+	}
+	status := "blocked"
+	summary := "dashboard template import blocked by contract"
+	if existing != nil {
+		details["dedupe"] = map[string]any{
+			"reason":                "existing_dashboard",
+			"existing_dashboard_id": existing.ID,
+		}
+		summary = "dashboard template import blocked by dedupe and contract"
+	}
+	return store.AddMonitorAuditLog(model.MonitorAuditLog{
+		Actor:        requestActor(c),
+		Action:       "dashboard.template.import",
+		ResourceType: "cmdb_dashboard_import",
+		ResourceID:   tpl.ID,
+		Scope:        "cmdb",
+		Status:       status,
+		TraceID:      c.GetHeader("X-Test-Batch-Id"),
+		ClientIP:     c.ClientIP(),
+		Summary:      summary,
+		Details:      details,
+	})
 }
 
 func CreateMonitorDashboard(c *gin.Context) {

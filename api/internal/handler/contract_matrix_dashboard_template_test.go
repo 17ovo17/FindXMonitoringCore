@@ -20,7 +20,7 @@ func TestContractMatrixSeededDashboardTemplateBuiltinGapsAreBlocked(t *testing.T
 		t.Run(id, func(t *testing.T) {
 			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+id, nil)
 			if w.Code != http.StatusConflict {
-				t.Fatalf("%s should return BLOCKED_BY_CONTRACT 409, got %d body=%s", id, w.Code, w.Body.String())
+				t.Fatalf("%s should return PENDING 409, got %d body=%s", id, w.Code, w.Body.String())
 			}
 			var payload model.ContractMatrixBlockedResponse
 			decodeContractMatrixResponse(t, w, &payload)
@@ -43,7 +43,7 @@ func TestContractMatrixSeededDashboardTemplateAggregateStaysBlocked(t *testing.T
 
 	w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/FX-CONTRACT-N9E-TEMPLATE-CENTER-DASHBOARD-IMPORT", nil)
 	if w.Code != http.StatusConflict {
-		t.Fatalf("dashboard template import aggregate should return BLOCKED_BY_CONTRACT 409, got %d body=%s", w.Code, w.Body.String())
+		t.Fatalf("dashboard template import aggregate should return PENDING 409, got %d body=%s", w.Code, w.Body.String())
 	}
 	var payload model.ContractMatrixBlockedResponse
 	decodeContractMatrixResponse(t, w, &payload)

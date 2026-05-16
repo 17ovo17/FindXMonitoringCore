@@ -188,7 +188,7 @@ export function TopologySection({ query, onNavigate }) {
     } catch (err) {
       setGraph({ nodes: [], edges: [] })
       const msg = formatTracingError(err)
-      if (msg.startsWith('BLOCKED_BY_CONTRACT') || (err && [404, 405, 501].includes(err.status))) {
+      if (msg.startsWith('PENDING') || (err && [404, 405, 501].includes(err.status))) {
         setBlocked(BLOCKED_HINT + ' (' + msg + ')')
       } else {
         setError(msg)

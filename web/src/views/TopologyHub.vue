@@ -13,8 +13,8 @@
         <el-tab-pane label="业务拓扑" name="topology">
           <TopologyView />
         </el-tab-pane>
-        <el-tab-pane label="探针管理" name="catpaw">
-          <CatpawView />
+        <el-tab-pane label="探针管理" name="agent">
+          <FindXAgentView />
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -26,17 +26,18 @@ import { ref, defineAsyncComponent, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const activeTab = ref(route.query.tab === 'catpaw' ? 'catpaw' : 'topology')
+const activeTab = ref(route.query.tab === 'agent' ? 'agent' : 'topology')
 
 watch(() => route.query.tab, value => {
-  if (value === 'catpaw' || value === 'topology') activeTab.value = value
+  if (value === 'agent') activeTab.value = 'agent'
+  if (value === 'topology') activeTab.value = 'topology'
 })
 
 const TopologyView = defineAsyncComponent(() =>
   import('./Topology.vue')
 )
-const CatpawView = defineAsyncComponent(() =>
-  import('./CatpawInstall.vue')
+const FindXAgentView = defineAsyncComponent(() =>
+  import('./FindXAgentInstall.vue')
 )
 </script>
 

@@ -7,7 +7,7 @@
 
 事实源目录：
 
-- `D:\平台源码\signoz-develop\frontend`
+- `D:\项目迁移文件\平台源码\signoz-develop\frontend`
 
 已检查入口：
 

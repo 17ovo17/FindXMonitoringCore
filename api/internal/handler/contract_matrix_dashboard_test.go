@@ -20,7 +20,7 @@ func TestContractMatrixSeededDashboardAnnotationsSplitGapsAreBlocked(t *testing.
 		t.Run(id, func(t *testing.T) {
 			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+id, nil)
 			if w.Code != http.StatusConflict {
-				t.Fatalf("%s should return BLOCKED_BY_CONTRACT 409, got %d body=%s", id, w.Code, w.Body.String())
+				t.Fatalf("%s should return PENDING 409, got %d body=%s", id, w.Code, w.Body.String())
 			}
 			var payload model.ContractMatrixBlockedResponse
 			decodeContractMatrixResponse(t, w, &payload)
@@ -48,7 +48,7 @@ func TestContractMatrixSeededDashboardPublicExportMigrateGapsAreBlocked(t *testi
 		t.Run(id, func(t *testing.T) {
 			w := performContractMatrixRequest(t, r, http.MethodGet, "/contract-matrix/"+id, nil)
 			if w.Code != http.StatusConflict {
-				t.Fatalf("%s should return BLOCKED_BY_CONTRACT 409, got %d body=%s", id, w.Code, w.Body.String())
+				t.Fatalf("%s should return PENDING 409, got %d body=%s", id, w.Code, w.Body.String())
 			}
 			var payload model.ContractMatrixBlockedResponse
 			decodeContractMatrixResponse(t, w, &payload)

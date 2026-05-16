@@ -72,7 +72,7 @@ func dataArrivalEvidenceSnapshotItem(item model.FindXAgentDataArrivalEvidence) m
 	if !model.IsFindXAgentReceiverBackedDataArrivalKind(item.Kind) || dataArrivalReceiverRef(item) == "" {
 		item.Status = model.FindXAgentDataArrivalStatusBlocked
 		if strings.TrimSpace(item.Blocker) == "" {
-			item.Blocker = "BLOCKED_BY_CONTRACT: receiver evidence ref is required for reported data arrival"
+			item.Blocker = "PENDING: receiver evidence ref is required for reported data arrival"
 		}
 	}
 	return item
@@ -132,19 +132,19 @@ func normalizeFindXAgentDataArrivalEvidence(item model.FindXAgentDataArrivalEvid
 	if !model.IsFindXAgentDataArrivalKind(item.Kind) {
 		item.Status = model.FindXAgentDataArrivalStatusBlocked
 		if item.Blocker == "" {
-			item.Blocker = "BLOCKED_BY_CONTRACT: unsupported data arrival kind"
+			item.Blocker = "PENDING: unsupported data arrival kind"
 		}
 	} else if model.IsFindXAgentReceiverBackedDataArrivalKind(item.Kind) &&
 		item.Status == model.FindXAgentDataArrivalStatusReported &&
 		dataArrivalReceiverRef(item) == "" {
 		item.Status = model.FindXAgentDataArrivalStatusBlocked
 		if item.Blocker == "" {
-			item.Blocker = "BLOCKED_BY_CONTRACT: receiver evidence ref is required for reported data arrival"
+			item.Blocker = "PENDING: receiver evidence ref is required for reported data arrival"
 		}
 	} else if !model.IsFindXAgentReceiverBackedDataArrivalKind(item.Kind) {
 		item.Status = model.FindXAgentDataArrivalStatusBlocked
 		if item.Blocker == "" {
-			item.Blocker = "BLOCKED_BY_CONTRACT: receiver/evidence/data-arrival validator is not open for this signal"
+			item.Blocker = "PENDING: receiver/evidence/data-arrival validator is not open for this signal"
 		}
 	}
 	item.Metadata = sanitizeLifecycleMetadata(item.Metadata)

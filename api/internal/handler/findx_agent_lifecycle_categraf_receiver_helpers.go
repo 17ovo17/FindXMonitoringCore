@@ -61,7 +61,66 @@ func remoteWriteEvidenceMetadata(c *gin.Context, size int) map[string]string {
 	if ip := clientHost(c.Request.RemoteAddr); ip != "" {
 		metadata["remote_ip"] = ip
 	}
+	mergeReceiverDispatchRuntimeMetadata(metadata, c)
 	return metadata
+}
+
+func mergeReceiverDispatchRuntimeMetadata(metadata map[string]string, c *gin.Context) {
+	rolloutRef := firstReceiverValue(
+		c.Query("source_rollout_id"),
+		c.Query("config_rollout_id"),
+		c.Query("rollout_id"),
+		c.Query("rollout_ref"),
+		c.GetHeader("X-FindX-Source-Rollout-Id"),
+		c.GetHeader("X-FindX-Config-Rollout-Id"),
+		c.GetHeader("X-FindX-Rollout-Id"),
+		c.GetHeader("X-FindX-Rollout-Ref"),
+	)
+	for key, value := range map[string]string{
+		"source_rollout_id": rolloutRef,
+		"request_ref": firstReceiverValue(
+			c.Query("request_ref"),
+			c.GetHeader("X-FindX-Request-Ref"),
+		),
+		"plugin_id": firstReceiverValue(
+			c.Query("plugin_id"),
+			c.GetHeader("X-FindX-Plugin-Id"),
+		),
+		"agent_ref": firstReceiverValue(
+			c.Query("agent_ref"),
+			c.Query("agent_id"),
+			c.GetHeader("X-FindX-Agent-Ref"),
+			c.GetHeader("X-FindX-Agent-Id"),
+		),
+		"cmdb_host_ref": firstReceiverValue(
+			c.Query("cmdb_host_ref"),
+			c.Query("target_id"),
+			c.GetHeader("X-FindX-CMDB-Host-Ref"),
+			c.GetHeader("X-FindX-Target-Id"),
+		),
+	} {
+		if clean := sanitizeReceiverRuntimeRefValue(key, value); clean != "" {
+			metadata[key] = clean
+		}
+	}
+}
+
+func sanitizeReceiverRuntimeRefValue(key, value string) string {
+	clean := sanitizeReceiverValue(key, value)
+	if clean == "" || receiverValueLooksFakeState(clean) {
+		return ""
+	}
+	return clean
+}
+
+func receiverValueLooksFakeState(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "queued", "running", "applied", "installed", "data_arrived", "service_registered",
+		"rolled_back", "rolled-back", "uninstalled", "delivered", "effective", "succeeded", "success", "imported":
+		return true
+	default:
+		return false
+	}
 }
 
 func safeReceiverMetadata(groups ...map[string]string) map[string]string {

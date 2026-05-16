@@ -1,12 +1,12 @@
 import { del, get, isPermissionError, normalizeList, post, redactText } from './http.js'
 
 export const AGENT_BLOCKERS = {
-  packageLifecycle: 'BLOCKED_BY_CONTRACT: 能力包下载、内置包仓库、签名校验、发布、停用和删除缺少 Agent Adapter 契约。',
-  installLifecycle: 'BLOCKED_BY_CONTRACT: 本机安装、远程安装、Kubernetes 安装、执行回执和审计记录缺少 Agent Adapter 契约。',
-  configLifecycle: 'BLOCKED_BY_CONTRACT: 配置模板保存、远程 writer、reload 回执、drift 检测、灰度/全量下发、回滚、审计记录和 Evidence Chain 缺少 Agent Adapter 契约。',
-  heartbeat: 'BLOCKED_BY_CONTRACT: 心跳详情、丢包检测、版本漂移、进程状态和服务注册缺少 Agent Adapter 契约。',
-  dataArrival: 'BLOCKED_BY_CONTRACT: 心跳、指标、日志、链路、性能分析、巡检、拓扑、前端体验和网关链路数据到达验证缺少 Agent Adapter 契约。',
-  traceLinkage: 'BLOCKED_BY_CONTRACT: 服务目录覆盖率、链路详情反查 Agent 状态、拓扑节点安装证据缺少 APM 与 Agent 联动契约。',
+  packageLifecycle: 'PENDING: 能力包下载、内置包仓库、签名校验、发布、停用和删除缺少 Agent Adapter 契约。',
+  installLifecycle: 'PENDING: 本机安装、远程安装、Kubernetes 安装、执行回执和审计记录缺少 Agent Adapter 契约。',
+  configLifecycle: 'PENDING: 配置模板保存、远程 writer、reload 回执、drift 检测、灰度/全量下发、回滚、审计记录和 Evidence Chain 缺少 Agent Adapter 契约。',
+  heartbeat: 'PENDING: 心跳详情、丢包检测、版本漂移、进程状态和服务注册缺少 Agent Adapter 契约。',
+  dataArrival: 'PENDING: 心跳、指标、日志、链路、性能分析、巡检、拓扑、前端体验和网关链路数据到达验证缺少 Agent Adapter 契约。',
+  traceLinkage: 'PENDING: 服务目录覆盖率、链路详情反查 Agent 状态、拓扑节点安装证据缺少 APM 与 Agent 联动契约。',
 }
 
 const cleanParams = (params = {}) => Object.fromEntries(
@@ -15,7 +15,7 @@ const cleanParams = (params = {}) => Object.fromEntries(
 
 export const formatAgentError = error => {
   if (isPermissionError(error)) return error.status === 401 ? '登录状态已过期，请重新登录。' : '当前账号没有 Agent 管理权限。'
-  if ([404, 405, 501].includes(error?.status)) return `BLOCKED_BY_CONTRACT: ${redactText(error.message || '接口未开放')}`
+  if ([404, 405, 501].includes(error?.status)) return `PENDING: ${redactText(error.message || '接口未开放')}`
   return redactText(error?.message || 'Agent 管理请求失败')
 }
 

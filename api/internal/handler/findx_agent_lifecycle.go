@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const agentBlocked = "BLOCKED_BY_CONTRACT"
+const agentBlocked = "pending"
 
 type agentPackageDef struct {
 	id                string
@@ -137,29 +137,71 @@ func CreateFindXAgentConfigRollout(c *gin.Context) {
 		return
 	}
 	metadata := safeAgentLifecycleMetadata(req.Metadata)
+	if isCMDBHostPluginRollout(req, metadata) {
+		if configRolloutOperationIdentityConflict(req, metadata) {
+			metadata["plugin_action_conflict"] = "blocked"
+		}
+		metadata["plugin_action"] = configRolloutOperationMode(req, metadata)
+	}
 	if !hasConfigRolloutTarget(req) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "target_ids or agent_ids is required"})
 		return
 	}
+	credentialCtx := cmdbResolvePluginCredentialContext(req, metadata)
+	assignmentCtx := cmdbResolvePluginAssignmentContext(req, metadata)
 	missing := missingConfigRolloutRefs(req, metadata)
+	missing = cmdbApplyCredentialResolveGate(missing, credentialCtx)
+	missing = cmdbApplyCredentialScopePolicyGate(missing, credentialCtx, configRolloutOperationMode(req, metadata))
+	if isCMDBHostPluginRollout(req, metadata) && configRolloutOperationMode(req, metadata) == configRolloutPluginOperationDispatch {
+		missing = cmdbFilterMissingContractsForDispatch(missing, assignmentCtx)
+	}
 	rollout := newBlockedFindXAgentConfigRollout(req, metadata)
+	rollout.Blocker = configRolloutBlockerFromMissing(missing)
 	saved, err := store.SaveFindXAgentConfigRollout(rollout)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "config rollout persistence unavailable"})
 		return
 	}
+	if isCMDBHostPluginRollout(req, metadata) && configRolloutOperationMode(req, metadata) == configRolloutPluginOperationAssign {
+		assignmentCtx, err = cmdbPersistPluginAssignment(c, req, metadata, saved, missing)
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin assignment persistence unavailable"})
+			return
+		}
+		if assignmentCtx.AssignmentReady {
+			missing = cmdbFilterMissingContractsForAssignment(missing, true)
+			saved.Blocker = configRolloutBlockerFromMissing(missing)
+			saved.Metadata["assignment_ref"] = assignmentCtx.Assignment.ID
+			saved.Metadata["target_binding_ref"] = assignmentCtx.TargetBinding.ID
+			saved, err = store.SaveFindXAgentConfigRollout(saved)
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "config rollout persistence unavailable"})
+				return
+			}
+		}
+	}
+	if isCMDBHostPluginRollout(req, metadata) && configRolloutOperationMode(req, metadata) == configRolloutPluginOperationDispatch {
+		saved, err = cmdbAttachConfigRolloutReceiptRequestRefs(saved, req, metadata, requestActor(c))
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "config rollout receipt request persistence unavailable"})
+			return
+		}
+	}
 	auditEvent(c, "findx_agent.config_rollout.requested", saved.ID, "medium", "blocked", saved.Blocker, c.GetHeader("X-Test-Batch-Id"))
 	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             saved.Blocker,
-		"status":            "blocked",
-		"state_machine":     blockedExecutionStateMachine(saved.Blocker),
-		"receipt_contract":  configRolloutReceiptContract(req, metadata, saved.CredentialRefPresent, missing),
-		"receipt_matrix":    configRolloutReceiptContractMatrix(),
-		"blockers":          configRolloutResponseBlockers(missing),
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"data":              saved,
+		"code":                http.StatusConflict,
+		"error":               saved.Blocker,
+		"status":              "blocked",
+		"state_machine":       blockedExecutionStateMachine(saved.Blocker),
+		"operation_contract":  cmdbOperationContractWithAssignmentAndCredential(configRolloutOperationContract(req, metadata, missing), assignmentCtx, credentialCtx),
+		"receipt_contract":    configRolloutReceiptContract(req, metadata, saved.CredentialRefPresent, missing),
+		"receipt_matrix":      configRolloutReceiptContractMatrix(),
+		"blockers":            configRolloutResponseBlockers(missing),
+		"missing_contracts":   missing,
+		"assignment_contract": cmdbPluginAssignmentResponse(assignmentCtx),
+		"credential_contract": cmdbPluginCredentialContractResponse(credentialCtx),
+		"safe_to_retry":       false,
+		"data":                safeConfigRolloutRuntimeReadDetail(saved),
 	})
 }
 
@@ -486,9 +528,9 @@ func findAgentPackage(id string) (model.FindXAgentPackage, bool) {
 
 func packageInstallBlocker(pkg model.FindXAgentPackage) string {
 	if pkg.Status != "ready" {
-		return "BLOCKED_BY_CONTRACT: 能力包源码、内置包仓库、签名证据、安装计划和配置下发契约未接入"
+		return "PENDING: 能力包源码、内置包仓库、签名证据、安装计划和配置下发契约未接入"
 	}
-	return "BLOCKED_BY_CONTRACT: 安装器生成、执行回执和审计协议未开放"
+	return "PENDING: 安装器生成、执行回执和审计协议未开放"
 }
 
 func agentLifecyclePhases(readyPackages, agents, online int) []model.FindXAgentLifecyclePhase {
@@ -578,9 +620,9 @@ func dataArrivalCapabilityAlias(capability string) string {
 func dataArrivalBlockedReason(name string, hasCapability bool) string {
 	const suffix = "数据到达验证器未开放；heartbeat、任务创建、命令预览或复制按钮不能替代该信号"
 	if hasCapability {
-		return "BLOCKED_BY_CONTRACT: " + name + "仅有 Agent 能力上报线索，" + suffix
+		return "PENDING: " + name + "仅有 Agent 能力上报线索，" + suffix
 	}
-	return "BLOCKED_BY_CONTRACT: " + name + suffix
+	return "PENDING: " + name + suffix
 }
 
 func validAgentTaskAction(action string) bool {

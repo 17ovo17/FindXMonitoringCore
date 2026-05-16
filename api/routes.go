@@ -58,5 +58,6 @@ func registerAPIV1Routes(r *gin.Engine, v1 *gin.RouterGroup, mw routeMiddleware)
 	registerMcpRoutes(v1, mw)
 	registerSettingsRoutes(v1, mw)
 	registerTracingRoutes(v1, mw)
+	registerEngineeringRoutes(v1, mw)
 	registerDownloadRoute(r)
 }

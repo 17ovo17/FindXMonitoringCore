@@ -82,11 +82,11 @@ func TestFindXAgentPackageEnvironmentMatrixPluginDeliveryContract(t *testing.T) 
 		for _, row := range pkg.EnvironmentMatrix {
 			for _, want := range []string{
 				"FINDX_AGENT_CONTROL_PLANE_ENTRY",
-				"REMOTE_MUTATION_BLOCKED_BY_CONTRACT",
-				"RELOAD_BLOCKED_BY_CONTRACT",
-				"DRIFT_BLOCKED_BY_CONTRACT",
-				"ROLLBACK_BLOCKED_BY_CONTRACT",
-				"RECEIPT_BLOCKED_BY_CONTRACT",
+				"REMOTE_MUTATION_PENDING",
+				"RELOAD_PENDING",
+				"DRIFT_PENDING",
+				"ROLLBACK_PENDING",
+				"RECEIPT_PENDING",
 			} {
 				if !strings.Contains(row.ConfigDelivery, want) {
 					t.Fatalf("package %s config delivery missing %s: %#v", id, want, row)

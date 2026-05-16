@@ -130,7 +130,7 @@ func TestWindowsInstallerPrerequisitesStillBlockWhenExecutorDisabled(t *testing.
 	if result.Allowed || result.Status != "blocked" || result.Runner != "windows-cmd" {
 		t.Fatalf("executor should remain blocked, got %#v", result)
 	}
-	if result.Reason != "BLOCKED_BY_CONTRACT: Windows executor/service lifecycle protocol not enabled" {
+	if result.Reason != "PENDING: Windows executor/service lifecycle protocol not enabled" {
 		t.Fatalf("expected executor disabled blocker, got %q", result.Reason)
 	}
 }

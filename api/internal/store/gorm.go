@@ -42,6 +42,7 @@ func InitGormDB() {
 	gormDB = db
 	autoMigrateCmdb()
 	SeedCmdbDefaults()
+	SeedCmdbContractProbeTopology()
 	SeedMcpDefaults()
 }
 
@@ -53,6 +54,14 @@ func autoMigrateCmdb() {
 		&model.CmdbInstance{},
 		&model.CmdbRelationType{},
 		&model.CmdbInstanceRelation{},
+		&model.CmdbMonitorBinding{},
+		&model.CmdbMonitorBindingReceipt{},
+		&model.CmdbRelationActionRequest{},
+		&model.CmdbRelationActionReceipt{},
+		&model.CmdbResourceApproval{},
+		&model.CmdbOperationRiskRecord{},
+		&model.FindXAgentPluginAssignment{},
+		&model.FindXAgentPluginTargetBinding{},
 		&model.McpServer{},
 		&model.MonitorAlertEventRecord{},
 		&model.ProbeCheck{},

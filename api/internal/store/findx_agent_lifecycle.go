@@ -217,6 +217,8 @@ func ResetFindXAgentLifecycleForTest() {
 	findxAgentConfigRollouts = map[string]*model.FindXAgentConfigRollout{}
 	findxAgentExecutionTasks = map[string]*model.FindXAgentExecutionTask{}
 	findxAgentDataArrivalEvidence = map[string]*model.FindXAgentDataArrivalEvidence{}
+	findxAgentPluginAssignments = map[string]*model.FindXAgentPluginAssignment{}
+	findxAgentPluginTargetBindings = map[string]*model.FindXAgentPluginTargetBinding{}
 	mysqlOK = false
 }
 

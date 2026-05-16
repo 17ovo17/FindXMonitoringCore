@@ -20,7 +20,7 @@ const (
 	ProbeIncidentStatusMonitoring    = "monitoring"
 	ProbeIncidentStatusResolved      = "resolved"
 
-	ProbeContractBlockedCode = "BLOCKED_BY_CONTRACT"
+	ProbeContractBlockedCode = "PENDING"
 )
 
 type ProbeHTTPConfig struct {

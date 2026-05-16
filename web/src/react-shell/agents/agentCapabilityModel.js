@@ -1,6 +1,6 @@
 import { pluginConfigSpec } from './agentPluginConfigModel.js'
 
-const BLOCKED = 'BLOCKED_BY_CONTRACT'
+const BLOCKED = 'PENDING'
 const MISSING_SOURCE = 'LOCAL_SOURCE_MISSING'
 const MISSING_PACKAGE = 'PACKAGE_MISSING'
 const SOURCE_PRESENT = 'LOCAL_SOURCE_PRESENT'

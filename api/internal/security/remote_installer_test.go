@@ -57,7 +57,7 @@ func TestRemoteInstallerPreflightCompleteRefsStillBlocksExecutor(t *testing.T) {
 			if result.Allowed || result.Status != "blocked" {
 				t.Fatalf("complete %s refs must remain blocked, got %#v", scope, result)
 			}
-			want := "BLOCKED_BY_CONTRACT: " + scope + " remote executor contract is not enabled"
+			want := "PENDING: " + scope + " remote executor contract is not enabled"
 			if result.Reason != want {
 				t.Fatalf("expected executor blocker %q, got %q", want, result.Reason)
 			}

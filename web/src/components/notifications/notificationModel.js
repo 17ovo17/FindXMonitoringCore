@@ -3,31 +3,31 @@ import { redactText, safeJson } from '../../api/notifications'
 export const supportedChannelTypes = new Set(['dingtalk', 'feishu', 'wecom'])
 
 export const channelTypes = [
-  { ident: 'dingtalk', label: '钉钉', icon: '钉', supported: true },
-  { ident: 'feishu', label: '飞书', icon: '飞', supported: true },
-  { ident: 'wecom', label: '企业微信', icon: '企', supported: true },
+  { ident: 'dingtalk', label: '钉钉', icon: 'D', supported: true },
+  { ident: 'feishu', label: '飞书', icon: 'F', supported: true },
+  { ident: 'wecom', label: '企业微信', icon: 'W', supported: true },
   { ident: 'callback', label: 'Webhook', icon: 'H', supported: false },
   { ident: 'email', label: 'Email', icon: 'M', supported: false },
   { ident: 'pagerduty', label: 'PagerDuty', icon: 'P', supported: false },
   { ident: 'script', label: 'Script', icon: 'S', supported: false },
   { ident: 'telegram', label: 'Telegram', icon: 'T', supported: false },
-  { ident: 'sms', label: 'SMS', icon: '短', supported: false },
-  { ident: 'voice', label: 'Voice', icon: '电', supported: false },
+  { ident: 'sms', label: 'SMS', icon: 'S', supported: false },
+  { ident: 'voice', label: 'Voice', icon: 'V', supported: false },
 ]
 
 export const blockedContracts = {
-  'rule-list': '通知规则 contract 未暴露，需接入规则列表、启停、克隆、删除、详情和测试投递。',
-  'rule-create': '通知规则新增/编辑 contract 未暴露，需接入事件条件、通知配置、接收对象、时间窗口和审计。',
+  'channel-type': '该通知媒介类型尚未接入投递 contract，不能伪装为可用媒介。',
+  'rule-list': '通知规则列表 contract 未暴露，必须接入规则列表、启停、克隆、删除、详情和测试投递。',
+  'rule-create': '通知规则新增/编辑 contract 未暴露，必须接入事件条件、通知配置、接收对象、时间窗口和审计。',
   'rule-toggle': '通知规则启停 contract 未暴露，不能只在前端切换静态状态。',
-  'channel-type': '该通知媒介的投递 contract 未接入当前后端，不能伪装为可用媒介。',
-  'template-list': '消息模板 contract 未暴露，需接入模板列表、详情、编辑、预览、克隆和删除。',
+  'template-list': '消息模板列表 contract 未暴露，必须接入列表、详情、编辑、预览、克隆和删除。',
   'template-save': '消息模板保存/预览 contract 未暴露，不能静态保存模板内容。',
 }
 
 export const blockedPayload = (action, context = {}) => safeJson({
   action,
   context,
-  status: 'BLOCKED_BY_CONTRACT',
+  status: 'PENDING',
   next_contract_needed: blockedContracts[action] || '后端 contract 未暴露',
 })
 
@@ -39,7 +39,7 @@ export const normalizeChannel = raw => ({
   endpoint: redactText(raw?.endpoint || raw?.webhook || ''),
   receiver: redactText(raw?.receiver || ''),
   enabled: raw?.enabled !== false,
-  updatedBy: redactText(raw?.updated_by || raw?.updatedBy || 'root'),
+  updatedBy: redactText(raw?.updated_by || raw?.updatedBy || 'system'),
   updatedAt: raw?.updated_at || raw?.updatedAt || raw?.created_at || '',
 })
 

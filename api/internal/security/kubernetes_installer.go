@@ -45,14 +45,14 @@ func EvaluateKubernetesInstallerPrerequisites(input KubernetesInstallerPrerequis
 		return KubernetesInstallerGateResult{
 			Allowed: false,
 			Status:  "blocked",
-			Reason:  "BLOCKED_BY_CONTRACT: missing " + strings.Join(missing, ", "),
+			Reason:  "PENDING: missing " + strings.Join(missing, ", "),
 			Runner:  runner,
 		}
 	}
 	return KubernetesInstallerGateResult{
 		Allowed: false,
 		Status:  "blocked",
-		Reason:  "BLOCKED_BY_CONTRACT: Kubernetes executor not enabled / lifecycle protocol not open",
+		Reason:  "PENDING: Kubernetes executor not enabled / lifecycle protocol not open",
 		Runner:  runner,
 	}
 }

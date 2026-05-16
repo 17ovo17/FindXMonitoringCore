@@ -94,7 +94,7 @@ func seedEvidenceChainBlockedLifecycleRecords(t *testing.T) {
 	if _, err := store.SaveFindXAgentConfigRollout(model.FindXAgentConfigRollout{
 		ID:       "rollout-a",
 		Status:   "running",
-		Blocker:  "BLOCKED_BY_CONTRACT: executor not enabled",
+		Blocker:  "PENDING: executor not enabled",
 		Metadata: map[string]string{"evidence_chain_ref": "chain-ref", "password": "secret", "state": "succeeded"},
 	}); err != nil {
 		t.Fatalf("save config rollout: %v", err)
@@ -103,7 +103,7 @@ func seedEvidenceChainBlockedLifecycleRecords(t *testing.T) {
 		ID:       "task-a",
 		Action:   "uninstall",
 		Status:   "queued",
-		Blocker:  "BLOCKED_BY_CONTRACT: executor not enabled",
+		Blocker:  "PENDING: executor not enabled",
 		Metadata: map[string]string{"audit_ref": "audit-ref", "cookie": "secret-cookie", "phase": "success"},
 	}); err != nil {
 		t.Fatalf("save task: %v", err)
@@ -113,10 +113,10 @@ func seedEvidenceChainBlockedLifecycleRecords(t *testing.T) {
 func seedEvidenceChainUnsafeRecords(t *testing.T) (string, string) {
 	t.Helper()
 	longID := strings.Repeat("evidence-", 20)
-	longBlocker := "BLOCKED_BY_CONTRACT: " + strings.Repeat("missing-contract-", 20)
+	longBlocker := "PENDING: " + strings.Repeat("missing-contract-", 20)
 	if _, err := store.SaveFindXAgentInstallPlan(model.FindXAgentInstallPlan{
 		ID:           "token-control-\x00id",
-		Blocker:      "BLOCKED_BY_CONTRACT: bearer token blocked",
+		Blocker:      "PENDING: bearer token blocked",
 		EvidenceRefs: []string{"safe-ref"},
 	}); err != nil {
 		t.Fatalf("save install plan: %v", err)
@@ -130,7 +130,7 @@ func seedEvidenceChainUnsafeRecords(t *testing.T) (string, string) {
 	if _, err := store.SaveFindXAgentExecutionTask(model.FindXAgentExecutionTask{
 		ID:      longID,
 		Action:  "install",
-		Blocker: "BLOCKED_BY_CONTRACT:\x00 executor not enabled",
+		Blocker: "PENDING:\x00 executor not enabled",
 	}); err != nil {
 		t.Fatalf("save execution task: %v", err)
 	}

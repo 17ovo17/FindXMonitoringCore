@@ -83,26 +83,26 @@ export const payloadTabs = [
 ]
 
 export const blockedContracts = {
-  components: 'BLOCKED_BY_CONTRACT：组件实体列表契约未暴露，当前仅展示仪表盘模板降级视图，不能判定组件实体完成。',
-  systems: '系统集成新增、编辑、删除、排序和菜单显示状态已接入 FindX 后端写契约；嵌入打开和动态菜单嵌入仍保持 BLOCKED_BY_CONTRACT。',
+  components: 'PENDING：组件实体列表契约未暴露，当前仅展示仪表盘模板降级视图，不能判定组件实体完成。',
+  systems: '系统集成新增、编辑、删除、排序和菜单显示状态已接入 FindX 后端写契约；嵌入打开和动态菜单嵌入仍保持 PENDING。',
   componentCreate: '组件新增已接入 FindX 后端写契约；保存后会重新读取列表确认。',
   componentEdit: '组件编辑、图标、说明和停用状态已接入 FindX 后端写契约；内置静态行由后端 409 保护。',
   componentDelete: '组件删除已接入 FindX 后端写契约；内置静态行或仍有关联 payload 的组件由后端 409 保护。',
-  collect: 'BLOCKED_BY_CONTRACT：采集模板列表、分类、下发和回滚契约未暴露。',
-  metric: 'BLOCKED_BY_CONTRACT：内置指标列表、指标详情和查询联动契约未暴露。',
+  collect: 'PENDING：采集模板列表、分类、下发和回滚契约未暴露。',
+  metric: 'PENDING：内置指标列表、指标详情和查询联动契约未暴露。',
   alert: '告警规则 payload 写入已接入 FindX 后端契约；导入、数据源替换和批量导出业务落地仍未暴露。',
-  record: 'BLOCKED_BY_CONTRACT：记录规则模板列表、导入、启停和预计算契约未暴露。',
-  payloadCreate: 'dashboard、collect、alert payload 新增已接入 FindX 后端写契约；metric、firemap、record 仍保持 BLOCKED_BY_CONTRACT。',
+  record: 'PENDING：记录规则模板列表、导入、启停和预计算契约未暴露。',
+  payloadCreate: 'dashboard、collect、alert payload 新增已接入 FindX 后端写契约；metric、firemap、record 仍保持 PENDING。',
   payloadEdit: 'dashboard、collect、alert payload 编辑已接入 FindX 后端写契约；内置静态行由后端 409 保护。',
   payloadDelete: 'payload 删除已接入 FindX 后端写契约；内置静态行由后端 409 保护。',
-  payloadImport: 'BLOCKED_BY_CONTRACT：payload 导入到业务组契约未暴露，当前不打开导入表单，也不调用非同源导入接口。',
-  payloadContent: 'BLOCKED_BY_CONTRACT：当前记录缺少可用 payload.content，不能预览、导出或导入。',
+  payloadImport: 'PENDING：payload 导入到业务组契约未暴露，当前不打开导入表单，也不调用非同源导入接口。',
+  payloadContent: 'PENDING：当前记录缺少可用 payload.content，不能预览、导出或导入。',
   systemCreate: '系统集成新增已接入 FindX 后端写契约。',
   systemEdit: '系统集成编辑已接入 FindX 后端写契约。',
   systemDelete: '系统集成删除已接入 FindX 后端写契约；内置项删除由后端保护。',
   systemSort: '系统集成排序权重写入已接入 FindX 后端写契约。',
   systemMenu: '系统集成菜单显示状态已接入 FindX 后端 hide 契约；动态菜单嵌入仍阻断。',
-  systemOpen: 'BLOCKED_BY_CONTRACT：系统集成嵌入打开契约未开放，当前不打开 iframe、WebView 或外部窗口。',
+  systemOpen: 'PENDING：系统集成嵌入打开契约未开放，当前不打开 iframe、WebView 或外部窗口。',
 }
 
 export const writablePayloadTypes = new Set(['dashboard', 'collect', 'alert'])
@@ -336,7 +336,7 @@ export const parsePayloadDraft = (draft, editing = false) => {
   const cate = String(draft?.cate || '').trim()
   const name = String(draft?.name || '').trim()
   const contentText = String(draft?.content || '').trim()
-  if (!writablePayloadTypes.has(type)) return { error: `payload 类型 ${type || '-'} 暂未开放写入，保持 BLOCKED_BY_CONTRACT。` }
+  if (!writablePayloadTypes.has(type)) return { error: `payload 类型 ${type || '-'} 暂未开放写入，保持 PENDING。` }
   if (!editing && id && !/^[A-Za-z0-9_.:-]{1,64}$/.test(id)) return { error: 'ID 只能包含字母、数字、点、下划线、冒号或短横线，最长 64 位。' }
   if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(uuid)) return { error: 'UUID 只能包含字母、数字、点、下划线、冒号或短横线，最长 64 位。' }
   if (!componentId) return { error: 'component_id 缺失，不能保存 payload。' }
@@ -535,7 +535,7 @@ export const systemDetailJson = (row) => safeJson({
   update_at: row.updateAt,
   blocked_actions: {
     open_embedded: blockedContracts.systemOpen,
-    menu_embedding: 'BLOCKED_BY_CONTRACT：菜单嵌入仍由后端契约阻断，当前仅允许切换是否显示在菜单。',
+    menu_embedding: 'PENDING：菜单嵌入仍由后端契约阻断，当前仅允许切换是否显示在菜单。',
   },
 }, 20000)
 
@@ -549,7 +549,7 @@ export const buildFallbackComponents = (payloads) => {
       ident,
       key,
       logo: logoForIdent(key),
-      readme: '当前仅展示仪表盘模板的降级视图。组件实体契约未暴露，新增、编辑、删除、导入与系统集成仍保持 BLOCKED_BY_CONTRACT。',
+      readme: '当前仅展示仪表盘模板的降级视图。组件实体契约未暴露，新增、编辑、删除、导入与系统集成仍保持 PENDING。',
       disabled: false,
       dashboardCount: 0,
       alertCount: 0,

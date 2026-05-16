@@ -25,7 +25,7 @@ FindX 可把“工作流”一级入口并入 AI SRE 工作流，但内部页面
 
 ## 3. 告警规则结构
 
-事实源：`D:\平台源码\fe-main\src\pages\alertRules`。
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\pages\alertRules`。
 
 | 区域/动作 | 源码组件 | FindX 要求 |
 | --- | --- | --- |

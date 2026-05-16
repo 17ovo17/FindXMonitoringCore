@@ -146,7 +146,7 @@ function LiveStreamView({ live }) {
   if (live.source !== 'findx_audit') {
     return (
       <div className='fx-logs-panel'>
-        <p style={{ margin: 0, color: 'var(--fx-text-weak,#66758d)' }}>通用 OTel 实时日志仍为 BLOCKED_BY_CONTRACT，未发起实时请求。</p>
+        <p style={{ margin: 0, color: 'var(--fx-text-weak,#66758d)' }}>通用 OTel 实时日志仍为 PENDING，未发起实时请求。</p>
       </div>
     )
   }

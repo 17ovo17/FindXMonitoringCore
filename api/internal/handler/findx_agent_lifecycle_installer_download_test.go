@@ -28,7 +28,7 @@ func TestInstallerDownloadEndpointsReturnBlockedContract(t *testing.T) {
 				t.Fatalf("installer download should be blocked, got %d body=%s", w.Code, body)
 			}
 			for _, want := range []string{
-				"BLOCKED_BY_CONTRACT",
+				"PENDING",
 				"package_repository",
 				"signature",
 				"script_manifest",
@@ -53,7 +53,7 @@ func TestInstallerDownloadBlocksWhenBundledEnvironmentEvidenceIsMissing(t *testi
 
 	w := performAgentLifecycleGet("/api/v1/findx-agents/installers/linux.sh?package=host-collector", DownloadFindXAgentLinuxInstaller)
 	body := w.Body.String()
-	if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 		t.Fatalf("installer download must block when environment evidence is missing, got %d body=%s", w.Code, body)
 	}
 	for _, want := range []string{
@@ -104,10 +104,10 @@ func TestInstallerDownloadBlocksProductionLikeReadyEnvironment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := performAgentLifecycleGet(tt.path, tt.handler)
 			body := w.Body.String()
-			if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+			if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 				t.Fatalf("production-like installer fixture must block, got %d body=%s", w.Code, body)
 			}
-			for _, want := range []string{"TRUST_CHAIN_BLOCKED_BY_CONTRACT", "TRUST_CHAIN_VERIFICATION_RECEIPT_MISSING"} {
+			for _, want := range []string{"TRUST_CHAIN_PENDING", "TRUST_CHAIN_VERIFICATION_RECEIPT_MISSING"} {
 				if !strings.Contains(body, want) {
 					t.Fatalf("installer blocker should include %q, body=%s", want, body)
 				}
@@ -135,7 +135,7 @@ func TestInstallerDownloadDoesNotEchoSensitiveQuery(t *testing.T) {
 	w := performAgentLifecycleGet(path, DownloadFindXAgentLinuxInstaller)
 	body := w.Body.String()
 
-	if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 		t.Fatalf("installer download should stay blocked, got %d body=%s", w.Code, body)
 	}
 	for _, forbidden := range []string{
@@ -172,7 +172,7 @@ func TestInstallerDownloadBlocksTestOnlyRepositoryEvidence(t *testing.T) {
 
 	w := performAgentLifecycleGet("/api/v1/findx-agents/installers/linux.sh?package=host-collector", DownloadFindXAgentLinuxInstaller)
 	body := w.Body.String()
-	if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 		t.Fatalf("test-only repository must not return executable installer, got %d body=%s", w.Code, body)
 	}
 	for _, want := range []string{"PACKAGE_REPOSITORY_TEST_ONLY", "SIGNATURE_TEST_ONLY"} {
@@ -206,7 +206,7 @@ func TestInstallerDownloadRejectsUnsafeRepositoryReferences(t *testing.T) {
 
 			w := performAgentLifecycleGet("/api/v1/findx-agents/installers/linux.sh?package=host-collector&token=secret-token", DownloadFindXAgentLinuxInstaller)
 			body := w.Body.String()
-			if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+			if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 				t.Fatalf("unsafe repository ref must block installer, got %d body=%s", w.Code, body)
 			}
 			assertInstallerScriptDoesNotEchoSensitiveQuery(t, body)

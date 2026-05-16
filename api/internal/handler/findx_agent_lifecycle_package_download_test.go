@@ -80,7 +80,7 @@ func TestPackageDownloadExposesMissingSignatureVerificationBlocker(t *testing.T)
 
 	assertPackageDownloadBlocked(t, w)
 	for _, want := range []string{
-		"TRUST_CHAIN_BLOCKED_BY_CONTRACT",
+		"TRUST_CHAIN_PENDING",
 		"TRUST_CHAIN_SIGNATURE_VERIFICATION_MISSING",
 	} {
 		if !strings.Contains(w.Body.String(), want) {
@@ -101,7 +101,7 @@ func TestPackageDownloadBlocksTestOnlyRepositoryEvidence(t *testing.T) {
 	assertPackageDownloadBlockers(t, w,
 		"PACKAGE_REPOSITORY_TEST_ONLY",
 		"SIGNATURE_TEST_ONLY",
-		"TRUST_CHAIN_BLOCKED_BY_CONTRACT",
+		"TRUST_CHAIN_PENDING",
 	)
 }
 
@@ -189,7 +189,7 @@ func packageNameFromPath(path string) string {
 func assertPackageDownloadBlocked(t *testing.T, w *httptest.ResponseRecorder) {
 	t.Helper()
 	body := w.Body.String()
-	if w.Code != http.StatusConflict || !strings.Contains(body, "BLOCKED_BY_CONTRACT") {
+	if w.Code != http.StatusConflict || !strings.Contains(body, "PENDING") {
 		t.Fatalf("package download should be blocked, got %d body=%s", w.Code, body)
 	}
 	for _, forbidden := range []string{"secret-token", "secret-password", "secret-cookie", "secret-key"} {

@@ -38,10 +38,10 @@ export const payloadTabs = [
 ]
 
 export const blockedContracts = {
-  collect: 'BLOCKED_BY_CONTRACT：采集模板 payload 列表、分组选择、下发和回滚 contract 未完整暴露。',
-  metric: 'BLOCKED_BY_CONTRACT：内置指标 payload 列表、PromQL 详情和指标浏览器联动 contract 未完整暴露。',
-  alert: 'BLOCKED_BY_CONTRACT：告警规则模板分类、导入到业务组、数据源替换和批量导出 contract 未完整暴露。',
-  record: 'BLOCKED_BY_CONTRACT：记录规则模板列表、导入、启停和预计算规则 contract 未完整暴露。',
+  collect: 'PENDING：采集模板 payload 列表、分组选择、下发和回滚 contract 未完整暴露。',
+  metric: 'PENDING：内置指标 payload 列表、PromQL 详情和指标浏览器联动 contract 未完整暴露。',
+  alert: 'PENDING：告警规则模板分类、导入到业务组、数据源替换和批量导出 contract 未完整暴露。',
+  record: 'PENDING：记录规则模板列表、导入、启停和预计算规则 contract 未完整暴露。',
 }
 
 export const toTags = value => Array.isArray(value)

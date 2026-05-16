@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	cmdbBlockedByContract = "BLOCKED_BY_CONTRACT"
+	cmdbBlockedByContract = "pending"
 	cmdbMaskedValue       = "******"
 )
 

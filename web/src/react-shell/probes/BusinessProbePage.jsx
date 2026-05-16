@@ -23,7 +23,7 @@ function SectionTabs({ section, onNavigate }) {
 }
 
 function Blocked({ children }) {
-  return <div className='fx-probe-blocked'><strong>BLOCKED_BY_CONTRACT</strong><span>{children}</span></div>
+  return <div className='fx-probe-blocked'><strong>PENDING</strong><span>{children}</span></div>
 }
 
 function ErrorBox({ children }) {

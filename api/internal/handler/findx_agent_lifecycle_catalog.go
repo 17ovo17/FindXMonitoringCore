@@ -150,7 +150,7 @@ func configTemplate(def agentConfigTemplateDef, updatedAt string) model.FindXAge
 		CapabilityPackages: def.capabilityPackages,
 		PluginConfig:       def.pluginConfig,
 		Status:             "blocked",
-		Blocker:            "BLOCKED_BY_CONTRACT: 模板保存、凭据引用、远程修改、下发、回滚和审计协议未开放",
+		Blocker:            "PENDING: 模板保存、凭据引用、远程修改、下发、回滚和审计协议未开放",
 		UpdatedAt:          updatedAt,
 	}
 }

@@ -67,6 +67,48 @@ func TestFindXAgentInstallExecutionBlockedGateExposesReceiptMatrix(t *testing.T)
 	}
 }
 
+func TestFindXAgentInstallExecutionBlockedGateExposesRealPluginInstallContractInventory(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resetAgentLifecycleRecordsForTest(t)
+	body := strings.NewReader(`{
+		"package_id":"host-collector",
+		"os":"linux",
+		"method":"ssh",
+		"mode":"execute",
+		"target_ids":["target-a"],
+		"credential_ref":"<CREDENTIAL_REF>",
+		"metadata":{` + completeSSHRemoteInstallMetadata() + `}
+	}`)
+	w := performAgentLifecyclePost("/api/v1/findx-agents/install-plans", body, CreateFindXAgentInstallPlan)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("real plugin install preflight should remain blocked, got %d body=%s", w.Code, w.Body.String())
+	}
+	payload := decodeBlockedExecutionMatrixResponse(t, w.Body.String())
+	if payload.Status != "blocked" || payload.Execution.Status != model.FindXAgentExecutionStatusBlocked || payload.SafeToRetry {
+		t.Fatalf("real plugin install inventory must stay blocked and non-retryable: %#v", payload)
+	}
+	for _, want := range realPluginInstallContractInventory() {
+		if !containsLifecycleTestString(payload.MissingContracts, want) ||
+			!containsLifecycleTestString(payload.ReceiptContract.MissingContracts, want) {
+			t.Fatalf("real plugin install blocked gate should expose contract %q, missing=%#v receipt=%#v", want, payload.MissingContracts, payload.ReceiptContract.MissingContracts)
+		}
+	}
+	assertNoFakeExecutionStatusInMatrixResponse(t, w.Body.String())
+	for _, forbidden := range []string{
+		`"status":"installed"`,
+		`"status":"success"`,
+		`"status":"succeeded"`,
+		"service_registered",
+		"data_arrived",
+		"<CREDENTIAL_REF>",
+		"secret",
+	} {
+		if strings.Contains(w.Body.String(), forbidden) {
+			t.Fatalf("real plugin install inventory must not expose fake state or sensitive marker %q: %s", forbidden, w.Body.String())
+		}
+	}
+}
+
 func TestFindXAgentInstallExecutionBlockedGateSanitizesMetadataTransport(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, tt := range []struct {

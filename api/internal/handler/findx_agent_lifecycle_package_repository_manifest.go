@@ -173,7 +173,7 @@ func packageRepositoryTrustChainVerified(root string, manifest packageRepository
 func packageRepositoryTrustChainBlockers(root string, manifest packageRepositoryManifest, artifact packageRepositoryManifestArtifact) []string {
 	blockers := packageRepositoryArtifactEvidenceBlockers(root, manifest, artifact)
 	blockers = append(blockers, missingTrustChainEvidenceBlockers(root, manifest)...)
-	blockers = append(blockers, "TRUST_CHAIN_VERIFICATION_NOT_IMPLEMENTED", "TRUST_CHAIN_BLOCKED_BY_CONTRACT")
+	blockers = append(blockers, "TRUST_CHAIN_VERIFICATION_NOT_IMPLEMENTED", "TRUST_CHAIN_PENDING")
 	return uniquePackageRepositoryBlockers(blockers)
 }
 
@@ -195,7 +195,7 @@ func missingTrustChainEvidenceBlockers(root string, manifest packageRepositoryMa
 		}
 	}
 	if len(blockers) > 0 {
-		blockers = append(blockers, "TRUST_CHAIN_BLOCKED_BY_CONTRACT")
+		blockers = append(blockers, "TRUST_CHAIN_PENDING")
 	}
 	return blockers
 }

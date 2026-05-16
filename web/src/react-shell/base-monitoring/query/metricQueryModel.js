@@ -1,6 +1,6 @@
 import { redactText, safeJson } from '../../api/http.js'
 
-export const BLOCKED_BY_CONTRACT = 'BLOCKED_BY_CONTRACT'
+export const PENDING = 'PENDING'
 export const HISTORY_LIMIT = 100
 
 const brandPattern = (parts) => new RegExp(parts.join(''), 'gi')
@@ -26,14 +26,14 @@ export const displayText = (value) => HIDDEN_BRANDS.reduce(
 export const displayJson = (value, limit = 10000) => displayText(safeJson(value, limit))
 
 export const blockedContracts = {
-  datasource: `${BLOCKED_BY_CONTRACT}: 指标数据源契约未暴露，当前不能伪造查询上下文。`,
-  builtInMetrics: `${BLOCKED_BY_CONTRACT}: 内置指标需要指标分类、搜索、单位、输入联动和权限契约。`,
-  saveView: `${BLOCKED_BY_CONTRACT}: 保存视图需要新增、更新、权限和审计契约。`,
-  shareChart: `${BLOCKED_BY_CONTRACT}: 分享需要临时图表载荷、访问控制和过期策略契约。`,
-  graphSettings: `${BLOCKED_BY_CONTRACT}: 图表设置需要面板持久化契约。`,
-  aiQuery: `${BLOCKED_BY_CONTRACT}: AI 查询生成需要模型配置、权限和审计契约。`,
-  recordingRules: `${BLOCKED_BY_CONTRACT}: 记录规则需要列表、编辑、启停、克隆、删除和权限契约。`,
-  objectViews: `${BLOCKED_BY_CONTRACT}: 对象快捷视图需要对象范围和权限契约。`,
+  datasource: `${PENDING}: 指标数据源契约未暴露，当前不能伪造查询上下文。`,
+  builtInMetrics: `${PENDING}: 内置指标需要指标分类、搜索、单位、输入联动和权限契约。`,
+  saveView: `${PENDING}: 保存视图需要新增、更新、权限和审计契约。`,
+  shareChart: `${PENDING}: 分享需要临时图表载荷、访问控制和过期策略契约。`,
+  graphSettings: `${PENDING}: 图表设置需要面板持久化契约。`,
+  aiQuery: `${PENDING}: AI 查询生成需要模型配置、权限和审计契约。`,
+  recordingRules: `${PENDING}: 记录规则需要列表、编辑、启停、克隆、删除和权限契约。`,
+  objectViews: `${PENDING}: 对象快捷视图需要对象范围和权限契约。`,
 }
 
 const promqlTypeFields = ['type', 'plugin_type', 'plugin_type_name', 'datasource_type', 'category', 'name']

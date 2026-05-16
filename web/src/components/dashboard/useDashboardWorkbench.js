@@ -96,7 +96,7 @@ export function useDashboardWorkbench() {
       detailRaw.value = await dashboardsApi.detail(id)
     } catch (error) {
       detailRaw.value = dashboards.value.find(item => item.id === String(id))?.raw || null
-      detailError.value = `BLOCKED_BY_CONTRACT：详情接口不可用，已使用列表返回数据降级展示。${error.message || ''}`
+      detailError.value = `PENDING：详情接口不可用，已使用列表返回数据降级展示。${error.message || ''}`
     } finally {
       detailLoading.value = false
     }
@@ -191,7 +191,7 @@ export function useDashboardWorkbench() {
       downloadJson(row.ident || row.name, await dashboardsApi.export(row.id))
       if (!silent) ElMessage.success('已导出仪表盘')
     } catch (error) {
-      downloadJson(row.ident || row.name, { blocked: 'BLOCKED_BY_CONTRACT', reason: redactText(error.message), dashboard: row.raw })
+      downloadJson(row.ident || row.name, { blocked: 'PENDING', reason: redactText(error.message), dashboard: row.raw })
       if (!silent) ElMessage.warning('导出接口不可用，已导出当前脱敏 JSON')
     }
   }
@@ -238,7 +238,7 @@ export function useDashboardWorkbench() {
   }
   const openPanelEditor = type => {
     panelDrawerTitle.value = `添加图表：${panelTypes.find(item => item.value === type)?.label || type}`
-    panelDraftJson.value = JSON.stringify({ type, dashboard_id: activeDashboardId.value, blocked: 'BLOCKED_BY_CONTRACT' }, null, 2)
+    panelDraftJson.value = JSON.stringify({ type, dashboard_id: activeDashboardId.value, blocked: 'PENDING' }, null, 2)
     panelDrawerVisible.value = true
   }
   const handlePanelCommand = (command, panel) => {
@@ -248,12 +248,12 @@ export function useDashboardWorkbench() {
       return
     }
     panelDrawerTitle.value = `${command}：${panel.title}`
-    panelDraftJson.value = JSON.stringify({ action: command, blocked: 'BLOCKED_BY_CONTRACT', panel: panel.raw }, null, 2)
+    panelDraftJson.value = JSON.stringify({ action: command, blocked: 'PENDING', panel: panel.raw }, null, 2)
     panelDrawerVisible.value = true
   }
   const openSettings = () => {
     panelDrawerTitle.value = '仪表盘设置'
-    panelDraftJson.value = JSON.stringify({ dashboard: activeDashboard.value.raw, blocked: 'BLOCKED_BY_CONTRACT：设置保存 contract 未完整暴露' }, null, 2)
+    panelDraftJson.value = JSON.stringify({ dashboard: activeDashboard.value.raw, blocked: 'PENDING：设置保存 contract 未完整暴露' }, null, 2)
     panelDrawerVisible.value = true
   }
   const copyDetailLink = async () => {

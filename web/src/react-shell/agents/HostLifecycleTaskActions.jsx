@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { agentApi, formatAgentError } from '../api/agents.js'
 import { Blocked, ErrorBox, Status, Tags } from './AgentShared.jsx'
 
-const CONTRACT_BLOCKED = 'BLOCKED_BY_CONTRACT: 已写入 blocked task audit record，真实执行仍缺少远程执行器、回执和 Evidence Chain 契约。'
+const CONTRACT_BLOCKED = 'PENDING: 已写入 blocked task audit record，真实执行仍缺少远程执行器、回执和 Evidence Chain 契约。'
 const NO_TARGETS = '请选择至少一个 CMDB 主机或 Agent 目标'
 const BASE_METADATA = {
   credential_ref: '<CREDENTIAL_REF>',
@@ -47,10 +47,10 @@ const ACTIONS = [
 ]
 
 const unique = values => Array.from(new Set((values || []).filter(Boolean)))
-const hasBlockedPrefix = value => String(value || '').startsWith('BLOCKED_BY_CONTRACT')
+const hasBlockedPrefix = value => String(value || '').startsWith('PENDING')
 const blockedError = err => {
   const message = formatAgentError(err)
-  return hasBlockedPrefix(message) ? message : `BLOCKED_BY_CONTRACT: ${message}`
+  return hasBlockedPrefix(message) ? message : `PENDING: ${message}`
 }
 
 function buildTaskBody(action, targetIds, agentIds) {

@@ -21,7 +21,7 @@ func TestFindXAgentDataArrivalMatrixBlocksWithoutReceiverEvidence(t *testing.T) 
 		if row.Status != model.FindXAgentDataArrivalStatusBlocked || row.EvidenceCount != 0 {
 			t.Fatalf("kind %s should stay blocked without receiver evidence, got %#v", kind, row)
 		}
-		if !strings.Contains(row.Blocker, "BLOCKED_BY_CONTRACT") || !strings.Contains(row.Blocker, "不能替代") {
+		if !strings.Contains(row.Blocker, "PENDING") || !strings.Contains(row.Blocker, "不能替代") {
 			t.Fatalf("kind %s should explain blocked validator and no substitution, got %q", kind, row.Blocker)
 		}
 	}
@@ -92,7 +92,7 @@ func TestDataArrivalEvidenceStoreBlocksUnsupportedAndNonReceiverKinds(t *testing
 		if err != nil {
 			t.Fatalf("save evidence: %v", err)
 		}
-		if saved.Status != model.FindXAgentDataArrivalStatusBlocked || !strings.Contains(saved.Blocker, "BLOCKED_BY_CONTRACT") {
+		if saved.Status != model.FindXAgentDataArrivalStatusBlocked || !strings.Contains(saved.Blocker, "PENDING") {
 			t.Fatalf("unsupported/non receiver-backed evidence should be blocked, got %#v", saved)
 		}
 		if strings.Contains(strings.ToLower(saved.Metadata["password"]), "do-not-store") {

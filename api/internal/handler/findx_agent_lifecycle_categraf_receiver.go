@@ -113,7 +113,7 @@ func CategrafHTTPProviderConfigs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusConflict, gin.H{
-		"error":   "BLOCKED_BY_CONTRACT: provider config writer protocol not open",
+		"error":   "PENDING: provider config writer protocol not open",
 		"version": categrafProviderBlockedVersion,
 		"configs": gin.H{},
 		"data": gin.H{

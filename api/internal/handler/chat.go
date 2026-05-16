@@ -225,7 +225,7 @@ func lastUserMessageIndex(messages []model.Message) int {
 func callChatCompletion(ctx context.Context, modelName string, messages []model.Message, stream bool) (*http.Response, error) {
 	baseURL, apiKey := getBaseURL(), getAPIKey()
 	if baseURL == "" || apiKey == "" {
-		return nil, fmt.Errorf("AI provider is not configured: base_url or api_key is missing")
+		return nil, fmt.Errorf("请在系统配置 > AI 模型配置中设置 API Key（环境变量 AI_WORKBENCH_API_KEY 或数据库 ai_settings 均未配置）")
 	}
 	payload := map[string]interface{}{"model": modelName, "messages": messages, "stream": stream}
 	body, err := json.Marshal(payload)

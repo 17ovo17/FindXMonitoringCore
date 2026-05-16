@@ -22,6 +22,7 @@ func registerFindXAgentRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/findx-agents/config-templates", mw.monitorRequired("findx_agent", "read"), handler.ListFindXAgentConfigTemplates)
 	v1.GET("/findx-agents/config-rollouts", mw.monitorRequired("findx_agent", "read"), handler.ListFindXAgentConfigRollouts)
 	v1.POST("/findx-agents/config-rollouts", mw.monitorRequired("findx_agent", "write"), handler.CreateFindXAgentConfigRollout)
+	v1.POST("/findx-agents/config-rollouts/:id/receipts", mw.monitorRequired("findx_agent", "write"), handler.IngestFindXAgentConfigRolloutReceipt)
 	v1.GET("/findx-agents/data-arrival", mw.monitorRequired("findx_agent", "read"), handler.FindXAgentDataArrival)
 	v1.GET("/findx-agents/data-arrival/evidence", mw.monitorRequired("findx_agent", "read"), handler.ListFindXAgentDataArrivalEvidence)
 	v1.GET("/findx-agents/tasks", mw.monitorRequired("findx_agent", "read"), handler.ListFindXAgentTasks)

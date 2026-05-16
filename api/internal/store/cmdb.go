@@ -94,7 +94,9 @@ func GetCmdbObject(id string) (*model.CmdbObject, bool) {
 }
 
 func CreateCmdbObject(obj *model.CmdbObject) error {
-	obj.ID = NewID()
+	if obj.ID == "" {
+		obj.ID = NewID()
+	}
 	now := time.Now()
 	obj.CreatedAt = now
 	obj.UpdatedAt = now
@@ -257,7 +259,9 @@ func GetCmdbInstance(id string) (*model.CmdbInstance, bool) {
 }
 
 func CreateCmdbInstance(inst *model.CmdbInstance) error {
-	inst.ID = NewID()
+	if inst.ID == "" {
+		inst.ID = NewID()
+	}
 	now := time.Now()
 	inst.CreatedAt = now
 	inst.UpdatedAt = now
@@ -404,6 +408,12 @@ func GetCmdbDeployTask(id string) (*model.CmdbDeployTask, bool) {
 		}
 	}
 	return nil, false
+}
+
+func ResetCmdbDeployTasksForTest() {
+	mu.Lock()
+	defer mu.Unlock()
+	cmdbDeployTasks = []model.CmdbDeployTask{}
 }
 
 func ensureCmdbDeployTaskMigrated() error {

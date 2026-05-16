@@ -9,9 +9,9 @@
 
 | 项目 | 事实 |
 | --- | --- |
-| 页面源码 | `D:\平台源码\fe-main\src\pages\datasource` |
-| 路由源码 | `D:\平台源码\fe-main\src\routers\index.tsx`：`/datasources`、`/datasources/:action/:type`、`/datasources/:action/:type/:id` |
-| API 源码 | `D:\平台源码\fe-main\src\pages\datasource\services.ts` |
+| 页面源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\datasource` |
+| 路由源码 | `D:\项目迁移文件\平台源码\fe-main\src\routers\index.tsx`：`/datasources`、`/datasources/:action/:type`、`/datasources/:action/:type/:id` |
+| API 源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\datasource\services.ts` |
 | 当前 FindX 弱化页 | `D:\ai-workbench\web\src\views\DataSource.vue`、`D:\ai-workbench\web\src\components\monitoring\MonitorDatasourceQueryPanel.vue` |
 | 参考 DOM | `docs\aiops\source-matrix\evidence\n9e_datasources_snapshot.md` |
 | 编码准入 | `SOURCE_READY_DOM_PARTIAL`；新增/编辑/详情/错误/权限 DOM 仍需 MCP 补齐 |
@@ -43,7 +43,7 @@
 
 ## 4. API 契约
 
-事实源：`D:\平台源码\fe-main\src\pages\datasource\services.ts`
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\pages\datasource\services.ts`
 
 | 成熟 API | 方法 | 用途 | FindX Adapter 要求 |
 | --- | --- | --- | --- |
@@ -59,7 +59,7 @@ FindX 不要求用户侧 API 名称保留外部前缀，但必须保持语义等
 
 ## 5. Prometheus 表单结构
 
-事实源：`D:\平台源码\fe-main\src\pages\datasource\Datasources\Prometheus\Form.tsx`
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\pages\datasource\Datasources\Prometheus\Form.tsx`
 
 | 表单能力 | 源码组件 | 要求 |
 | --- | --- | --- |

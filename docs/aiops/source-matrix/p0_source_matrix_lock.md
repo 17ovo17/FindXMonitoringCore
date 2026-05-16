@@ -10,17 +10,18 @@
 
 | 域 | 源码状态 | DOM 状态 | 编码准入结论 |
 | --- | --- | --- | --- |
-| 基础监控页面 | `SOURCE_PRESENT`，`D:\平台源码\fe-main` 已确认 | `DOM_PARTIAL`，已抓数据源、指标查询、仪表盘、模板中心、工作流、通知媒介 | 允许进入逐页面细化矩阵；未细化页面仍不得编码 |
+| 基础监控页面 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\fe-main` 已确认 | `DOM_PARTIAL`，已抓数据源、指标查询、仪表盘、模板中心、工作流、通知媒介 | 允许进入逐页面细化矩阵；未细化页面仍不得编码 |
+| 基础监控主仓库 / 后端契约 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\nightingale-main (1)\nightingale-main` 已确认 | `DOM_NOT_APPLICABLE` | 作为 P0/P1 基础监控后端契约、权限、状态流、内置资产和事件流水线补证矩阵；不得再用 `fe-main` 代表 Nightingale 全量事实 |
 | 链路监控 UI/OAP | `SOURCE_PRESENT`，`skywalking-booster-ui-main` 与 `skywalking-master` 已确认 | `DOM_PENDING`，当前未接入可运行 SkyWalking UI 参考页 | 只能做源码矩阵和 Adapter 设计，不能声明 UI 完成 |
 | SkyWalking Agent 生态 | `SOURCE_BLOCKED_PARTIAL`，本地只有 UI/OAP，独立 Agent 仓库未落地 | `DOM_NOT_APPLICABLE` | P0 必须补齐独立仓库源码或版本登记后再做 Agent 包实现 |
-| 日志中心 | `SOURCE_PRESENT`，`D:\平台源码\signoz-develop\frontend` 已确认 | `DOM_PENDING`，当前未接入可运行日志中心参考页 | 只能做源码矩阵和 Logs Adapter 设计，不能声明 UI 完成 |
-| CMDB / Agent 在线 | `SOURCE_PRESENT`，`D:\平台源码\AutoOps-main\AutoOps-main` 已确认 | `DOM_PENDING` | 允许进入 CMDB/Agent 页面级矩阵；实现前必须补 MCP DOM |
-| 采集插件 | `SOURCE_PRESENT`，`D:\平台源码\categraf-main (1)\categraf-main` 已确认 | `DOM_NOT_APPLICABLE` | 允许进入 FindX Agent 插件目录和配置模板矩阵 |
-| 巡检诊断 | `SOURCE_PRESENT`，`D:\平台源码\catpaw-master\catpaw-master` 已确认 | `DOM_NOT_APPLICABLE` | 允许进入诊断会话、结构化执行和 Evidence Chain 矩阵 |
+| 日志中心 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\signoz-develop\frontend` 已确认 | `DOM_PENDING`，当前未接入可运行日志中心参考页 | 只能做源码矩阵和 Logs Adapter 设计，不能声明 UI 完成 |
+| CMDB / Agent 在线 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main` 已确认 | `DOM_PENDING` | 允许进入 CMDB/Agent 页面级矩阵；实现前必须补 MCP DOM |
+| 采集插件 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\categraf-main (1)\categraf-main` 已确认 | `DOM_NOT_APPLICABLE` | 允许进入 FindX Agent 插件目录和配置模板矩阵 |
+| 巡检诊断 | `SOURCE_PRESENT`，`D:\项目迁移文件\平台源码\catpaw-master\catpaw-master` 已确认 | `DOM_NOT_APPLICABLE` | 允许进入诊断会话、结构化执行和 Evidence Chain 矩阵 |
 
 阻断项：
 
-- SkyWalking Java/Python/Node.js/PHP/Go/Rust/Ruby/Nginx Lua/Kong/Browser Client JS 独立仓库当前未在 `D:\平台源码` 中发现，后续不能把 Agent 包目录当作已实现。
+- SkyWalking Java/Python/Node.js/PHP/Go/Rust/Ruby/Nginx Lua/Kong/Browser Client JS 独立仓库当前未在 `D:\项目迁移文件\平台源码` 中发现，后续不能把 Agent 包目录当作已实现。
 - SkyWalking UI、SigNoZ UI、AutoOps CMDB 的运行态 DOM 仍需按实际可访问环境补齐。
 - 以下外部品牌只允许出现在本证据文档、合规登记和开发矩阵中，用户侧必须替换为 FindX / FindX Agent / 链路监控 / 日志中心。
 
@@ -41,7 +42,7 @@
 
 ## 3. 基础监控源码矩阵
 
-事实源：`D:\平台源码\fe-main`
+事实源：`D:\项目迁移文件\平台源码\fe-main`
 
 | 能力 | 路由/菜单事实源 | 核心组件事实源 | API 事实源 | 状态流和按钮动作 | FindX 替换要求 |
 | --- | --- | --- | --- | --- | --- |
@@ -61,8 +62,8 @@
 
 事实源：
 
-- UI：`D:\平台源码\skywalking-booster-ui-main`
-- OAP/API：`D:\平台源码\skywalking-master\oap-server\server-query-plugin`
+- UI：`D:\项目迁移文件\平台源码\skywalking-booster-ui-main`
+- OAP/API：`D:\项目迁移文件\平台源码\skywalking-master\oap-server\server-query-plugin`
 
 | 能力 | 路由/组件事实源 | 状态流事实源 | API/Query 事实源 | FindX 实现要求 | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
@@ -79,7 +80,7 @@
 
 ## 5. SkyWalking Agent 仓库矩阵
 
-当前本地 `D:\平台源码` 未发现以下独立仓库目录。P0 后续必须补齐源码目录、版本/commit、许可证、NOTICE、制品形态和配置模板后，才能进入 FindX Agent 包实现。
+当前本地 `D:\项目迁移文件\平台源码` 未发现以下独立仓库目录。P0 后续必须补齐源码目录、版本/commit、许可证、NOTICE、制品形态和配置模板后，才能进入 FindX Agent 包实现。
 
 | 能力包 | 上游仓库 | 本地源码状态 | FindX 包名 | 必须验证 |
 | --- | --- | --- | --- | --- |
@@ -96,7 +97,7 @@
 
 ## 6. 日志中心源码矩阵
 
-事实源：`D:\平台源码\signoz-develop\frontend`
+事实源：`D:\项目迁移文件\平台源码\signoz-develop\frontend`
 
 | 能力 | 路由事实源 | 页面/组件事实源 | API 事实源 | FindX 实现要求 | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
@@ -111,7 +112,7 @@
 
 ## 7. CMDB 与 Agent 在线源码矩阵
 
-事实源：`D:\平台源码\AutoOps-main\AutoOps-main`
+事实源：`D:\项目迁移文件\平台源码\AutoOps-main\AutoOps-main`
 
 | 能力 | 路由事实源 | 页面事实源 | API 事实源 | 状态流和动作 | FindX 实现要求 |
 | --- | --- | --- | --- | --- | --- |
@@ -127,8 +128,8 @@
 
 | 来源 | 本地源码 | 关键事实 | FindX 映射 | 编码前还缺 |
 | --- | --- | --- | --- | --- |
-| Categraf 插件生态 | `D:\平台源码\categraf-main (1)\categraf-main` | `inputs\*` 插件目录；`conf\input.*\*.toml` 配置模板；`agent\install\service_linux.go`、`service_windows.go`；`heartbeat`、`writer`、`api` | FindX Agent 插件目录、配置模板、下发、回滚、心跳、指标到达 | 插件分类、模板元数据、默认启停、配置字段 schema |
-| Catpaw 巡检诊断 | `D:\平台源码\catpaw-master\catpaw-master` | `agent`、`chat`、`conf.d\p.*`、`digcore\diagnose`、`digcore\config`、`design.d` | FindX Agent 巡检诊断、结构化执行、诊断会话、Evidence Chain | 诊断工具 schema、执行权限、结果模型、AI 模型配置入口 |
+| Categraf 插件生态 | `D:\项目迁移文件\平台源码\categraf-main (1)\categraf-main` | `inputs\*` 插件目录；`conf\input.*\*.toml` 配置模板；`agent\install\service_linux.go`、`service_windows.go`；`heartbeat`、`writer`、`api` | FindX Agent 插件目录、配置模板、下发、回滚、心跳、指标到达 | 插件分类、模板元数据、默认启停、配置字段 schema |
+| Catpaw 巡检诊断 | `D:\项目迁移文件\平台源码\catpaw-master\catpaw-master` | `agent`、`chat`、`conf.d\p.*`、`digcore\diagnose`、`digcore\config`、`design.d` | FindX Agent 巡检诊断、结构化执行、诊断会话、Evidence Chain | 诊断工具 schema、执行权限、结果模型、AI 模型配置入口 |
 | SkyWalking language agents | 上游 URL 已登记，独立本地源码未落地 | 多语言应用探针、网关探针、Browser Agent | FindX Agent 能力包仓库、远程安装、配置下发、数据到达验证 | 本地源码/版本登记、包签名、安装脚本、兼容矩阵 |
 
 ## 9. 后续每个切片必须补的页面级字段

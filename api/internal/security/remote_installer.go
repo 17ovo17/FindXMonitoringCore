@@ -44,7 +44,7 @@ func EvaluateRemoteInstallerPreflight(input RemoteInstallerPreflightInput) Remot
 		return RemoteInstallerPreflightResult{
 			Allowed: false,
 			Status:  "blocked",
-			Reason:  "BLOCKED_BY_CONTRACT: remote installer prerequisites missing: " + strings.Join(missing, ", "),
+			Reason:  "PENDING: remote installer prerequisites missing: " + strings.Join(missing, ", "),
 			Scope:   scope,
 			Runner:  scope,
 		}
@@ -52,7 +52,7 @@ func EvaluateRemoteInstallerPreflight(input RemoteInstallerPreflightInput) Remot
 	return RemoteInstallerPreflightResult{
 		Allowed: false,
 		Status:  "blocked",
-		Reason:  "BLOCKED_BY_CONTRACT: " + scope + " remote executor contract is not enabled",
+		Reason:  "PENDING: " + scope + " remote executor contract is not enabled",
 		Scope:   scope,
 		Runner:  scope,
 	}

@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { cmdbApi } from '../api/cmdb.js'
+import { FindXIcon } from '../shared/FindXIcon.jsx'
 
 const defaultCategories = [
-  { id: 'compute', name: '计算资源', icon: '🖥' },
-  { id: 'software', name: '系统软件', icon: '📦' },
-  { id: 'network', name: '网络设备', icon: '🌐' },
-  { id: 'storage', name: '存储设备', icon: '💾' },
-  { id: 'custom', name: '自定义', icon: '⚙' },
+  { id: 'compute', name: '计算资源', icon: 'server' },
+  { id: 'software', name: '系统软件', icon: 'software' },
+  { id: 'network', name: '网络设备', icon: 'network' },
+  { id: 'storage', name: '存储设备', icon: 'storage' },
+  { id: 'custom', name: '自定义', icon: 'custom' },
 ]
+
+const categoryIconName = (value = '') => {
+  const text = String(value || '').toLowerCase()
+  if (text.includes('compute') || text.includes('host') || text.includes('server')) return 'server'
+  if (text.includes('software') || text.includes('system') || text.includes('app')) return 'software'
+  if (text.includes('network') || text.includes('switch') || text.includes('router')) return 'network'
+  if (text.includes('storage') || text.includes('disk')) return 'storage'
+  if (text.includes('custom')) return 'custom'
+  return 'model'
+}
 
 export function ModelTreeSection({ onNavigate }) {
   const [categories, setCategories] = useState(defaultCategories)
@@ -67,22 +78,22 @@ export function ModelTreeSection({ onNavigate }) {
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           <li
             style={{
-              padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 4,
+              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 4,
               background: !selectedCategory ? 'var(--fx-blue)' : 'transparent',
               color: !selectedCategory ? '#fff' : 'var(--fx-ink)',
             }}
             onClick={() => setSelectedCategory(null)}
-          >全部</li>
+          ><span className='fx-cmdb-model-tree-icon'><FindXIcon name='model' /></span><span>全部</span></li>
           {categories.map(cat => (
             <li
               key={cat.id}
               style={{
-                padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 4,
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 4,
                 background: selectedCategory === cat.id ? 'var(--fx-blue)' : 'transparent',
                 color: selectedCategory === cat.id ? '#fff' : 'var(--fx-ink)',
               }}
               onClick={() => setSelectedCategory(cat.id)}
-            >{cat.icon || ''} {cat.name}</li>
+            ><span className='fx-cmdb-model-tree-icon'><FindXIcon name={categoryIconName(cat.icon || cat.id)} /></span><span>{cat.name}</span></li>
           ))}
         </ul>
       </aside>
@@ -115,7 +126,7 @@ export function ModelTreeSection({ onNavigate }) {
                 boxShadow: 'var(--fx-shadow)', transition: 'border-color 0.15s',
               }}
             >
-              <div style={{ fontSize: 28, marginBottom: 8 }}>{obj.icon || '📋'}</div>
+              <div className='fx-cmdb-model-card-icon'><FindXIcon name={categoryIconName(obj.icon || obj.category_id)} /></div>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fx-ink)', marginBottom: 4 }}>{obj.name}</div>
               <div style={{ fontSize: 12, color: 'var(--fx-muted)' }}>实例数: {counts[obj.id] ?? 0}</div>
             </article>

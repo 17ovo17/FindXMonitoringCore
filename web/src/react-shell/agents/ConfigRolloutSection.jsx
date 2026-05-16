@@ -45,7 +45,7 @@ export function ConfigRolloutSection({ agents }) {
     setSubmitting(true)
     agentApi.configPushAgent(targetId, { config, mode })
       .then(res => { setResult(res); loadHistory() })
-      .catch(err => setError(formatAgentError(err)))
+      .catch(err => setResult(err?.body || { status: 'PENDING', message: formatAgentError(err) }))
       .finally(() => setSubmitting(false))
   }
 
@@ -54,7 +54,7 @@ export function ConfigRolloutSection({ agents }) {
       <div className='fx-agent-banner'>
         <div>
           <h3>配置下发</h3>
-          <p>支持单机、批量和灰度模式推送配置到目标 Agent，包含漂移检测和回滚历史。</p>
+          <p>单机、批量和灰度配置只提交契约预检；没有执行器、回执和审计闭环前不显示真实下发。</p>
         </div>
       </div>
 
@@ -78,12 +78,12 @@ export function ConfigRolloutSection({ agents }) {
           <textarea value={configJson} onChange={e => setConfigJson(e.target.value)} rows={6} style={{ width: '100%', fontFamily: 'monospace' }} />
         </Field>
         <div className='fx-agent-actions'>
-          <button type='submit' disabled={submitting}>{submitting ? '推送中...' : '推送配置'}</button>
+          <button type='submit' disabled={submitting}>{submitting ? '预检中...' : '提交配置预检'}</button>
         </div>
         {result && (
           <div className='fx-agent-summary-row'>
-            <Status ok={result.message?.includes('triggered')}>{result.message || 'done'}</Status>
-            {result.event && <Tags items={[`mode=${result.mode}`, `action=${result.event.action}`, `status=${result.event.status}`]} />}
+            <Status ok={false}>{result.status || result.code || 'PENDING'}</Status>
+            <Tags items={[result.message, `mode=${result.mode || mode}`, result.contract_id, ...(result.missing_contracts || [])]} />
           </div>
         )}
       </form>

@@ -50,7 +50,7 @@ function QueryBlockedSection({ section }) {
   return (
     <main className='fx-query-page'>
       <section className='fx-query-blocked'>
-        <strong>BLOCKED_BY_CONTRACT</strong>
+        <strong>PENDING</strong>
         <h1>{titles[section] || '指标查询'}</h1>
         <p>{blockedContracts[section === 'built-in-metrics' ? 'builtInMetrics' : section] || blockedContracts.datasource}</p>
       </section>

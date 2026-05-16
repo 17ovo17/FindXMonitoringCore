@@ -9,15 +9,15 @@
 
 | 项目 | 事实 |
 | --- | --- |
-| 路由源码 | `D:\平台源码\fe-main\src\routers\index.tsx` |
-| 列表源码 | `D:\平台源码\fe-main\src\pages\dashboard\List` |
-| 详情源码 | `D:\平台源码\fe-main\src\pages\dashboard\Detail` |
-| 变量源码 | `D:\平台源码\fe-main\src\pages\dashboard\Variables`、`VariableConfig` |
-| Panel 源码 | `D:\平台源码\fe-main\src\pages\dashboard\Panels` |
-| 编辑器源码 | `D:\平台源码\fe-main\src\pages\dashboard\Editor` |
-| 渲染器源码 | `D:\平台源码\fe-main\src\pages\dashboard\Renderer` |
-| 时间控件源码 | `D:\平台源码\fe-main\src\components\TimeRangePicker` |
-| API 源码 | `D:\平台源码\fe-main\src\services\dashboardV2.ts` |
+| 路由源码 | `D:\项目迁移文件\平台源码\fe-main\src\routers\index.tsx` |
+| 列表源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\List` |
+| 详情源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Detail` |
+| 变量源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Variables`、`VariableConfig` |
+| Panel 源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Panels` |
+| 编辑器源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Editor` |
+| 渲染器源码 | `D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Renderer` |
+| 时间控件源码 | `D:\项目迁移文件\平台源码\fe-main\src\components\TimeRangePicker` |
+| API 源码 | `D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts` |
 | 参考 DOM | `docs\aiops\source-matrix\evidence\n9e_dashboards_snapshot.md`、`docs\aiops\source-matrix\evidence\n9e_dashboard_detail_live_snapshot.md` |
 
 ## 2. 路由与页面入口
@@ -32,7 +32,7 @@
 
 ## 3. 列表页结构
 
-事实源：`D:\平台源码\fe-main\src\pages\dashboard\List\index.tsx`、`Header.tsx`、`FormModal.tsx`、`Import\index.tsx`、`BatchClone.tsx`、`PublicForm.tsx`。
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\List\index.tsx`、`Header.tsx`、`FormModal.tsx`、`Import\index.tsx`、`BatchClone.tsx`、`PublicForm.tsx`。
 
 | 区域/动作 | 源码语义 | FindX 要求 |
 | --- | --- | --- |
@@ -49,7 +49,7 @@
 
 ## 4. 列表 API 契约
 
-事实源：`D:\平台源码\fe-main\src\services\dashboardV2.ts`。
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\services\dashboardV2.ts`。
 
 | API | 方法 | 源码用途 | FindX 要求 |
 | --- | --- | --- | --- |
@@ -66,7 +66,7 @@
 
 ## 5. 详情页顶部结构
 
-事实源：`D:\平台源码\fe-main\src\pages\dashboard\Detail\Title.tsx`；运行态 DOM 证据：`n9e_dashboard_detail_live_snapshot.md`。
+事实源：`D:\项目迁移文件\平台源码\fe-main\src\pages\dashboard\Detail\Title.tsx`；运行态 DOM 证据：`n9e_dashboard_detail_live_snapshot.md`。
 
 | 控件 | 源码/DOM 证据 | 真实动作 | FindX 要求 |
 | --- | --- | --- | --- |

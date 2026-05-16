@@ -1,7 +1,7 @@
 import React from 'react'
 import { Blocked, Status, Tags } from './AgentShared.jsx'
 
-const BLOCKED = 'BLOCKED_BY_CONTRACT'
+const BLOCKED = 'PENDING'
 const fallbackBlocker = `${BLOCKED}: 安装环境契约未返回，不能判定平台自带工具、执行器、服务注册和数据到达闭环。`
 
 const toList = value => Array.isArray(value) ? value.filter(Boolean) : String(value || '').split(/[,，\n]/).map(item => item.trim()).filter(Boolean)
@@ -84,7 +84,7 @@ export function PluginDeliveryMatrix({ pluginConfig }) {
         <span>回滚 {pluginConfig.rollbackStatus || BLOCKED}</span>
         <span>receipt {pluginConfig.receiptStatus || BLOCKED}</span>
       </div>
-      <Blocked>采集插件配置已纳入 FindX Agent、CMDB 主机、业务组和 namespace/workload 可下发范围；远程修改、reload、漂移检测、回滚和 receipt 仍为 BLOCKED_BY_CONTRACT。</Blocked>
+      <Blocked>采集插件配置已纳入 FindX Agent、CMDB 主机、业务组和 namespace/workload 可下发范围；远程修改、reload、漂移检测、回滚和 receipt 仍为 PENDING。</Blocked>
     </div>
   )
 }

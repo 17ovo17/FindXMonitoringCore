@@ -67,6 +67,39 @@ func GetMonitorDashboard(id string) (*model.MonitorDashboard, bool, error) {
 	return copyMonitorDashboard(item), ok, nil
 }
 
+func FindMonitorDashboardByTitleWorkspaceResourceGroup(title, workspaceID, resourceGroupID string) (*model.MonitorDashboard, bool, error) {
+	title = strings.TrimSpace(title)
+	workspaceID = strings.TrimSpace(workspaceID)
+	resourceGroupID = strings.TrimSpace(resourceGroupID)
+	if title == "" || resourceGroupID == "" {
+		return nil, false, nil
+	}
+	if mysqlOK {
+		row := db.QueryRow(`SELECT id,title,description,workspace_id,resource_group_id,COALESCE(tags,'[]'),COALESCE(variables,'{}'),COALESCE(panels,'[]'),version,status,shared,share_token_hash,created_by,updated_by,created_at,updated_at FROM monitor_dashboards WHERE title=? AND workspace_id=? AND resource_group_id=? ORDER BY updated_at DESC LIMIT 1`, title, workspaceID, resourceGroupID)
+		item, err := scanMonitorDashboardRow(row)
+		if err == sql.ErrNoRows {
+			return nil, false, nil
+		}
+		if err != nil {
+			return nil, false, err
+		}
+		return copyMonitorDashboard(item), true, nil
+	}
+	mu.RLock()
+	defer mu.RUnlock()
+	for _, item := range monitorDashboards {
+		if item == nil {
+			continue
+		}
+		if strings.TrimSpace(item.Title) == title &&
+			strings.TrimSpace(item.WorkspaceID) == workspaceID &&
+			strings.TrimSpace(item.ResourceGroupID) == resourceGroupID {
+			return copyMonitorDashboard(item), true, nil
+		}
+	}
+	return nil, false, nil
+}
+
 func SaveMonitorDashboard(input *model.MonitorDashboard, actor string) (*model.MonitorDashboard, error) {
 	now := time.Now()
 	existing, exists, err := GetMonitorDashboard(input.ID)

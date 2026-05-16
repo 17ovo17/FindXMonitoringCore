@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { marked } from 'marked'
 import sanitizeHtml from 'sanitize-html'
 import { calcValue, formatMetricName } from './chartRenderers.jsx'
@@ -96,74 +96,227 @@ export function TextPanel({ panel, options = {} }) {
 }
 
 /**
- * DEGRADE-013: Heatmap 热力图
+ * Heatmap 热力图（时间桶 x 值范围桶）
+ * - X 轴：时间桶
+ * - Y 轴：值范围（自动分桶）
+ * - 颜色强度基于计数
+ * - 悬停显示桶详情
  */
 export function HeatmapPanel({ series, options = {} }) {
+  const [tooltip, setTooltip] = useState(null)
   if (series.length === 0) return <div className="fx-chart-empty">无数据</div>
-  const { colorScheme = ['#eef5ff', '#1769ff', '#e6550d'] } = options
-  const cellSize = 16
-  const maxPoints = 50
-  const displaySeries = series.slice(0, 10)
+  const { colorScheme = ['#eef5ff', '#1769ff', '#e6550d'], bucketCount = 8, timeBuckets = 30 } = options
+
+  // 收集所有数据点
+  const allPoints = []
+  series.forEach(s => {
+    (s.values || []).forEach(([ts, v]) => {
+      const num = Number(v)
+      if (Number.isFinite(num)) allPoints.push({ ts: Number(ts), value: num })
+    })
+  })
+  if (allPoints.length === 0) return <div className="fx-chart-empty">无数据</div>
+
+  // 计算时间范围和值范围
+  const tsMin = Math.min(...allPoints.map(p => p.ts))
+  const tsMax = Math.max(...allPoints.map(p => p.ts))
+  const valMin = Math.min(...allPoints.map(p => p.value))
+  const valMax = Math.max(...allPoints.map(p => p.value))
+  const valRange = valMax - valMin || 1
+  const tsRange = tsMax - tsMin || 1
+
+  // 构建桶矩阵
+  const matrix = Array.from({ length: bucketCount }, () => Array(timeBuckets).fill(0))
+  allPoints.forEach(p => {
+    const col = Math.min(Math.floor(((p.ts - tsMin) / tsRange) * timeBuckets), timeBuckets - 1)
+    const row = Math.min(Math.floor(((p.value - valMin) / valRange) * bucketCount), bucketCount - 1)
+    matrix[row][col]++
+  })
+
+  const maxCount = Math.max(...matrix.flat(), 1)
+  const cellW = 12
+  const cellH = 14
+  const svgWidth = timeBuckets * cellW + 60
+  const svgHeight = bucketCount * cellH + 30
+
+  function getColor(count) {
+    if (count === 0) return colorScheme[0]
+    const pct = count / maxCount
+    if (pct > 0.66) return colorScheme[2] || '#e6550d'
+    if (pct > 0.33) return colorScheme[1] || '#1769ff'
+    return interpolateColor(colorScheme[0], colorScheme[1], pct * 3)
+  }
+
+  function formatTs(idx) {
+    const ts = tsMin + (idx / timeBuckets) * tsRange
+    const d = new Date(ts * 1000)
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+  }
 
   return (
-    <div className="fx-heatmap-panel" style={{ overflow: 'auto' }}>
-      <svg width={maxPoints * cellSize + 60} height={displaySeries.length * cellSize + 30}>
-        {displaySeries.map((s, row) => {
-          const vals = s.values.slice(-maxPoints)
-          const max = Math.max(...vals.map(([, v]) => Math.abs(Number(v))), 1)
-          return vals.map(([, v], col) => {
-            const pct = Math.abs(Number(v)) / max
-            const color = pct > 0.66 ? colorScheme[2] : pct > 0.33 ? colorScheme[1] : colorScheme[0]
-            return (
-              <rect key={`${row}-${col}`} x={col * cellSize + 60} y={row * cellSize} width={cellSize - 1} height={cellSize - 1} fill={color} rx="2" />
-            )
-          })
-        })}
-        {displaySeries.map((s, row) => (
-          <text key={row} x="0" y={row * cellSize + cellSize - 3} fontSize="9" fill="#65758d">
-            {formatMetricName(s).slice(0, 8)}
+    <div className="fx-heatmap-panel" style={{ overflow: 'auto', position: 'relative' }}>
+      <svg width={svgWidth} height={svgHeight}>
+        {matrix.map((row, ri) =>
+          row.map((count, ci) => (
+            <rect
+              key={`${ri}-${ci}`}
+              x={ci * cellW + 50}
+              y={(bucketCount - 1 - ri) * cellH}
+              width={cellW - 1}
+              height={cellH - 1}
+              fill={getColor(count)}
+              rx="1"
+              onMouseEnter={(e) => {
+                const bucketLow = valMin + (ri / bucketCount) * valRange
+                const bucketHigh = valMin + ((ri + 1) / bucketCount) * valRange
+                setTooltip({
+                  x: e.clientX, y: e.clientY,
+                  time: formatTs(ci),
+                  range: `${bucketLow.toFixed(1)} - ${bucketHigh.toFixed(1)}`,
+                  count,
+                })
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          ))
+        )}
+        {/* Y 轴标签 */}
+        {[0, Math.floor(bucketCount / 2), bucketCount - 1].map(ri => (
+          <text key={ri} x="0" y={(bucketCount - 1 - ri) * cellH + cellH - 3} fontSize="8" fill="#9ca3af">
+            {(valMin + (ri / bucketCount) * valRange).toFixed(0)}
+          </text>
+        ))}
+        {/* X 轴标签 */}
+        {[0, Math.floor(timeBuckets / 2), timeBuckets - 1].map(ci => (
+          <text key={ci} x={ci * cellW + 50} y={bucketCount * cellH + 12} fontSize="8" fill="#9ca3af">
+            {formatTs(ci)}
           </text>
         ))}
       </svg>
+      {tooltip && (
+        <div style={{ position: 'fixed', left: tooltip.x + 10, top: tooltip.y - 30, background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 11, pointerEvents: 'none', zIndex: 999 }}>
+          <div>时间: {tooltip.time}</div>
+          <div>范围: {tooltip.range}</div>
+          <div>计数: {tooltip.count}</div>
+        </div>
+      )}
     </div>
   )
 }
 
-/**
- * DEGRADE-013: Iframe 内嵌文档
- */
 export function IframePanel({ panel, options = {} }) {
-  const url = options.url || panel?.raw?.url || panel?.url || ''
-  if (!url) return <div className="fx-chart-empty">请配置 URL</div>
-  return (
-    <iframe src={url} className="fx-iframe-panel" title="嵌入内容" sandbox="allow-scripts allow-same-origin" />
-  )
+	const url = options.url || panel?.raw?.url || panel?.url || ''
+	if (!url) return <div className="fx-chart-empty">请配置 URL</div>
+	const sanitizedUrl = (url.startsWith('http://') || url.startsWith('https://')) ? url : ''
+	if (!sanitizedUrl) return <div className="fx-chart-empty">仅支持 http/https 协议</div>
+	return (
+		<div className="fx-iframe-panel" style={{ width: '100%', height: '100%' }}>
+			<iframe
+				src={sanitizedUrl}
+				style={{ width: '100%', height: '100%', border: 'none' }}
+				sandbox="allow-scripts allow-same-origin"
+				title="嵌入面板"
+			/>
+		</div>
+	)
 }
 
 /**
- * DEGRADE-013: BarChart 柱状图（uPlot bars 模式）
+ * BarChart 柱状图（SVG 渲染，支持堆叠模式）
+ * - 接受时间序列数据，渲染垂直柱状图
+ * - 支持 stacked 模式
+ * - 颜色使用 CSS 变量
  */
 export function BarChartPanel({ series, options = {} }) {
-  const containerRef = useRef(null)
+  const [tooltip, setTooltip] = useState(null)
   if (series.length === 0) return <div className="fx-chart-empty">无数据</div>
-  const { calc = 'last', unit } = options
+  const { calc = 'last', unit, stacked = false } = options
+  const colors = ['var(--fx-chart-1, #1769ff)', 'var(--fx-chart-2, #e6550d)', 'var(--fx-chart-3, #31a354)', 'var(--fx-chart-4, #756bb1)', 'var(--fx-chart-5, #636363)', 'var(--fx-chart-6, #6baed6)']
+
   const items = series.map((s) => ({ name: formatMetricName(s), value: calcValue(s.values, calc) }))
-  const max = Math.max(...items.map((i) => Math.abs(i.value)), 1)
-  const colors = ['#1769ff', '#e6550d', '#31a354', '#756bb1', '#636363', '#6baed6']
+
+  const svgWidth = 400
+  const svgHeight = 200
+  const padding = { top: 20, right: 20, bottom: 40, left: 50 }
+  const chartWidth = svgWidth - padding.left - padding.right
+  const chartHeight = svgHeight - padding.top - padding.bottom
+
+  let maxVal
+  if (stacked) {
+    maxVal = items.reduce((sum, item) => sum + Math.abs(item.value), 0) || 1
+  } else {
+    maxVal = Math.max(...items.map((i) => Math.abs(i.value)), 1)
+  }
+
+  const barWidth = Math.min(40, chartWidth / items.length - 4)
+  const barGap = (chartWidth - barWidth * items.length) / (items.length + 1)
+
+  let stackY = chartHeight
 
   return (
-    <div className="fx-barchart-panel" ref={containerRef}>
-      <div className="fx-barchart-panel__bars">
-        {items.map((item, i) => {
-          const pct = (Math.abs(item.value) / max) * 100
+    <div className="fx-barchart-panel" style={{ position: 'relative' }}>
+      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: '100%' }}>
+        {/* Y 轴刻度 */}
+        {[0, 0.25, 0.5, 0.75, 1].map((pct) => {
+          const y = padding.top + chartHeight * (1 - pct)
           return (
-            <div key={i} className="fx-barchart-panel__col">
-              <div className="fx-barchart-panel__bar" style={{ height: `${pct}%`, background: colors[i % colors.length] }} />
-              <span className="fx-barchart-panel__label">{item.name.slice(0, 10)}</span>
-            </div>
+            <g key={pct}>
+              <line x1={padding.left} y1={y} x2={svgWidth - padding.right} y2={y} stroke="#e5e7eb" strokeWidth="0.5" />
+              <text x={padding.left - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#9ca3af">
+                {formatValue(maxVal * pct, unit)}
+              </text>
+            </g>
           )
         })}
-      </div>
+        {/* 柱状图 */}
+        {stacked ? (
+          (() => {
+            let accY = 0
+            return items.map((item, i) => {
+              const barH = (Math.abs(item.value) / maxVal) * chartHeight
+              const y = padding.top + chartHeight - accY - barH
+              accY += barH
+              return (
+                <g key={i}
+                  onMouseEnter={() => setTooltip({ name: item.name, value: item.value })}
+                  onMouseLeave={() => setTooltip(null)}
+                >
+                  <rect
+                    x={padding.left + chartWidth / 2 - barWidth / 2}
+                    y={y}
+                    width={barWidth}
+                    height={barH}
+                    fill={colors[i % colors.length]}
+                    rx="2"
+                  />
+                </g>
+              )
+            })
+          })()
+        ) : (
+          items.map((item, i) => {
+            const barH = (Math.abs(item.value) / maxVal) * chartHeight
+            const x = padding.left + barGap + i * (barWidth + barGap)
+            const y = padding.top + chartHeight - barH
+            return (
+              <g key={i}
+                onMouseEnter={() => setTooltip({ name: item.name, value: item.value })}
+                onMouseLeave={() => setTooltip(null)}
+              >
+                <rect x={x} y={y} width={barWidth} height={barH} fill={colors[i % colors.length]} rx="2" />
+                <text x={x + barWidth / 2} y={svgHeight - padding.bottom + 14} textAnchor="middle" fontSize="8" fill="#6b7280">
+                  {item.name.slice(0, 8)}
+                </text>
+              </g>
+            )
+          })
+        )}
+      </svg>
+      {tooltip && (
+        <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '4px 8px', borderRadius: 4, fontSize: 11 }}>
+          {tooltip.name}: {formatValue(tooltip.value, unit)}
+        </div>
+      )}
     </div>
   )
 }

@@ -10,8 +10,8 @@ import (
 
 func TestFindXAgentCategrafPluginSourceMapCatalog(t *testing.T) {
 	spec := mustFindPluginConfig(t, "host-collector")
-	if len(spec.PluginSourceMap) < 15 {
-		t.Fatalf("plugin source map should expose at least 15 plugins, got %d", len(spec.PluginSourceMap))
+	if len(spec.PluginSourceMap) < 45 {
+		t.Fatalf("plugin source map should expose expanded input evidence, got %d", len(spec.PluginSourceMap))
 	}
 
 	plugins := mapPluginSourceSpecs(spec.PluginSourceMap)
@@ -24,6 +24,20 @@ func TestFindXAgentCategrafPluginSourceMapCatalog(t *testing.T) {
 		row, ok := plugins[id]
 		if !ok {
 			t.Fatalf("missing plugin source map row %s", id)
+		}
+		assertPluginSourceMapRowComplete(t, row)
+	}
+	for _, id := range []string{
+		"input.aliyun", "input.apache", "input.bind", "input.cadvisor",
+		"input.clickhouse", "input.cloudwatch", "input.consul", "input.dcgm",
+		"input.dns_query", "input.greenplum", "input.hadoop", "input.haproxy",
+		"input.ipmi", "input.kafka", "input.oracle", "input.rabbitmq",
+		"input.redfish", "input.snmp", "input.sqlserver", "input.tomcat",
+		"input.vsphere", "input.x509_cert", "input.zookeeper",
+	} {
+		row, ok := plugins[id]
+		if !ok {
+			t.Fatalf("expanded plugin source map missing %s", id)
 		}
 		assertPluginSourceMapRowComplete(t, row)
 	}
@@ -40,7 +54,7 @@ func TestFindXAgentCategrafPluginSourceMapSecurityGates(t *testing.T) {
 	if !exec.UnsafePlugin || exec.SecurityLevel != "critical" || exec.UnsafePluginPolicyRef == "" {
 		t.Fatalf("input.exec must be critical unsafe plugin with policy ref: %#v", exec)
 	}
-	for _, want := range []string{"UNSAFE_PLUGIN_BLOCKED_BY_CONTRACT", "REMOTE_COMMAND_EXECUTION_NOT_ALLOWED"} {
+	for _, want := range []string{"UNSAFE_PLUGIN_PENDING", "REMOTE_COMMAND_EXECUTION_NOT_ALLOWED"} {
 		if !containsLifecycleTestString(exec.Blockers, want) {
 			t.Fatalf("input.exec missing blocker %s: %#v", want, exec.Blockers)
 		}
@@ -71,6 +85,21 @@ func TestFindXAgentCategrafPluginSourceMapSecurityGates(t *testing.T) {
 			"TLS_GATE_MISSING",
 			"TIMEOUT_GATE_MISSING",
 			"ERROR_SANITIZATION_GATE_MISSING",
+			"DATA_ARRIVAL_RECEIPT_MISSING",
+		)
+	}
+	for _, id := range []string{"input.aliyun", "input.cloudwatch", "input.snmp", "input.sqlserver", "input.vsphere"} {
+		assertPluginHasBlockers(t, plugins[id],
+			"CREDENTIAL_REF_REQUIRED",
+			"CREDENTIAL_REF_GATE_MISSING",
+			"TLS_AND_TIMEOUT_GATE_MISSING",
+			"DATA_ARRIVAL_RECEIPT_MISSING",
+		)
+	}
+	for _, id := range []string{"input.http_response", "input.x509_cert", "input.whois"} {
+		assertPluginHasBlockers(t, plugins[id],
+			"URL_ALLOWLIST_GATE_MISSING",
+			"TLS_AND_TIMEOUT_GATE_MISSING",
 			"DATA_ARRIVAL_RECEIPT_MISSING",
 		)
 	}
@@ -165,7 +194,7 @@ func assertPluginSourceMapRowComplete(t *testing.T, row model.FindXAgentPluginSo
 		len(row.SourceEvidence) == 0 {
 		t.Fatalf("plugin source map row incomplete: %#v", row)
 	}
-	if !containsLifecycleTestString(row.Blockers, "REMOTE_MUTATION_BLOCKED_BY_CONTRACT") ||
+	if !containsLifecycleTestString(row.Blockers, "REMOTE_MUTATION_PENDING") ||
 		!containsLifecycleTestString(row.Blockers, "DATA_ARRIVAL_RECEIPT_MISSING") {
 		t.Fatalf("plugin source map row missing common gates: %#v", row)
 	}

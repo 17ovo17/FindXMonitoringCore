@@ -2,7 +2,7 @@ import React from 'react'
 import { compactJson, displayText, sections } from './aiSreModel.js'
 
 export function Blocked({ children }) {
-  return <div className='fx-aisre-blocked'><strong>BLOCKED_BY_CONTRACT</strong> {children}</div>
+  return <div className='fx-aisre-blocked'><strong>PENDING</strong> {children}</div>
 }
 
 export function ErrorBox({ children }) {

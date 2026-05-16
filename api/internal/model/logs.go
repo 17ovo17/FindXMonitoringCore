@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	LogsContractBlocked  = "BLOCKED_BY_CONTRACT"
+	LogsContractBlocked  = "PENDING"
 	LogsSourcePage       = "logs"
 	LogsSourceFindXAudit = "findx_audit"
 	LogsSourceOtel       = "otel"

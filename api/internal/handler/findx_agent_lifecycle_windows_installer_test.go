@@ -282,7 +282,7 @@ func assertWindowsCertutilExecutionBlocked(t *testing.T, code int, execution mod
 	if execution.Runner != "windows-cmd" {
 		t.Fatalf("expected windows-cmd runner, got %#v", execution)
 	}
-	if execution.ErrorSummary != "BLOCKED_BY_CONTRACT: Windows executor/service lifecycle protocol not enabled" {
+	if execution.ErrorSummary != "PENDING: Windows executor/service lifecycle protocol not enabled" {
 		t.Fatalf("executor must remain blocked, got %q", execution.ErrorSummary)
 	}
 	assertWindowsExecutionStatusBlocked(t, execution)

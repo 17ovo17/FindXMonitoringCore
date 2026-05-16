@@ -14,27 +14,29 @@ func configRolloutBlockedMatrixBody(templateID, scope, strategy string) string {
 }
 
 func decodeConfigRolloutEnvelope(t *testing.T, w *httptest.ResponseRecorder) struct {
-	Error            string                                     `json:"error"`
-	Status           string                                     `json:"status"`
-	Blockers         []string                                   `json:"blockers"`
-	MissingContracts []string                                   `json:"missing_contracts"`
-	StateMachine     model.FindXAgentExecutionStateMachine      `json:"state_machine"`
-	ReceiptContract  model.FindXAgentReceiptContract            `json:"receipt_contract"`
-	ReceiptMatrix    []model.FindXAgentReceiptContractMatrixRow `json:"receipt_matrix"`
-	SafeToRetry      bool                                       `json:"safe_to_retry"`
-	Data             model.FindXAgentConfigRollout              `json:"data"`
+	Error             string                                     `json:"error"`
+	Status            string                                     `json:"status"`
+	Blockers          []string                                   `json:"blockers"`
+	MissingContracts  []string                                   `json:"missing_contracts"`
+	StateMachine      model.FindXAgentExecutionStateMachine      `json:"state_machine"`
+	ReceiptContract   model.FindXAgentReceiptContract            `json:"receipt_contract"`
+	ReceiptMatrix     []model.FindXAgentReceiptContractMatrixRow `json:"receipt_matrix"`
+	OperationContract map[string]any                             `json:"operation_contract"`
+	SafeToRetry       bool                                       `json:"safe_to_retry"`
+	Data              model.FindXAgentConfigRollout              `json:"data"`
 } {
 	t.Helper()
 	var payload struct {
-		Error            string                                     `json:"error"`
-		Status           string                                     `json:"status"`
-		Blockers         []string                                   `json:"blockers"`
-		MissingContracts []string                                   `json:"missing_contracts"`
-		StateMachine     model.FindXAgentExecutionStateMachine      `json:"state_machine"`
-		ReceiptContract  model.FindXAgentReceiptContract            `json:"receipt_contract"`
-		ReceiptMatrix    []model.FindXAgentReceiptContractMatrixRow `json:"receipt_matrix"`
-		SafeToRetry      bool                                       `json:"safe_to_retry"`
-		Data             model.FindXAgentConfigRollout              `json:"data"`
+		Error             string                                     `json:"error"`
+		Status            string                                     `json:"status"`
+		Blockers          []string                                   `json:"blockers"`
+		MissingContracts  []string                                   `json:"missing_contracts"`
+		StateMachine      model.FindXAgentExecutionStateMachine      `json:"state_machine"`
+		ReceiptContract   model.FindXAgentReceiptContract            `json:"receipt_contract"`
+		ReceiptMatrix     []model.FindXAgentReceiptContractMatrixRow `json:"receipt_matrix"`
+		OperationContract map[string]any                             `json:"operation_contract"`
+		SafeToRetry       bool                                       `json:"safe_to_retry"`
+		Data              model.FindXAgentConfigRollout              `json:"data"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("invalid config rollout envelope: %v body=%s", err, w.Body.String())

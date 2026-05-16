@@ -18,8 +18,8 @@
 - [项目 README](../../README.md)
 - [统一测试基准](../testing/AI_WorkBench_统一测试基准.md)
 - [第三方来源与融合登记](../compliance/third-party-sources.md)
-- [.claude/codex-task-board.md](../../.claude/codex-task-board.md)
-- [.claude/operations-log.md](../../.claude/operations-log.md)
+- [.codex/codex-task-board.md](../../.codex/codex-task-board.md)
+- [.codex/operations-log.md](../../.codex/operations-log.md)
 
 ## 有效源码矩阵
 
@@ -49,14 +49,17 @@
 - SkyWalking Agent 是 FindX Agent 管理中心的一等能力，贯穿 P0 矩阵、P2 入口、P3 链路联动、P5 生命周期闭环。
 - 日志中心按 SigNoZ 源码迁移。
 - CMDB / Agent 在线按 AutoOps/AIOps 源码迁移。
-- Categraf / Catpaw 作为 FindX Agent 能力来源，用户侧统一 FindX Agent 命名。
+- Categraf / Catpaw 作为 FindX Agent 能力来源，用户侧统一 FindX Agent 命名；Categraf 插件配置必须纳入 Agent 配置下发和远程修改契约，缺少真实执行链路时显示 `BLOCKED_BY_CONTRACT`。
+- FindX Agent 生命周期完成态必须覆盖本机安装、远程下发、远程安装、卸载、配置下发、插件下发、升级、回滚、心跳、数据到达、审计和 Evidence Chain；脚本预览、复制命令或 `409 BLOCKED_BY_CONTRACT` 不能算成功。
+- Linux `curl -kfsSL`、Windows CMD `certutil -urlcache -f`、PowerShell `Invoke-WebRequest`、SSH、WinRM、systemd、Windows Service、IIS、Docker、Helm、Operator、DaemonSet、Sidecar、InitContainer 必须分别给出真实执行证据和失败恢复证据。
+- SkyWalking Agent、Categraf、Catpaw 以及所有采集/监控插件必须 Windows/Linux 双实现、双验证；没有环境时先安装环境，再测试监控、数据到达和卸载清理。
 - 禁止 iframe、参考站 SSO、弱化自研页面、静态假按钮、静态假数据、最小实现、最小验证。
 - API 测试不能替代 MCP/Playwright 真实浏览器回归。
 - 未执行 WSL build、lint/测试、浏览器回归、敏感扫描、品牌扫描和静态假按钮扫描，不得写 PASS。
 
 ## 多 Agent 执行记录要求
 
-每个任务必须在 `.claude/codex-task-board.md` 记录：
+每个任务必须在 `.codex/codex-task-board.md` 记录：
 
 - `FX-NIGHT-*` 或 `FX-TASK-*` ID
 - 状态：`READY`、`CLAIMED`、`IN_PROGRESS`、`DONE`、`FAIL`、`BLOCKED`、`NOT_RUN`、`RISK`
@@ -66,7 +69,7 @@
 - 验证门禁
 - 关闭状态和残留风险
 
-每次派发、关闭、超时、回派、接管、验证、扫描和 P0/P1 风险处理，必须追加到 `.claude/operations-log.md`。
+每次派发、关闭、超时、回派、接管、验证、扫描和 P0/P1 风险处理，必须追加到 `.codex/operations-log.md`。
 
 ## Superseded 文档
 
