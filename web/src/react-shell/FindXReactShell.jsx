@@ -8,6 +8,7 @@ import { DashboardsPage } from './base-monitoring/dashboards/DashboardsPage.jsx'
 import { IntegrationsPage } from './base-monitoring/integrations/IntegrationsPage.jsx'
 import { MetricExplorerPage } from './base-monitoring/query/MetricExplorerPage.jsx'
 import { NotificationsPage } from './base-monitoring/notifications/NotificationsPage.jsx'
+import { OverviewPage } from './base-monitoring/OverviewPage.jsx'
 import { LogsPage } from './logs/LogsPage.jsx'
 import { OrgPage } from './org/OrgPage.jsx'
 import { PlatformPage } from './platform/PlatformPage.jsx'
@@ -20,6 +21,9 @@ import { AUTH_EXPIRED_EVENT, get, post, redactText } from './api/http.js'
 import { normalizeLegacyRoute } from './legacyRoutes.js'
 import { useI18n } from './i18n/useI18n.js'
 import { ThemeToggle } from './shared/ThemeToggle.jsx'
+import { FindXIcon } from './shared/FindXIcon.jsx'
+import { ParticleBackground } from './shared/ParticleBackground.jsx'
+import './shared/fx-base.css'
 import './styles.css'
 
 const readJson = (key, fallback = {}) => {
@@ -46,12 +50,29 @@ const buildSearch = (query = {}) => {
 
 const sameTarget = (location, target) => location.pathname === target.path && location.search === buildSearch(target.query)
 const trimTrailingSlash = (path) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
+const navBranchKey = (group, item) => `${group.key}:${item.section}`
+
+const hasActiveNavItem = (group, item, activeChild) => {
+  if (!item || !activeChild) return false
+  if (item.section === activeChild.section) return true
+  return (item.children || []).some((child) => hasActiveNavItem(group, child, activeChild))
+}
+
+const firstNavigableTarget = (item) => {
+  if (item?.to) return item.to
+  for (const child of item?.children || []) {
+    const target = firstNavigableTarget(child)
+    if (target) return target
+  }
+  return null
+}
 
 const getRoute = (path) => {
   path = trimTrailingSlash(path)
   const traceMatch = matchPath(path, { path: '/tracing/:traceId', exact: true })
   if (traceMatch) return { name: 'tracing', params: traceMatch.params }
   if (path === '/assets') return { name: 'assets' }
+  if (path === '/overview') return { name: 'overview' }
   if (path === '/query') return { name: 'query' }
   if (path === '/dashboards') return { name: 'dashboards' }
   if (path === '/alerts') return { name: 'alerts' }
@@ -104,17 +125,20 @@ function LoginPage({ onLogin }) {
   }
 
   return (
-    <AuthCard title='登录' error={error}>
-      <form className='fx-auth-form' onSubmit={submit}>
-        <label>用户名<input autoComplete='username' value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
-        <label>密码<input autoComplete='current-password' type='password' value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
-        <button type='submit' disabled={loading}>{loading ? '登录中...' : '登录'}</button>
-      </form>
-    </AuthCard>
+    <>
+      <ParticleBackground />
+      <AuthCard title='登录' error={error}>
+        <form className='fx-auth-form' onSubmit={submit}>
+          <label>用户名<input autoComplete='username' value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} /></label>
+          <label>密码<input autoComplete='current-password' type='password' value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>
+          <button type='submit' disabled={loading}>{loading ? '登录中...' : '登录'}</button>
+        </form>
+      </AuthCard>
+    </>
   )
 }
 
-function ChangePasswordPage({ user, onDone }) {
+function ChangePasswordForm({ user, onDone, onCancel, submitText = '确认修改', loadingText = '修改中...', showCancel = false }) {
   const [form, setForm] = useState({ old_password: '', new_password: '', confirm: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -127,7 +151,7 @@ function ChangePasswordPage({ user, onDone }) {
     setLoading(true)
     try {
       await post('/auth/change-password', { old_password: form.old_password, new_password: form.new_password })
-      onDone({ ...user, must_change_pwd: false })
+      onDone?.({ ...user, must_change_pwd: false })
     } catch (err) {
       setError(redactText(err.message || '修改失败'))
     } finally {
@@ -136,14 +160,54 @@ function ChangePasswordPage({ user, onDone }) {
   }
 
   return (
-    <AuthCard title='修改密码' error={error}>
-      <form className='fx-auth-form' onSubmit={submit}>
+    <>
+      <form className='fx-auth-form fx-password-form' onSubmit={submit}>
         <label>当前密码<input autoComplete='current-password' type='password' value={form.old_password} onChange={(event) => setForm({ ...form, old_password: event.target.value })} /></label>
         <label>新密码<input autoComplete='new-password' type='password' value={form.new_password} onChange={(event) => setForm({ ...form, new_password: event.target.value })} /></label>
         <label>确认新密码<input autoComplete='new-password' type='password' value={form.confirm} onChange={(event) => setForm({ ...form, confirm: event.target.value })} /></label>
-        <button type='submit' disabled={loading}>{loading ? '修改中...' : '确认修改'}</button>
+        <div className='fx-password-actions'>
+          {showCancel && <button type='button' className='fx-password-cancel' disabled={loading} onClick={onCancel}>取消</button>}
+          <button type='submit' className='fx-password-submit' disabled={loading}>{loading ? loadingText : submitText}</button>
+        </div>
       </form>
+      {error && <p className='fx-auth-error fx-password-error'>{error}</p>}
+    </>
+  )
+}
+
+function ChangePasswordPage({ user, onDone }) {
+  return (
+    <AuthCard title='修改密码'>
+      <ChangePasswordForm user={user} onDone={onDone} />
     </AuthCard>
+  )
+}
+
+function ChangePasswordModal({ user, open, onClose, onDone }) {
+  if (!open) return null
+  return (
+    <div className='fx-confirm-overlay fx-password-modal' role='presentation' onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+      <section className='fx-confirm-dialog fx-password-dialog' role='dialog' aria-modal='true' aria-labelledby='fx-password-title'>
+        <header>
+          <div>
+            <h3 id='fx-password-title'>修改密码</h3>
+            <p>更新当前登录账号的密码</p>
+          </div>
+          <button type='button' className='fx-confirm-close' aria-label='关闭修改密码弹窗' onClick={onClose}>×</button>
+        </header>
+        <ChangePasswordForm
+          user={user}
+          showCancel
+          submitText='确认修改'
+          loadingText='修改中...'
+          onCancel={onClose}
+          onDone={(nextUser) => {
+            onDone?.(nextUser)
+            onClose?.()
+          }}
+        />
+      </section>
+    </div>
   )
 }
 
@@ -153,6 +217,7 @@ function LoadingPage() {
 
 function renderPage(route, query, navigate, openTrace, openAgent) {
   const props = { query, onNavigate: navigate }
+  if (route.name === 'overview') return <OverviewPage {...props} />
   if (route.name === 'assets') return <AssetsPage {...props} />
   if (route.name === 'query') return <MetricExplorerPage {...props} />
   if (route.name === 'dashboards') return <DashboardsPage {...props} />
@@ -182,6 +247,7 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
   const [theme, setTheme] = useState(() => localStorage.getItem('aiw-theme') || 'light')
   const [openKeys, setOpenKeys] = useState(() => navGroups.map((item) => item.key))
   const [collapsed, setCollapsed] = useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const { lang, setLang, t } = useI18n()
 
   const clearAuth = useCallback(() => {
@@ -215,7 +281,7 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
 
   useEffect(() => {
     if (token && authState === 'ready' && location.pathname === '/login') {
-      navigate({ path: '/query', query: { section: 'metrics' } }, 'replace')
+      navigate({ path: '/overview', query: { section: 'dashboard' } }, 'replace')
     }
   }, [token, authState, location.pathname, navigate])
 
@@ -255,13 +321,18 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
     setToken(nextToken)
     setUser(nextUser || {})
     setAuthState('ready')
-    navigate(nextUser?.must_change_pwd ? { path: '/settings/change-password' } : { path: '/query', query: { section: 'metrics' } }, 'replace')
+    navigate(nextUser?.must_change_pwd ? { path: '/settings/change-password' } : { path: '/overview', query: { section: 'dashboard' } }, 'replace')
   }
 
   const onPasswordDone = (nextUser) => {
     localStorage.setItem('aiw-user', JSON.stringify(nextUser || {}))
     setUser(nextUser || {})
-    navigate({ path: '/query', query: { section: 'metrics' } }, 'replace')
+    navigate({ path: '/overview', query: { section: 'dashboard' } }, 'replace')
+  }
+
+  const onPasswordModalDone = (nextUser) => {
+    localStorage.setItem('aiw-user', JSON.stringify(nextUser || {}))
+    setUser(nextUser || {})
   }
 
   const logout = async () => {
@@ -272,6 +343,35 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
 
   const openTrace = (traceId) => navigate({ path: `/tracing/${encodeURIComponent(traceId)}`, query: { section: 'trace-detail' } })
   const openAgent = ({ q = '', packageName = '' } = {}) => navigate({ path: '/agents', query: { section: 'hosts', package: packageName, q } })
+  const toggleOpenKey = (key) => setOpenKeys((keys) => keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key])
+  const renderNavItems = (group, items, level = 1) => (
+    <div className={`fx-nav-children fx-nav-level-${level}`}>
+      {items.map((item) => {
+        const branchKey = navBranchKey(group, item)
+        const hasChildren = Boolean(item.children?.length)
+        const active = activeNav.group.key === group.key && hasActiveNavItem(group, item, activeNav.child)
+        const expanded = openKeys.includes(branchKey) || active
+        const target = firstNavigableTarget(item)
+        return (
+          <div key={`${group.key}-${item.section}`} className={`fx-nav-branch ${active ? 'is-active-branch' : ''}`}>
+            <button
+              type='button'
+              className={`fx-nav-item ${hasChildren ? 'is-parent' : ''} ${active && !hasChildren ? 'is-active' : ''}`}
+              data-level={level}
+              onClick={() => {
+                if (hasChildren) toggleOpenKey(branchKey)
+                if (target && (!hasChildren || !expanded)) navigate(target)
+              }}
+            >
+              <span>{item.label}</span>
+              {hasChildren && <small>{expanded ? '⌃' : '⌄'}</small>}
+            </button>
+            {hasChildren && expanded && renderNavItems(group, item.children, level + 1)}
+          </div>
+        )
+      })}
+    </div>
+  )
 
   if (!token && location.pathname !== '/login') return <LoadingPage />
   if (token && authState === 'checking') return <LoadingPage />
@@ -298,9 +398,13 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
               {navGroups.map((group) => (
                 <section key={group.key} className='fx-nav-section'>
                   <button type='button' className={`fx-nav-parent ${activeNav.group.key === group.key ? 'is-active' : ''}`} onClick={() => { setOpenKeys((keys) => keys.includes(group.key) ? keys.filter((key) => key !== group.key) : [...keys, group.key]); navigate(group.to) }}>
-                    <span>{group.label}</span><small>{openKeys.includes(group.key) ? '⌃' : '⌄'}</small>
+                    <span className='fx-nav-main'>
+                      <span className='fx-nav-icon' aria-hidden='true'><FindXIcon name={group.icon || group.key} /></span>
+                      <span className='fx-nav-label'>{group.label}</span>
+                    </span>
+                    <small>{openKeys.includes(group.key) ? '⌃' : '⌄'}</small>
                   </button>
-                  {openKeys.includes(group.key) && <div className='fx-subnav'>{group.children.map((item) => <button key={`${group.key}-${item.section}`} type='button' className={activeNav.group.key === group.key && activeNav.child.section === item.section ? 'is-active' : ''} onClick={() => navigate(item.to)}>{item.label}</button>)}</div>}
+                  {openKeys.includes(group.key) && <div className='fx-subnav'>{renderNavItems(group, group.children)}</div>}
                 </section>
               ))}
             </nav>
@@ -311,12 +415,13 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
               <div className='fx-header-actions'>
                 <button type='button' className='fx-lang-toggle' onClick={() => setLang(lang === 'zh-CN' ? 'en-US' : 'zh-CN')}>{lang === 'zh-CN' ? 'EN' : '中'}</button>
                 <ThemeToggle theme={theme} onToggle={setTheme} />
-                <button type='button' onClick={() => navigate({ path: '/settings/change-password' })}>改密</button>
+                <button type='button' onClick={() => setPasswordModalOpen(true)}>改密</button>
                 <button type='button' className='fx-user' onClick={logout}><span>{userInitial}</span>{user?.username || '用户'} / 退出</button>
               </div>
             </header>
             <main className='fx-content'>{content}</main>
           </section>
+          <ChangePasswordModal user={user} open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} onDone={onPasswordModalDone} />
         </div>
       </ThemeBoundaryProvider>
     </AuthBoundaryProvider>

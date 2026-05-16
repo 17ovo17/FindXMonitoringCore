@@ -43,7 +43,9 @@ button, input, select {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--fx-bg);
+  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 .fx-auth-card {
   width: min(400px, 100%);
@@ -53,6 +55,8 @@ button, input, select {
   box-shadow: var(--fx-shadow);
   padding: 32px;
   text-align: center;
+  position: relative;
+  z-index: 2;
 }
 .fx-auth-logo {
   color: var(--fx-blue);
@@ -155,7 +159,8 @@ button, input, select {
 }
 .fx-brand button,
 .fx-nav-parent,
-.fx-subnav button {
+.fx-subnav button,
+.fx-nav-item {
   border: 0;
   color: inherit;
   background: transparent;
@@ -208,18 +213,69 @@ button, input, select {
   font-size: 14px;
   font-weight: 800;
 }
+.fx-nav-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.fx-nav-icon {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--fx-blue) 12%, var(--fx-border));
+  border-radius: 8px;
+  color: color-mix(in srgb, var(--fx-ink) 70%, var(--fx-blue));
+  background: color-mix(in srgb, var(--fx-panel) 82%, var(--fx-blue-soft));
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.fx-nav-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.fx-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .fx-nav-parent:hover,
 .fx-nav-parent.is-active {
   color: var(--fx-blue);
   background: var(--fx-blue-soft);
 }
+.fx-nav-parent:hover .fx-nav-icon,
+.fx-nav-parent.is-active .fx-nav-icon {
+  border-color: color-mix(in srgb, var(--fx-blue) 30%, var(--fx-border));
+  color: var(--fx-blue);
+  background: color-mix(in srgb, var(--fx-panel) 56%, var(--fx-blue-soft));
+}
 .fx-subnav {
   display: grid;
-  gap: 2px;
-  padding: 3px 0 8px 28px;
+  gap: 4px;
+  padding: 5px 0 10px 12px;
 }
-.fx-subnav button {
-  min-height: 30px;
+.fx-nav-children,
+.fx-nav-branch {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.fx-nav-children .fx-nav-children {
+  margin-left: 10px;
+  padding-left: 9px;
+  border-left: 1px solid color-mix(in srgb, var(--fx-blue) 16%, var(--fx-border));
+}
+.fx-nav-item {
+  width: 100%;
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   padding: 0 10px;
   border-radius: 7px;
   color: var(--fx-muted);
@@ -227,10 +283,35 @@ button, input, select {
   font-size: 13px;
   font-weight: 700;
 }
-.fx-subnav button:hover,
-.fx-subnav button.is-active {
+.fx-nav-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.fx-nav-item small {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--fx-muted) 74%, transparent);
+}
+.fx-nav-item[data-level="1"].is-parent {
+  color: #243653;
+  font-size: 13px;
+  font-weight: 800;
+}
+.fx-nav-item[data-level="2"] {
+  min-height: 29px;
+  padding-left: 12px;
+  color: #54657d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.fx-nav-item:hover,
+.fx-nav-item.is-active,
+.fx-nav-branch.is-active-branch > .fx-nav-item.is-parent {
   color: var(--fx-blue);
   background: rgba(23, 105, 255, .09);
+}
+.fx-nav-branch.is-active-branch > .fx-nav-item.is-parent {
+  background: var(--fx-blue-soft);
 }
 .fx-workspace {
   min-width: 0;
@@ -313,6 +394,8 @@ button, input, select {
 .is-collapsed .fx-brand-copy,
 .is-collapsed .fx-quick,
 .is-collapsed .fx-subnav,
+.is-collapsed .fx-nav-children,
+.is-collapsed .fx-nav-label,
 .is-collapsed .fx-nav-parent small {
   display: none;
 }
@@ -320,9 +403,24 @@ button, input, select {
   margin-left: 0;
 }
 .is-collapsed .fx-nav-parent {
+  width: 44px;
+  min-height: 44px;
   justify-content: center;
+  margin: 0 auto;
   padding: 0;
   font-size: 12px;
+}
+.is-collapsed .fx-nav-main {
+  justify-content: center;
+}
+.is-collapsed .fx-nav-icon {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+}
+.is-collapsed .fx-nav-icon svg {
+  width: 18px;
+  height: 18px;
 }
 @media (max-width: 1024px) {
   .fx-react-app {
@@ -338,6 +436,8 @@ button, input, select {
   .fx-brand-copy,
   .fx-quick,
   .fx-subnav,
+  .fx-nav-children,
+  .fx-nav-label,
   .fx-nav-parent small {
     display: none;
   }
@@ -345,9 +445,24 @@ button, input, select {
     margin-left: 0;
   }
   .fx-nav-parent {
+    width: 44px;
+    min-height: 44px;
     justify-content: center;
+    margin: 0 auto;
     padding: 0;
     font-size: 12px;
+  }
+  .fx-nav-main {
+    justify-content: center;
+  }
+  .fx-nav-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+  .fx-nav-icon svg {
+    width: 18px;
+    height: 18px;
   }
   .fx-workspace-header {
     padding: 0 16px;
@@ -395,6 +510,12 @@ button, input, select {
   margin: 0;
   font-size: 16px;
 }
+.fx-confirm-dialog header p {
+  margin: 5px 0 0;
+  color: var(--fx-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
 .fx-confirm-close {
   background: none;
   border: none;
@@ -432,6 +553,47 @@ button, input, select {
 }
 .fx-confirm-discard {
   color: var(--fx-muted);
+}
+.fx-password-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 22px;
+}
+.fx-password-form {
+  gap: 13px;
+}
+.fx-password-form input {
+  width: 100%;
+}
+.fx-password-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.fx-password-actions button {
+  min-width: 88px;
+  height: 34px;
+  border: 1px solid var(--fx-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 800;
+}
+.fx-password-actions button:disabled {
+  opacity: .68;
+  cursor: wait;
+}
+.fx-password-actions .fx-password-cancel {
+  color: var(--fx-muted);
+  border-color: var(--fx-border);
+  background: var(--fx-panel);
+}
+.fx-password-actions .fx-password-submit {
+  color: #fff;
+  border-color: var(--fx-blue) !important;
+  background: var(--fx-blue) !important;
+}
+.fx-password-error {
+  text-align: left;
 }
 
 /* 通用分页 */

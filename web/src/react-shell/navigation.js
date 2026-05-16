@@ -2,6 +2,7 @@ const to = (path, section, extraQuery = {}) => ({ path, query: { section, ...ext
 const agentMergedSections = new Set(['install', 'templates', 'heartbeat', 'data-arrival', 'config', 'plugins'])
 
 const targetFor = (group, item) => {
+  if (item.kind === 'label') return item.to
   if (group.key === 'agents' && agentMergedSections.has(item.section)) {
     if (item.to) {
       return {
@@ -15,15 +16,20 @@ const targetFor = (group, item) => {
   return to(group.path, item.section)
 }
 
+const attachItemTargets = (group, item) => {
+  const next = {
+    ...item,
+    to: targetFor(group, item),
+  }
+  if (Array.isArray(item.children)) {
+    next.children = item.children.map((child) => attachItemTargets(group, child))
+  }
+  return next
+}
+
 const attachTargets = (group) => {
-  const children = group.children.map((item) => ({
-    ...item,
-    to: targetFor(group, item),
-  }))
-  const hiddenChildren = (group.hiddenChildren || []).map((item) => ({
-    ...item,
-    to: targetFor(group, item),
-  }))
+  const children = group.children.map((item) => attachItemTargets(group, item))
+  const hiddenChildren = (group.hiddenChildren || []).map((item) => attachItemTargets(group, item))
 
   return {
     ...group,
@@ -35,48 +41,31 @@ const attachTargets = (group) => {
 
 export const navGroups = [
   {
-    key: 'asset-center',
-    label: '资产中心',
-    path: '/assets',
-    defaultSection: 'overview',
+    key: 'ai-sre',
+    label: 'AI助手',
+    icon: 'ai-assistant',
+    path: '/aiops',
+    defaultSection: 'diagnosis',
     children: [
-      { section: 'overview', label: '资产概览' },
-      { section: 'models', label: '对象建模' },
-      { section: 'instances', label: '实例管理' },
-      { section: 'agents', label: 'Agent 状态' },
-      { section: 'topology', label: '拓扑视图' },
-    ],
-    hiddenChildren: [
-      { section: 'model-detail', label: '模型详情', to: to('/assets', 'model-detail') },
-      { section: 'instance-detail', label: '实例详情', to: to('/assets', 'instance-detail') },
-      { section: 'business', label: '业务空间', to: to('/assets', 'business') },
-      { section: 'cmdb', label: 'CMDB', to: to('/assets', 'cmdb') },
-      { section: 'hosts', label: '主机资产', to: to('/assets', 'hosts') },
-      { section: 'databases', label: '数据库资产', to: to('/assets', 'databases') },
-      { section: 'deploy-tasks', label: '部署任务', to: to('/assets', 'deploy-tasks') },
-      { section: 'packages', label: '能力包', to: to('/assets', 'packages') },
+      { section: 'diagnosis', label: '诊断会话' },
+      { section: 'health', label: '健康检查' },
+      { section: 'report', label: '复盘报告' },
+      { section: 'evidence', label: 'Evidence Chain' },
+      { section: 'remediation', label: '自动修复' },
     ],
   },
   {
-    key: 'integrations',
-    label: '集成中心',
-    path: '/integrations',
-    defaultSection: 'datasources',
+    key: 'overview',
+    label: '监控总览',
+    icon: 'monitoring',
+    path: '/overview',
+    defaultSection: 'dashboard',
     children: [
-      { section: 'datasources', label: '数据源' },
-      { section: 'templates', label: '模板中心' },
-      { section: 'systems', label: '系统集成' },
-    ],
-  },
-  {
-    key: 'explorer',
-    label: '数据查询',
-    path: '/query',
-    defaultSection: 'metrics',
-    children: [
+      { section: 'dashboard', label: '全局概览' },
       {
         section: 'metrics',
         label: '指标查询',
+        to: to('/query', 'metrics'),
         matchSections: ['metrics', 'built-in-metrics', 'objects', 'recording-rules'],
       },
       { section: 'dashboards', label: '仪表盘', to: to('/dashboards', 'list') },
@@ -91,7 +80,8 @@ export const navGroups = [
   },
   {
     key: 'alerts',
-    label: '告警',
+    label: '告警中心',
+    icon: 'alert',
     path: '/alerts',
     defaultSection: 'rules',
     children: [
@@ -102,22 +92,15 @@ export const navGroups = [
       { section: 'history-events', label: '历史事件' },
       { section: 'tracing-alarms', label: '链路告警' },
       { section: 'event-pipelines', label: '事件流水线' },
-    ],
-  },
-  {
-    key: 'notification',
-    label: '通知',
-    path: '/notifications',
-    defaultSection: 'rules',
-    children: [
-      { section: 'rules', label: '通知规则' },
-      { section: 'channels', label: '通知媒介' },
-      { section: 'templates', label: '消息模板' },
+      { section: 'notify-rules', label: '通知规则', to: to('/notifications', 'rules') },
+      { section: 'notify-channels', label: '通知媒介', to: to('/notifications', 'channels') },
+      { section: 'notify-templates', label: '消息模板', to: to('/notifications', 'templates') },
     ],
   },
   {
     key: 'tracing',
     label: '链路监控',
+    icon: 'trace',
     path: '/tracing',
     defaultSection: 'overview',
     children: [
@@ -135,6 +118,7 @@ export const navGroups = [
   {
     key: 'logs',
     label: '日志中心',
+    icon: 'logs',
     path: '/logs',
     defaultSection: 'query',
     children: [
@@ -149,8 +133,138 @@ export const navGroups = [
     ],
   },
   {
+    key: 'asset-center',
+    label: 'CMDB',
+    icon: 'cmdb',
+    path: '/assets',
+    defaultSection: 'overview',
+    children: [
+      { section: 'overview', label: '概况' },
+      { section: 'search', label: '全文检索', to: to('/assets', 'overview', { focus: 'search' }) },
+      {
+        section: 'resource-management',
+        label: '资源管理',
+        children: [
+          { section: 'hosts', label: '资源列表', to: to('/assets', 'hosts') },
+          { section: 'business', label: '业务视图', to: to('/assets', 'business') },
+          { section: 'room-view', label: '机房视图', to: to('/assets', 'room-view') },
+          { section: 'recycle-bin', label: '回收站', to: to('/assets', 'recycle-bin') },
+        ],
+      },
+      {
+        section: 'model-config',
+        label: '模型配置',
+        children: [
+          { section: 'models', label: '模型管理', to: to('/assets', 'models') },
+          { section: 'model-relations', label: '关联类型', to: to('/assets', 'model-relations') },
+          { section: 'attribute-units', label: '属性单位', to: to('/assets', 'attribute-units') },
+        ],
+      },
+      {
+        section: 'discovery-management',
+        label: '发现管理',
+        children: [
+          { section: 'auto-discovery', label: '自动发现', to: to('/assets', 'auto-discovery') },
+          { section: 'auto-mapping', label: '自动化映射', to: to('/assets', 'auto-mapping') },
+          { section: 'discovery-records', label: '执行记录', to: to('/assets', 'discovery-records') },
+        ],
+      },
+      {
+        section: 'resource-approval',
+        label: '资源审批',
+        children: [
+          { section: 'approval-mine', label: '我的申请', to: to('/assets', 'approval-mine') },
+          { section: 'approval-todo', label: '我的待办', to: to('/assets', 'approval-todo') },
+          { section: 'approval-archive', label: '已归档', to: to('/assets', 'approval-archive') },
+        ],
+      },
+      {
+        section: 'resource-reports',
+        label: '资源报表',
+        children: [
+          { section: 'resource-stats', label: '资源统计', to: to('/assets', 'resource-stats') },
+          { section: 'change-stats', label: '变更统计', to: to('/assets', 'change-stats') },
+          { section: 'model-change', label: '模型变更', to: to('/assets', 'model-change') },
+          { section: 'instance-change-top', label: '实例变更TOP', to: to('/assets', 'instance-change-top') },
+          { section: 'custom-report', label: '自定义报表', to: to('/assets', 'custom-report') },
+          { section: 'cloud-bill', label: '云平台账单', to: to('/assets', 'cloud-bill') },
+        ],
+      },
+      {
+        section: 'asset-consumption',
+        label: '资产消费',
+        children: [
+          { section: 'compliance-check', label: '合规性检查', to: to('/assets', 'compliance-check') },
+          { section: 'compliance-stats', label: '合规性统计', to: to('/assets', 'compliance-stats') },
+          { section: 'change-notice', label: '变更通知', to: to('/assets', 'change-notice') },
+          { section: 'spare-management', label: '备件管理', to: to('/assets', 'spare-management') },
+          { section: 'inspection-config', label: '巡检配置', to: to('/assets', 'inspection-config') },
+          { section: 'relationship-query', label: '关系查询', to: to('/assets', 'relationship-query') },
+          { section: 'event-subscription', label: '事件订阅', to: to('/assets', 'event-subscription') },
+        ],
+      },
+      {
+        section: 'audit-records',
+        label: '审计记录',
+        children: [
+          { section: 'notice-records', label: '通知记录', to: to('/assets', 'notice-records') },
+          { section: 'change-records', label: '变更记录', to: to('/assets', 'change-records') },
+          { section: 'subscription-records', label: '订阅记录', to: to('/assets', 'subscription-records') },
+        ],
+      },
+    ],
+    hiddenChildren: [
+      { section: 'model-detail', label: '模型详情', to: to('/assets', 'model-detail') },
+      { section: 'instance-detail', label: '实例详情', to: to('/assets', 'instance-detail') },
+      { section: 'topology', label: '实例拓扑', to: to('/assets', 'topology') },
+      { section: 'business', label: '业务空间', to: to('/assets', 'business') },
+      { section: 'cmdb', label: 'CMDB', to: to('/assets', 'cmdb') },
+      { section: 'hosts', label: '主机资产', to: to('/assets', 'hosts') },
+      { section: 'databases', label: '数据库资产', to: to('/assets', 'databases') },
+      { section: 'deploy-tasks', label: '部署任务', to: to('/assets', 'deploy-tasks') },
+      { section: 'packages', label: '能力包', to: to('/assets', 'packages') },
+    ],
+  },
+  {
+    key: 'agents',
+    label: 'Agent管理',
+    icon: 'agent',
+    path: '/agents',
+    defaultSection: 'hosts',
+    children: [
+      { section: 'hosts', label: '主机列表' },
+      { section: 'packages', label: '能力包' },
+      { section: 'plugins', label: '插件目录' },
+      { section: 'environment', label: '环境适配' },
+    ],
+  },
+  {
+    key: 'knowledge',
+    label: '知识库',
+    icon: 'knowledge',
+    path: '/aiops',
+    defaultSection: 'knowledge',
+    to: to('/aiops', 'knowledge'),
+    children: [
+      { section: 'knowledge', label: '知识管理', to: to('/aiops', 'knowledge') },
+    ],
+  },
+  {
+    key: 'integrations',
+    label: '集成中心',
+    icon: 'integration',
+    path: '/integrations',
+    defaultSection: 'datasources',
+    children: [
+      { section: 'datasources', label: '数据源' },
+      { section: 'templates', label: '模板中心' },
+      { section: 'systems', label: '系统集成' },
+    ],
+  },
+  {
     key: 'business-probes',
     label: '业务拨测',
+    icon: 'probe',
     path: '/status',
     defaultSection: 'public',
     children: [
@@ -164,6 +278,7 @@ export const navGroups = [
   {
     key: 'organization',
     label: '人员组织',
+    icon: 'org',
     path: '/org',
     defaultSection: 'users',
     children: [
@@ -176,6 +291,7 @@ export const navGroups = [
   {
     key: 'setting',
     label: '系统配置',
+    icon: 'settings',
     path: '/platform',
     defaultSection: 'models',
     children: [
@@ -187,21 +303,6 @@ export const navGroups = [
       { section: 'alerting-engines', label: '告警引擎' },
       { section: 'health', label: '运行自检' },
       { section: 'audit', label: '审计日志' },
-    ],
-  },
-  {
-    key: 'ai-sre',
-    label: 'AI SRE',
-    path: '/aiops',
-    defaultSection: 'diagnosis',
-    children: [
-      { section: 'diagnosis', label: '诊断会话' },
-      { section: 'workflow', label: '工作流' },
-      { section: 'health', label: '健康检查' },
-      { section: 'report', label: '复盘报告' },
-      { section: 'evidence', label: 'Evidence Chain' },
-      { section: 'knowledge', label: '知识库' },
-      { section: 'remediation', label: '自动修复' },
     ],
   },
 ].map(attachTargets)
@@ -221,10 +322,22 @@ const matchesSection = (route, item, group) => {
   return item.matchSections?.includes(section) || section === item.to?.query?.section
 }
 
-const matchesItem = (route, item, group) => sameTarget(route, item.to) || matchesSection(route, item, group)
+const matchesItem = (route, item, group) => item.kind !== 'label' && (sameTarget(route, item.to) || matchesSection(route, item, group))
+
+const findChildByRoute = (route, items, group) => {
+  for (const item of items) {
+    const child = findChildByRoute(route, item.children || [], group)
+    if (child) return child
+  }
+  return items.find((item) => matchesItem(route, item, group))
+}
+
+const flattenNavItems = (items = []) => items.flatMap((item) => (
+  item.children?.length ? flattenNavItems(item.children) : item.kind === 'label' ? [] : [item]
+))
 
 export const quickOptions = navGroups.flatMap((group) =>
-  [...group.children, ...(group.hiddenChildren || []).filter((item) => item.quick)].map((item) => ({
+  [...flattenNavItems(group.children), ...(group.hiddenChildren || []).filter((item) => item.quick)].map((item) => ({
     value: `${group.key}:${item.section}`,
     label: `${group.label} / ${item.label}`,
     to: item.to,
@@ -233,18 +346,18 @@ export const quickOptions = navGroups.flatMap((group) =>
 
 export const findNavByRoute = (route) => {
   for (const group of navGroups) {
-    const child = group.children.find((item) => matchesItem(route, item, group))
+    const child = findChildByRoute(route, group.children, group)
     if (child) return { group, child }
   }
 
   for (const group of navGroups) {
-    const child = group.hiddenChildren.find((item) => matchesItem(route, item, group))
+    const child = findChildByRoute(route, group.hiddenChildren, group)
     if (child) return { group, child }
   }
 
   const group = navGroups.find((item) => samePath(route.path, item.path)) || navGroups[0]
   const section = String(route.query?.section || group.defaultSection)
-  const childOptions = [...group.children, ...group.hiddenChildren]
+  const childOptions = flattenNavItems([...group.children, ...group.hiddenChildren])
   const child = childOptions.find((item) => item.section === section) || group.children[0]
   return { group, child }
 }
