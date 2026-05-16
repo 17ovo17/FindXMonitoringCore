@@ -51,15 +51,25 @@ type monitorRuleOutcome struct {
 var monitorAlertRunMu sync.Mutex
 var addMonitorAlertEvalLog = store.AddMonitorAlertEvalLog
 
+// globalWorkerManager 持有全局 worker 管理器实例，供 Stop 时使用。
+var globalWorkerManager *AlertWorkerManager
+
 func StartMonitorAlertScheduler() {
-	cfg := monitorAlertSchedulerOptionsFromConfig()
 	if !viper.GetBool("monitoring.alert_scheduler.enabled") {
 		log.Info("scheduler: monitor alert scheduler disabled")
 		return
 	}
-	interval := schedulerIntervalFromConfig()
-	go runMonitorAlertSchedulerLoop(interval, cfg)
-	log.Infof("scheduler: monitor alert scheduler started interval=%s", interval)
+	manager := newAlertWorkerManager()
+	globalWorkerManager = manager
+	manager.Start()
+	log.Info("scheduler: monitor alert scheduler started (per-rule worker mode)")
+}
+
+// StopMonitorAlertScheduler 停止所有告警规则 worker。
+func StopMonitorAlertScheduler() {
+	if globalWorkerManager != nil {
+		globalWorkerManager.Stop()
+	}
 }
 
 func RunMonitorAlertEvaluationOnce(ctx context.Context, opts MonitorAlertSchedulerOptions) MonitorAlertRunResult {

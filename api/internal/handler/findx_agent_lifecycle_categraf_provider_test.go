@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"ai-workbench-api/internal/store"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -30,57 +32,112 @@ func TestCategrafHTTPProviderRejectsMissingTarget(t *testing.T) {
 	}
 }
 
-func TestCategrafHTTPProviderReturnsBlockedCompatibleShape(t *testing.T) {
+func TestCategrafHTTPProviderReturnsEmptyConfigsForUnknownAgent(t *testing.T) {
 	resetCategrafReceiverTestState(t)
+	store.ResetCategrafConfigAssignmentsForTest()
 	configureCategrafReceiverTokenTest(t, "unit-provider-token", false)
 	path := "/categraf/configs?agent=categraf&host=machine1&version=v1&agent_hostname=node-a"
 	w := performCategrafProviderRequest(path, "unit-provider-token")
-	if w.Code != http.StatusConflict {
-		t.Fatalf("provider request should be 409, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("provider request should be 200, got %d body=%s", w.Code, w.Body.String())
 	}
-	var payload struct {
-		Error   string                    `json:"error"`
-		Version string                    `json:"version"`
-		Configs map[string]map[string]any `json:"configs"`
-	}
+	var payload store.CategrafProviderResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("provider response should be json: %v", err)
 	}
-	if !strings.Contains(payload.Error, agentBlocked) || payload.Version == "" {
-		t.Fatalf("provider response should keep blocked shape, got %#v", payload)
+	if payload.Version != "" {
+		t.Fatalf("provider version should be empty for unknown agent, got %q", payload.Version)
 	}
 	if payload.Configs == nil || len(payload.Configs) != 0 {
-		t.Fatalf("provider configs must be empty, got %#v", payload.Configs)
+		t.Fatalf("provider configs must be empty for unknown agent, got %#v", payload.Configs)
 	}
-	for _, forbidden := range []string{"queued", "running", "succeeded", "success"} {
-		if strings.Contains(w.Body.String(), forbidden) {
-			t.Fatalf("provider response must not expose execution states: %s", w.Body.String())
-		}
+}
+
+func TestCategrafHTTPProviderReturnsAssignedConfigs(t *testing.T) {
+	resetCategrafReceiverTestState(t)
+	store.ResetCategrafConfigAssignmentsForTest()
+	configureCategrafReceiverTokenTest(t, "unit-provider-token", false)
+
+	// 分配配置给 agent
+	_, err := store.UpsertCategrafConfigByAgent("node-a", "mysql", "[[instances]]\naddress = \"127.0.0.1:3306\"", "toml")
+	if err != nil {
+		t.Fatalf("upsert config: %v", err)
+	}
+	_, err = store.UpsertCategrafConfigByAgent("node-a", "redis", "[[instances]]\naddress = \"127.0.0.1:6379\"", "toml")
+	if err != nil {
+		t.Fatalf("upsert config: %v", err)
+	}
+
+	path := "/categraf/configs?agent_hostname=node-a&version=old-version"
+	w := performCategrafProviderRequest(path, "unit-provider-token")
+	if w.Code != http.StatusOK {
+		t.Fatalf("provider request should be 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var payload store.CategrafProviderResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("provider response should be json: %v", err)
+	}
+	if payload.Version == "" {
+		t.Fatalf("provider version should not be empty when configs exist")
+	}
+	if len(payload.Configs) != 2 {
+		t.Fatalf("expected 2 input configs, got %d: %#v", len(payload.Configs), payload.Configs)
+	}
+	if _, ok := payload.Configs["mysql"]; !ok {
+		t.Fatalf("expected mysql config in response, got %#v", payload.Configs)
+	}
+	if _, ok := payload.Configs["redis"]; !ok {
+		t.Fatalf("expected redis config in response, got %#v", payload.Configs)
+	}
+}
+
+func TestCategrafHTTPProviderReturnsEmptyWhenVersionMatches(t *testing.T) {
+	resetCategrafReceiverTestState(t)
+	store.ResetCategrafConfigAssignmentsForTest()
+	configureCategrafReceiverTokenTest(t, "unit-provider-token", false)
+
+	_, err := store.UpsertCategrafConfigByAgent("node-b", "cpu", "[interval]\ncollect = 10", "toml")
+	if err != nil {
+		t.Fatalf("upsert config: %v", err)
+	}
+
+	// 先获取当前 version
+	resp := store.BuildCategrafProviderResponse("node-b")
+	currentVersion := resp.Version
+
+	// 用相同 version 请求
+	path := "/categraf/configs?agent_hostname=node-b&version=" + currentVersion
+	w := performCategrafProviderRequest(path, "unit-provider-token")
+	if w.Code != http.StatusOK {
+		t.Fatalf("provider request should be 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var payload store.CategrafProviderResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("provider response should be json: %v", err)
+	}
+	if payload.Version != currentVersion {
+		t.Fatalf("version should match, got %q want %q", payload.Version, currentVersion)
+	}
+	if len(payload.Configs) != 0 {
+		t.Fatalf("configs should be empty when version matches, got %#v", payload.Configs)
 	}
 }
 
 func TestCategrafHTTPProviderAcceptsSharedToken(t *testing.T) {
 	resetCategrafReceiverTestState(t)
+	store.ResetCategrafConfigAssignmentsForTest()
 	configureCategrafProviderSharedTokenTest(t, "unit-provider-shared-token", false)
 	path := "/categraf/configs?agent=categraf&host=machine1&version=v1"
 	w := performCategrafProviderRequest(path, "unit-provider-shared-token")
-	if w.Code != http.StatusConflict {
-		t.Fatalf("provider request with shared token should be 409, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("provider request with shared token should be 200, got %d body=%s", w.Code, w.Body.String())
 	}
-	var payload struct {
-		Error   string         `json:"error"`
-		Version string         `json:"version"`
-		Configs map[string]any `json:"configs"`
-		Data    map[string]any `json:"data"`
-	}
+	var payload store.CategrafProviderResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("provider response should be json: %v", err)
 	}
-	if !strings.Contains(payload.Error, agentBlocked) || payload.Version != categrafProviderBlockedVersion {
-		t.Fatalf("provider response should keep blocked shape, got %#v", payload)
-	}
-	if payload.Configs == nil || len(payload.Configs) != 0 || payload.Data["contract"] != "categraf_http_provider" {
-		t.Fatalf("provider response should include empty configs and contract data, got %#v", payload)
+	if payload.Configs == nil {
+		t.Fatalf("provider response should include configs map (even if empty)")
 	}
 }
 
@@ -109,11 +166,12 @@ func TestCategrafHTTPProviderRejectsWrongTokenWithoutEcho(t *testing.T) {
 
 func TestCategrafHTTPProviderResponseIsSanitized(t *testing.T) {
 	resetCategrafReceiverTestState(t)
+	store.ResetCategrafConfigAssignmentsForTest()
 	configureCategrafReceiverTokenTest(t, "unit-provider-token", false)
 	path := "/categraf/configs?host=machine1&password=synthetic-password&cookie=synthetic-cookie&dsn=synthetic-dsn"
 	w := performCategrafProviderRequest(path, "unit-provider-token")
-	if w.Code != http.StatusConflict {
-		t.Fatalf("provider request should be 409, got %d body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("provider request should be 200, got %d body=%s", w.Code, w.Body.String())
 	}
 	body := w.Body.String()
 	for _, forbidden := range []string{"unit-provider-token", "synthetic-password", "synthetic-cookie", "synthetic-dsn", "basic-user", "basic-pass"} {

@@ -12,7 +12,6 @@ import (
 )
 
 const categrafReceiverBodyLimit = 2 << 20
-const categrafProviderBlockedVersion = "blocked-provider-contract-v1"
 
 type categrafHeartbeatPayload struct {
 	Ident        string            `json:"ident"`
@@ -99,37 +98,6 @@ func CategrafPrometheusRemoteWrite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "status": saved.Status, "evidence_id": saved.ID})
 }
 
-func CategrafHTTPProviderConfigs(c *gin.Context) {
-	if !validCategrafProviderToken(c) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid agent provider token"})
-		return
-	}
-	if !hasCategrafProviderTarget(c) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "agent, agent_id, host, agent_hostname, target_id, or ident is required",
-			"version": categrafProviderBlockedVersion,
-			"configs": gin.H{},
-		})
-		return
-	}
-	c.JSON(http.StatusConflict, gin.H{
-		"error":   "PENDING: provider config writer protocol not open",
-		"version": categrafProviderBlockedVersion,
-		"configs": gin.H{},
-		"data": gin.H{
-			"contract": "categraf_http_provider",
-			"required_refs": []string{
-				"target_auth_ref",
-				"config_writer_ref",
-				"provider_config_ref",
-				"checksum_registry_ref",
-				"reload_receipt_ref",
-				"drift_check_ref",
-				"evidence_chain_ref",
-			},
-		},
-	})
-}
 
 func readCategrafHeartbeat(c *gin.Context) (categrafHeartbeatPayload, error) {
 	body, err := readReceiverBody(c.Request.Body, c.GetHeader("Content-Encoding"), categrafReceiverBodyLimit)

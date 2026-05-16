@@ -54,6 +54,13 @@ func registerFindXAgentRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/findx-agents/:id/uninstall", mw.monitorRequired("findx_agent", "write"), handler.UninstallFindXAgent)
 	v1.POST("/findx-agents/:id/config-push", mw.monitorRequired("findx_agent", "write"), handler.ConfigPushFindXAgent)
 	v1.GET("/findx-agents/:id/evidence-chain", mw.monitorRequired("findx_agent", "read"), handler.GetAgentEvidenceChain)
+
+	// Categraf HTTP Provider 配置分配管理
+	v1.GET("/categraf/config-assignments", mw.monitorRequired("findx_agent", "read"), handler.ListCategrafConfigAssignments)
+	v1.POST("/categraf/config-assignments", mw.monitorRequired("findx_agent", "write"), handler.UpsertCategrafConfigAssignment)
+	v1.DELETE("/categraf/config-assignments/:id", mw.monitorRequired("findx_agent", "write"), handler.DeleteCategrafConfigAssignment)
+	v1.POST("/categraf/config-assignments/disable", mw.monitorRequired("findx_agent", "write"), handler.DisableCategrafConfigAssignment)
+	v1.GET("/categraf/config-assignments/preview", mw.monitorRequired("findx_agent", "read"), handler.PreviewCategrafProviderResponse)
 }
 
 func registerKnowledgeRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
