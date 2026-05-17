@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"ai-workbench-api/internal/model"
+	"ai-workbench-api/internal/store"
+
 	"github.com/google/uuid"
 )
 
@@ -75,6 +78,9 @@ func (mm *MemoryManager) Store(memType MemoryType, content string, tags []string
 	for _, tag := range tags {
 		mm.index[tag] = append(mm.index[tag], id)
 	}
+
+	// 持久化到 MySQL + Redis
+	mm.persist(m)
 
 	return id
 }
@@ -342,4 +348,18 @@ func (mm *MemoryManager) removeFromIndex(tag, id string) {
 	if len(mm.index[tag]) == 0 {
 		delete(mm.index, tag)
 	}
+}
+
+// persist 将记忆持久化到 MySQL + Redis（通过 store 层）
+func (mm *MemoryManager) persist(m *Memory) {
+	go store.SaveAIMemory(&model.AIMemory{
+		ID:        m.ID,
+		Type:      string(m.Type),
+		Content:   m.Content,
+		Tags:      m.Tags,
+		Score:     m.Score,
+		UsedCount: m.UsedCount,
+		CreatedAt: m.CreatedAt,
+		ExpiresAt: m.ExpiresAt,
+	})
 }
