@@ -80,4 +80,21 @@ func registerKnowledgeRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/knowledge/search/stats", handler.KnowledgeSearchStats)
 	v1.POST("/knowledge/search/badcase", mw.adminRequired, handler.SubmitSearchBadcase)
 	v1.POST("/knowledge/reindex-all", mw.adminRequired, handler.ReindexAllHandler)
+
+	// 增强搜索
+	v1.POST("/knowledge/search/hyde", handler.SearchWithHyDE)
+	v1.POST("/knowledge/search/multi", handler.SearchMultiQuery)
+
+	// 反馈学习
+	v1.POST("/knowledge/feedback", handler.SubmitKnowledgeFeedback)
+	v1.GET("/knowledge/feedback/stats", handler.GetFeedbackStats)
+
+	// 知识图谱
+	v1.GET("/knowledge/graph", handler.QueryGraph)
+	v1.POST("/knowledge/graph/extract", mw.adminRequired, handler.ExtractGraphEntities)
+	v1.GET("/knowledge/graph/path", handler.FindGraphPath)
+	v1.POST("/knowledge/graph/search", handler.GraphRAGSearch)
+
+	// 知识库统计
+	v1.GET("/knowledge/stats", handler.KnowledgeEnhancedStats)
 }

@@ -4,6 +4,12 @@ import { Blocked, Empty, ErrorBox, Field, StatusPill } from './AiSreShared.jsx'
 import { useConfirm } from '../shared/ConfirmModal.jsx'
 
 const categories = ['全部', '故障处理', '最佳实践', '架构设计', '运维手册', '告警规则', '其他']
+const searchModes = [
+  { key: 'normal', label: '普通搜索' },
+  { key: 'hyde', label: 'HyDE 增强' },
+  { key: 'multi', label: '多查询' },
+  { key: 'graph', label: '图谱搜索' },
+]
 
 function MarkdownPreview({ content }) {
   if (!content) return <Empty>无内容</Empty>
@@ -88,17 +94,102 @@ function RunbookList({ runbooks, onDelete }) {
   )
 }
 
+// 搜索结果反馈按钮
+function FeedbackButtons({ query, docId }) {
+  const [sent, setSent] = useState(null)
+  const handleFeedback = async type => {
+    try {
+      await aiSreApi.knowledge.feedback({ query, doc_id: docId, type })
+      setSent(type)
+    } catch { /* 静默失败 */ }
+  }
+  if (sent) return <span className='fx-aisre-feedback-sent'>{sent === 'like' ? '已点赞' : '已点踩'}</span>
+  return (
+    <span className='fx-aisre-feedback-btns'>
+      <button type='button' className='fx-aisre-btn-sm' onClick={() => handleFeedback('like')} title='有帮助'>&#x1F44D;</button>
+      <button type='button' className='fx-aisre-btn-sm' onClick={() => handleFeedback('dislike')} title='无帮助'>&#x1F44E;</button>
+    </span>
+  )
+}
+
+// 简单知识图谱可视化（SVG）
+function GraphVisualization({ entities, relations }) {
+  if (!entities?.length) return <Empty>暂无图谱数据</Empty>
+  const width = 600
+  const height = 400
+  const cx = width / 2
+  const cy = height / 2
+  const radius = Math.min(width, height) * 0.35
+
+  // 环形布局
+  const positions = entities.map((e, i) => {
+    const angle = (2 * Math.PI * i) / entities.length - Math.PI / 2
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle), entity: e }
+  })
+  const posMap = {}
+  positions.forEach(p => { posMap[p.entity.id] = p })
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className='fx-aisre-graph-svg' style={{ width: '100%', maxHeight: 400 }}>
+      {/* 关系线 */}
+      {(relations || []).map((rel, i) => {
+        const src = posMap[rel.source]
+        const tgt = posMap[rel.target]
+        if (!src || !tgt) return null
+        return <line key={i} x1={src.x} y1={src.y} x2={tgt.x} y2={tgt.y} stroke='#94a3b8' strokeWidth={1} opacity={0.6} />
+      })}
+      {/* 实体节点 */}
+      {positions.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={18} fill={entityColor(p.entity.type)} stroke='#475569' strokeWidth={1.5} />
+          <text x={p.x} y={p.y + 30} textAnchor='middle' fontSize={10} fill='#334155'>{p.entity.name?.slice(0, 12)}</text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function entityColor(type) {
+  const colors = { service: '#3b82f6', host: '#10b981', metric: '#f59e0b', alert: '#ef4444', runbook: '#8b5cf6', incident: '#ec4899', config: '#6b7280' }
+  return colors[type] || '#6b7280'
+}
+
+// 搜索统计面板
+function StatsPanel({ stats }) {
+  if (!stats) return null
+  return (
+    <div className='fx-aisre-stats-panel'>
+      <h4>知识库统计</h4>
+      {stats.graph && (
+        <div className='fx-aisre-stats-row'>
+          <span>图谱实体: {stats.graph.entity_count}</span>
+          <span>图谱关系: {stats.graph.relation_count}</span>
+        </div>
+      )}
+      {stats.feedback && (
+        <div className='fx-aisre-stats-row'>
+          <span>反馈总数: {stats.feedback.total}</span>
+          {stats.feedback.top_liked?.length > 0 && <span>最受欢迎: {stats.feedback.top_liked[0]?.doc_id}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function KnowledgeSection({ query, addEvidence }) {
   const [docs, setDocs] = useState([])
   const [runbooks, setRunbooks] = useState([])
   const [searchQ, setSearchQ] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [activeCategory, setActiveCategory] = useState('全部')
+  const [searchMode, setSearchMode] = useState('normal')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editDoc, setEditDoc] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [stats, setStats] = useState(null)
+  const [graphData, setGraphData] = useState(null)
   const { confirm, modal: confirmModal } = useConfirm()
 
   const loadDocs = async () => {
@@ -121,14 +212,34 @@ export function KnowledgeSection({ query, addEvidence }) {
     } catch { setRunbooks([]) }
   }
 
+  const loadStats = async () => {
+    try {
+      const data = await aiSreApi.knowledge.stats()
+      setStats(data)
+    } catch { /* 静默 */ }
+  }
+
   const handleSearch = async () => {
     if (!searchQ.trim()) return
     setLoading(true); setError('')
     try {
-      const data = await aiSreApi.knowledge.search({ query: searchQ, top_k: 10 })
-      const items = data.items || data.results || []
+      let data
+      switch (searchMode) {
+        case 'hyde':
+          data = await aiSreApi.knowledge.searchHyDE({ query: searchQ, top_k: 10 })
+          break
+        case 'multi':
+          data = await aiSreApi.knowledge.searchMulti({ query: searchQ, top_k: 10 })
+          break
+        case 'graph':
+          data = await aiSreApi.knowledge.graphSearch({ query: searchQ, top_k: 10 })
+          break
+        default:
+          data = await aiSreApi.knowledge.search({ query: searchQ, top_k: 10 })
+      }
+      const items = data?.search_results || data?.items || data?.results || []
       setSearchResults(items)
-      addEvidence({ category: 'knowledge', title: '知识搜索已执行', detail: `${items.length} 条命中` })
+      addEvidence({ category: 'knowledge', title: `知识搜索已执行 (${searchMode})`, detail: `${items.length} 条命中` })
     } catch (err) {
       setError(formatAiSreError(err))
     } finally {
@@ -169,7 +280,14 @@ export function KnowledgeSection({ query, addEvidence }) {
     }
   }
 
-  useEffect(() => { loadDocs(); loadRunbooks() }, [])
+  const loadGraph = async () => {
+    try {
+      const data = await aiSreApi.knowledge.graph({})
+      setGraphData(data)
+    } catch { setGraphData(null) }
+  }
+
+  useEffect(() => { loadDocs(); loadRunbooks(); loadStats(); loadGraph() }, [])
 
   const filteredDocs = useMemo(() => {
     let items = docs
@@ -194,13 +312,35 @@ export function KnowledgeSection({ query, addEvidence }) {
           <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder='搜索标题或内容...' onKeyDown={e => e.key === 'Enter' && handleSearch()} />
           <button type='button' onClick={handleSearch} disabled={loading || !searchQ.trim()}>搜索</button>
         </div>
+        {/* 搜索模式切换 */}
+        <div className='fx-aisre-category-chips'>
+          {searchModes.map(m => (
+            <button key={m.key} type='button' className={searchMode === m.key ? 'is-active' : ''} onClick={() => setSearchMode(m.key)}>{m.label}</button>
+          ))}
+        </div>
         <div className='fx-aisre-category-chips'>
           {categories.map(c => (
             <button key={c} type='button' className={activeCategory === c ? 'is-active' : ''} onClick={() => setActiveCategory(c)}>{c}</button>
           ))}
         </div>
+        {/* 搜索结果（带反馈按钮） */}
+        {searchResults.length > 0 && (
+          <div className='fx-aisre-doc-list'>
+            <h4>搜索结果</h4>
+            {searchResults.map((r, i) => (
+              <article key={r.doc_id || i} className='fx-aisre-doc-item'>
+                <div className='fx-aisre-doc-item-head'>
+                  <strong>{r.title || r.doc_id}</strong>
+                  <span className='fx-aisre-score'>得分: {(r.score || 0).toFixed(3)}</span>
+                  <FeedbackButtons query={searchQ} docId={r.doc_id} />
+                </div>
+                {r.content && <p className='fx-aisre-note'>{r.content.slice(0, 200)}</p>}
+              </article>
+            ))}
+          </div>
+        )}
         {showForm && <DocForm initial={editDoc} onSave={handleSaveDoc} onCancel={() => { setShowForm(false); setEditDoc(null) }} />}
-        {!showForm && (
+        {!showForm && !searchResults.length && (
           <div className='fx-aisre-doc-list'>
             {!filteredDocs.length && <Empty>暂无文档</Empty>}
             {filteredDocs.map(doc => (
@@ -234,6 +374,11 @@ export function KnowledgeSection({ query, addEvidence }) {
         <h2>Runbook</h2>
         <RunbookList runbooks={runbooks} onDelete={handleDeleteRunbook} />
         <Blocked>{AISRE_BLOCKERS.knowledgeWrite}</Blocked>
+        {/* 知识图谱可视化 */}
+        <h3 style={{ marginTop: 16 }}>知识图谱</h3>
+        <GraphVisualization entities={graphData?.entities} relations={graphData?.relations} />
+        {/* 统计面板 */}
+        <StatsPanel stats={stats} />
       </div>
       {confirmModal}
     </section>
