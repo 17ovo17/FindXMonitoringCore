@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { FindXReactShell } from './react-shell'
 
@@ -8,7 +8,8 @@ export const bootstrapFindXReactShell = (mountNode, options = {}) => {
     throw new Error('FindX React shell mount node is required')
   }
 
-  ReactDOM.render(
+  const root = createRoot(mountNode)
+  root.render(
     <React.StrictMode>
       <BrowserRouter basename={options.basename || '/'}>
         <FindXReactShell
@@ -18,8 +19,8 @@ export const bootstrapFindXReactShell = (mountNode, options = {}) => {
         />
       </BrowserRouter>
     </React.StrictMode>,
-    mountNode,
   )
+  return root
 }
 
 const reactMountNode = document.getElementById('app') || document.getElementById('findx-react-root')

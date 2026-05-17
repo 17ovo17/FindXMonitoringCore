@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -12,6 +13,11 @@ import (
 var ErrNotificationValidation = errors.New("notification validation failed")
 
 func ListNotificationRules() []model.NotificationRule {
+	if mysqlOK {
+		if rules, err := loadNotificationRulesFromDB(); err == nil && len(rules) > 0 {
+			return rules
+		}
+	}
 	mu.RLock()
 	defer mu.RUnlock()
 	out := make([]model.NotificationRule, 0, len(notificationRules))
@@ -65,6 +71,9 @@ func SaveNotificationRule(rule *model.NotificationRule, actor string) (*model.No
 	mu.Lock()
 	notificationRules[cp.ID] = copyNotificationRule(cp)
 	mu.Unlock()
+	if mysqlOK {
+		persistNotificationRule(cp)
+	}
 	return copyNotificationRule(cp), nil
 }
 
@@ -222,6 +231,33 @@ func CloneNotificationTemplate(id, actor string) (*model.NotificationTemplate, b
 	tpl.CreatedAt = time.Time{}
 	saved, err := SaveNotificationTemplate(tpl, actor)
 	return saved, true, err
+}
+
+func persistNotificationRule(rule *model.NotificationRule) {
+	configsJSON, _ := json.Marshal(rule.NotifyConfigs)
+	alertRuleIDsJSON, _ := json.Marshal(rule.AlertRuleIDs)
+	_, _ = db.Exec(`INSERT INTO notification_rules (id,name,description,enabled,notify_configs,alert_rule_ids,created_by,updated_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),description=VALUES(description),enabled=VALUES(enabled),notify_configs=VALUES(notify_configs),alert_rule_ids=VALUES(alert_rule_ids),updated_by=VALUES(updated_by),updated_at=VALUES(updated_at)`,
+		rule.ID, rule.Name, rule.Description, rule.Enabled, string(configsJSON), string(alertRuleIDsJSON), rule.CreatedBy, rule.UpdatedBy, rule.CreatedAt, rule.UpdatedAt)
+}
+
+func loadNotificationRulesFromDB() ([]model.NotificationRule, error) {
+	rows, err := db.Query(`SELECT id,name,COALESCE(description,''),enabled,COALESCE(notify_configs,'[]'),COALESCE(alert_rule_ids,'[]'),COALESCE(created_by,''),COALESCE(updated_by,''),created_at,updated_at FROM notification_rules ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.NotificationRule
+	for rows.Next() {
+		var rule model.NotificationRule
+		var configsStr, alertRuleIDsStr string
+		if err := rows.Scan(&rule.ID, &rule.Name, &rule.Description, &rule.Enabled, &configsStr, &alertRuleIDsStr, &rule.CreatedBy, &rule.UpdatedBy, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
+			continue
+		}
+		_ = json.Unmarshal([]byte(configsStr), &rule.NotifyConfigs)
+		_ = json.Unmarshal([]byte(alertRuleIDsStr), &rule.AlertRuleIDs)
+		out = append(out, rule)
+	}
+	return out, nil
 }
 
 func normalizeNotificationConfigs(items []model.NotificationConfig) []model.NotificationConfig {

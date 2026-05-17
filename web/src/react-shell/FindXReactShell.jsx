@@ -274,7 +274,7 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
     if (!token || authState !== 'ready') return
     let alive = true
     const poll = () => {
-      get('/api/alert/cur-events?limit=0').then((res) => {
+      get('/monitor/events/current?limit=0').then((res) => {
         if (alive && typeof res?.total === 'number') setAlertCount(res.total)
       }).catch(() => {})
     }

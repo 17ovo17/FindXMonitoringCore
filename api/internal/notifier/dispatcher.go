@@ -30,11 +30,13 @@ func DispatchAlertEvent(event *model.MonitorAlertEvent) {
 	if event == nil {
 		return
 	}
+	log.Infof("notifier: dispatch called for event name=%q severity=%s", event.Name, event.Severity)
 	if model.IsAlertMuted(event) {
 		log.Infof("alert event muted: name=%q", event.Name)
 		return
 	}
 	rules := store.ListActiveNotificationRules()
+	log.Infof("notifier: active rules count=%d", len(rules))
 	for _, rule := range rules {
 		if !matchesRule(rule, event) {
 			continue

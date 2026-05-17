@@ -117,8 +117,8 @@ export function OverviewPage({ query, onNavigate }) {
   const fetchData = useCallback(async () => {
     try {
       const [alertRes, hostRes] = await Promise.allSettled([
-        get('/alert/events', { params: { limit: 10, status: 'firing' } }),
-        get('/assets/hosts', { params: { limit: 100 } }),
+        get('/monitor/events/current', { params: { limit: 10, status: 'firing' } }),
+        get('/host-assets', { params: { limit: 100 } }),
       ])
 
       const events = alertRes.status === 'fulfilled' ? (Array.isArray(alertRes.value) ? alertRes.value : alertRes.value?.items || alertRes.value?.data || []) : []

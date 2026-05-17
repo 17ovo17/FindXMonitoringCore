@@ -28,6 +28,7 @@ func registerMonitorCoreRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/monitor/permissions/check", mw.readRequired, handler.CheckMonitorPermission)
 	v1.GET("/monitor/health", mw.monitorRequired("monitor.health", "read"), handler.MonitorHealth)
 	v1.GET("/monitor/datasources", mw.monitorRequired("monitor.datasource", "read"), handler.ListMonitorDatasources)
+	v1.POST("/monitor/datasources", mw.monitorRequired("monitor.datasource", "create"), handler.SaveDataSources)
 	v1.POST("/monitor/query", mw.monitorRequired("monitor.query", "execute"), handler.MonitorQuery)
 	v1.POST("/monitor/query-range", mw.monitorRequired("monitor.query", "execute_range"), handler.MonitorQueryRange)
 	v1.GET("/monitor/metrics", mw.monitorRequired("monitor.metric", "read"), handler.ListMonitorMetrics)

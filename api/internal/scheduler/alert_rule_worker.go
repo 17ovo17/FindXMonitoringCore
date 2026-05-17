@@ -210,6 +210,7 @@ func (w *AlertRuleWorker) eval() {
 
 // promoteToFiring 将事件从 pendings 升级到 fires，持久化并发送通知。
 func (w *AlertRuleWorker) promoteToFiring(fingerprint string, event *model.MonitorAlertEvent, now time.Time) {
+	log.Infof("worker[%s]: promoteToFiring fingerprint=%s name=%q", w.Rule.ID, fingerprint[:12], event.Name)
 	delete(w.pendings, fingerprint)
 	event.FirstSeen = now
 	event.LastSeen = now
