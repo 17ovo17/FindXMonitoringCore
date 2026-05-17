@@ -1,0 +1,13 @@
+{
+  "id": "snmp",
+  "name": "SNMP",
+  "description": "通过 SNMP 协议监控网络设备，包括接口流量、CPU、内存、端口状态等",
+  "category": "network",
+  "params": [
+    {"key": "agents", "label": "设备地址列表", "type": "string_array", "required": true, "placeholder": "udp://192.168.1.1:161"},
+    {"key": "community", "label": "Community 字符串", "type": "string", "required": false, "default": "public"},
+    {"key": "version", "label": "SNMP 版本", "type": "enum", "required": true, "default": "2c", "options": ["1", "2c", "3"]},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nagents = [{{range $i, $a := .agents}}{{if $i}}, {{end}}\"{{$a}}\"{{end}}]\ncommunity = \"{{.community}}\"\nversion = \"{{.version}}\"\ninterval = \"{{.interval}}\"\n"
+}

@@ -272,7 +272,65 @@ func CmdbAssignRackUnit(c *gin.Context) {
 	c.JSON(http.StatusCreated, unit)
 }
 
-// CmdbListModelPresets 列出预置资源模型
+// CmdbGetRackDevices 获取机柜内的设备（含 U 位信息）
+func CmdbGetRackDevices(c *gin.Context) {
+	rackID := c.Param("id")
+
+	dcMu.RLock()
+	var targetRack *cmdbRack
+	for i := range racks {
+		if racks[i].ID == rackID {
+			targetRack = &racks[i]
+			break
+		}
+	}
+	units := make([]cmdbRackUnit, len(rackUnits[rackID]))
+	copy(units, rackUnits[rackID])
+	dcMu.RUnlock()
+
+	if targetRack == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "机柜不存在"})
+		return
+	}
+
+	// 将 U 位数据转换为设备列表
+	devices := make([]gin.H, 0, len(units))
+	for _, u := range units {
+		device := gin.H{
+			"resource_id": u.ResourceID,
+			"start_u":     u.Position,
+			"position":    u.Position,
+			"size":        u.Height,
+			"height":      u.Height,
+		}
+		// 尝试从 CMDB 实例获取设备详情
+		if inst, ok := store.GetCmdbInstance(u.ResourceID); ok {
+			raw := parseCmdbInstanceData(inst.Data)
+			device["instance_id"] = inst.ID
+			device["name"] = firstNonEmptyString(raw, "name", "hostname", "host_name", "instance_name")
+			device["device_name"] = firstNonEmptyString(raw, "name", "hostname", "host_name", "instance_name")
+			device["ip"] = firstNonEmptyString(raw, "ip_address", "mgmt_ip", "ip", "host_ip")
+			device["model"] = firstNonEmptyString(raw, "model", "server_model", "型号")
+			device["status"] = firstNonEmptyString(raw, "status", "状态")
+		} else {
+			device["name"] = u.ResourceID
+			device["device_name"] = u.ResourceID
+		}
+		devices = append(devices, device)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"rack_id":      rackID,
+		"device_count": len(devices),
+	}).Info("cmdb: rack devices listed")
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":       devices,
+		"total":       len(devices),
+		"rack_id":     rackID,
+		"total_units": targetRack.TotalUnits,
+	})
+}
 func CmdbListModelPresets(c *gin.Context) {
 	presets := store.ListCmdbModelPresets()
 	c.JSON(http.StatusOK, gin.H{"items": presets, "total": len(presets)})

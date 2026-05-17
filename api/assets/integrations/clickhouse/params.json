@@ -1,0 +1,14 @@
+{
+  "id": "clickhouse",
+  "name": "ClickHouse",
+  "description": "监控 ClickHouse 数据库性能指标，包括查询吞吐、连接数、合并操作、副本状态等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "服务器地址列表", "type": "string_array", "required": true, "placeholder": "http://127.0.0.1:8123"},
+    {"key": "username", "label": "用户名", "type": "string", "required": false, "default": "default"},
+    {"key": "password", "label": "密码", "type": "password", "required": false},
+    {"key": "cluster_mode", "label": "集群模式", "type": "bool", "default": "false"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\n{{- if .username}}\nusername = \"{{.username}}\"\n{{- end}}\n{{- if .password}}\npassword = \"{{.password}}\"\n{{- end}}\ncluster_mode = {{.cluster_mode}}\ninterval = \"{{.interval}}\"\n"
+}

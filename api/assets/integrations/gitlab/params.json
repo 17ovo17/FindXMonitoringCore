@@ -1,0 +1,12 @@
+{
+  "id": "gitlab",
+  "name": "GitLab",
+  "description": "监控 GitLab 实例，包括项目数、流水线状态、Runner 活跃度、请求延迟等",
+  "category": "application",
+  "params": [
+    {"key": "url", "label": "GitLab URL", "type": "string", "required": true, "default": "http://127.0.0.1:80", "placeholder": "http://host:port"},
+    {"key": "private_token", "label": "Private Token", "type": "password", "required": true},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\nprivate_token = \"{{.private_token}}\"\ninterval = \"{{.interval}}\"\n"
+}

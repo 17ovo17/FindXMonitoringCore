@@ -1,0 +1,12 @@
+{
+  "id": "springboot",
+  "name": "Spring Boot",
+  "description": "监控 Spring Boot 应用 Actuator 指标，包括 JVM、线程池、HTTP 请求、GC 等",
+  "category": "application",
+  "params": [
+    {"key": "urls", "label": "Actuator 地址列表", "type": "string_array", "required": true, "placeholder": "http://127.0.0.1:8080"},
+    {"key": "metrics_path", "label": "指标路径", "type": "string", "required": false, "default": "/actuator/prometheus", "placeholder": "/actuator/prometheus"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurls = [{{range $i, $u := .urls}}{{if $i}}, {{end}}\"{{$u}}{{$.metrics_path}}\"{{end}}]\ninterval = \"{{.interval}}\"\n"
+}

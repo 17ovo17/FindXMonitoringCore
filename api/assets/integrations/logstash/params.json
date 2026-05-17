@@ -1,0 +1,11 @@
+{
+  "id": "logstash",
+  "name": "Logstash",
+  "description": "监控 Logstash 日志处理管道，包括事件吞吐、管道延迟、JVM 内存、队列深度等",
+  "category": "middleware",
+  "params": [
+    {"key": "url", "label": "Logstash Monitoring API", "type": "string", "required": true, "default": "http://127.0.0.1:9600", "placeholder": "http://host:port"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\ninterval = \"{{.interval}}\"\n"
+}

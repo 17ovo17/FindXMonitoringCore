@@ -1,0 +1,12 @@
+{
+  "id": "victoriametrics",
+  "name": "VictoriaMetrics",
+  "description": "监控 VictoriaMetrics 时序数据库，包括写入速率、查询延迟、存储使用、合并状态等",
+  "category": "monitoring",
+  "params": [
+    {"key": "url", "label": "VictoriaMetrics URL", "type": "string", "required": true, "default": "http://127.0.0.1:8428/metrics", "placeholder": "http://host:port/metrics"},
+    {"key": "extra_label", "label": "额外标签", "type": "string", "required": false, "placeholder": "cluster=prod"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\n{{- if .extra_label}}\nextra_label = \"{{.extra_label}}\"\n{{- end}}\ninterval = \"{{.interval}}\"\n"
+}

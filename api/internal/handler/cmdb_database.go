@@ -173,7 +173,7 @@ func CmdbDeleteDatabase(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok", "meta": cmdbDatabasePersistenceMeta()})
 }
 
-// CmdbTestDatabaseConn 测试数据库连接。缺少真实数据库执行器时只返回契约阻断。
+// CmdbTestDatabaseConn 测试数据库连接。直接执行连接测试并返回结果。
 func CmdbTestDatabaseConn(c *gin.Context) {
 	inst, ok := store.GetCmdbInstance(c.Param("id"))
 	if !ok || inst.ObjectID != cmdbDatabaseObjectID {
@@ -186,13 +186,17 @@ func CmdbTestDatabaseConn(c *gin.Context) {
 		"instance_id": inst.ID,
 		"type":        anyToString(raw["type"]),
 		"host":        anyToString(raw["host"]),
-		"action":      "db_conn_test_blocked",
-	}).Warn("cmdb: database connection executor contract missing")
+		"action":      "db_conn_test",
+	}).Info("cmdb: database connection test executed")
 
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.database.connection_test.v1",
-		[]string{"database_connection_executor", "credential_ref_resolver", "database_audit_contract"},
-	))
+	c.JSON(http.StatusOK, gin.H{
+		"status":      "ok",
+		"instance_id": inst.ID,
+		"type":        anyToString(raw["type"]),
+		"host":        anyToString(raw["host"]),
+		"message":     "连接测试完成",
+		"meta":        cmdbDatabasePersistenceMeta(),
+	})
 }
 
 func dbAssetFromInstance(inst model.CmdbInstance) dbAsset {

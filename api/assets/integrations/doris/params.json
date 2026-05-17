@@ -1,0 +1,13 @@
+{
+  "id": "doris",
+  "name": "Doris",
+  "description": "监控 Apache Doris 分析型数据库，包括 FE/BE 状态、查询延迟、Compaction、Tablet 等",
+  "category": "database",
+  "params": [
+    {"key": "fe_hosts", "label": "FE 节点地址列表", "type": "string_array", "required": true, "placeholder": "http://127.0.0.1:8030"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true, "default": "root"},
+    {"key": "password", "label": "密码", "type": "password", "required": false},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nfe_hosts = [{{range $i, $h := .fe_hosts}}{{if $i}}, {{end}}\"{{$h}}\"{{end}}]\nusername = \"{{.username}}\"\n{{- if .password}}\npassword = \"{{.password}}\"\n{{- end}}\ninterval = \"{{.interval}}\"\n"
+}

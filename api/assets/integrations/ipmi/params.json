@@ -1,0 +1,14 @@
+{
+  "id": "ipmi",
+  "name": "IPMI",
+  "description": "通过 IPMI 协议监控服务器硬件，包括温度、风扇转速、电压、电源状态等",
+  "category": "hardware",
+  "params": [
+    {"key": "servers", "label": "BMC 地址列表", "type": "string_array", "required": true, "placeholder": "192.168.1.100"},
+    {"key": "username", "label": "IPMI 用户名", "type": "string", "required": true},
+    {"key": "password", "label": "IPMI 密码", "type": "password", "required": true},
+    {"key": "interface", "label": "接口类型", "type": "enum", "required": true, "default": "lanplus", "options": ["lan", "lanplus"]},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "60s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\ninterface = \"{{.interface}}\"\ninterval = \"{{.interval}}\"\n"
+}

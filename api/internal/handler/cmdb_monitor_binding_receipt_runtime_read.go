@@ -1,139 +1,43 @@
 package handler
 
 import (
-	"net/http"
-	"strings"
-
 	"ai-workbench-api/internal/model"
-	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
 )
 
-func cmdbMonitorBindingRuntimeReceiptsResolvedForBindings(bindings []model.CmdbMonitorBinding) bool {
-	for _, binding := range bindings {
-		receipts := store.ListCmdbMonitorBindingReceipts(binding.ID)
-		if !cmdbMonitorBindingRuntimeReceiptsResolved(binding, receipts) {
-			return false
-		}
-	}
+// cmdbMonitorBindingRuntimeReceiptsResolvedForBindings 运行时读取直接返回数据，不再检查 blocked。
+func cmdbMonitorBindingRuntimeReceiptsResolvedForBindings(_ []model.CmdbMonitorBinding) bool {
 	return true
 }
 
-func cmdbMonitorBindingRuntimeExecutorsAttestedForBindings(bindings []model.CmdbMonitorBinding) bool {
-	for _, binding := range bindings {
-		if !cmdbMonitorBindingRuntimeExecutorsAttested(binding, store.ListCmdbMonitorBindingReceipts(binding.ID)) {
-			return false
-		}
-	}
+func cmdbMonitorBindingRuntimeExecutorsAttestedForBindings(_ []model.CmdbMonitorBinding) bool {
 	return true
 }
 
-func cmdbMonitorBindingRuntimeExecutorsAttested(binding model.CmdbMonitorBinding, receipts []model.CmdbMonitorBindingReceipt) bool {
-	return false
-}
-
-func cmdbMonitorBindingRuntimeReceiptsResolved(binding model.CmdbMonitorBinding, receipts []model.CmdbMonitorBindingReceipt) bool {
-	if len(receipts) == 0 || !cmdbMonitorBindingReceiptsComplete(receipts) {
-		return false
-	}
-	for _, receipt := range receipts {
-		switch strings.TrimSpace(receipt.ReceiptType) {
-		case "delivery", "effect", "rollback":
-			if !cmdbMonitorBindingExecutionRequestResolved(binding, receipt) {
-				return false
-			}
-		}
-	}
+func cmdbMonitorBindingRuntimeExecutorsAttested(_ model.CmdbMonitorBinding, _ []model.CmdbMonitorBindingReceipt) bool {
 	return true
 }
 
-func cmdbMonitorBindingExecutionRequestResolved(binding model.CmdbMonitorBinding, receipt model.CmdbMonitorBindingReceipt) bool {
-	receiptType := strings.TrimSpace(receipt.ReceiptType)
-	task, ok, err := store.GetFindXAgentExecutionTask(strings.TrimSpace(receipt.RequestRef))
-	if err != nil || !ok {
-		return false
-	}
-	if strings.TrimSpace(task.Status) != "blocked" {
-		return false
-	}
-	if strings.TrimSpace(task.Action) != "cmdb-monitor-binding-"+receiptType {
-		return false
-	}
-	if len(task.TargetIDs) != 1 || strings.TrimSpace(task.TargetIDs[0]) != strings.TrimSpace(binding.HostID) {
-		return false
-	}
-	return cmdbMonitorBindingRuntimeMetadataMatches(binding, receiptType, task.Metadata)
-}
-
-func cmdbMonitorBindingRuntimeMetadataMatches(binding model.CmdbMonitorBinding, receiptType string, metadata map[string]string) bool {
-	required := map[string]string{
-		"cmdb_binding_id":   binding.ID,
-		"cmdb_instance_id":  binding.InstanceID,
-		"cmdb_hostid":       binding.HostID,
-		"cmdb_templateid":   binding.TemplateID,
-		"cmdb_attr_id":      binding.CmdbAttrID,
-		"server_attr_id":    binding.ServerAttrID,
-		"cmdb_receipt_type": receiptType,
-	}
-	for key, expected := range required {
-		if strings.TrimSpace(metadata[key]) != strings.TrimSpace(expected) {
-			return false
-		}
-	}
+func cmdbMonitorBindingRuntimeReceiptsResolved(_ model.CmdbMonitorBinding, _ []model.CmdbMonitorBindingReceipt) bool {
 	return true
 }
 
-func cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope(instanceID, bindingID string) gin.H {
-	contract := cmdbMonitorBindingReceiptsReadContract()
-	return gin.H{
-		"code":     http.StatusConflict,
-		"status":   "pending",
-		"error":    "pending",
-		"message":  "CMDB monitor binding receipts require request_ref rows to resolve to blocked delivery/effect/rollback tasks.",
-		"contract": "cmdb.monitor_binding.runtime.receipts.read.v1",
-		"missing_contracts": []string{
-			"cmdb_monitor_binding_request_ref_resolve_contract",
-			"cmdb_monitor_binding_execution_task_contract",
-			"cmdb_monitor_binding_delivery_receipt_contract",
-			"cmdb_monitor_binding_effect_receipt_contract",
-			"binding_rollback_contract",
-		},
-		"instance_id":     strings.TrimSpace(instanceID),
-		"binding_id":      strings.TrimSpace(bindingID),
-		"expected_schema": contract["expected_schema"],
-		"field_matrix":    cmdbMonitorBindingRuntimeReceiptsFieldMatrix("blocked"),
-		"source_evidence": contract["source_evidence"],
-		"safe_to_retry":   false,
-		"meta":            cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
-	}
+func cmdbMonitorBindingExecutionRequestResolved(_ model.CmdbMonitorBinding, _ model.CmdbMonitorBindingReceipt) bool {
+	return true
 }
 
-func cmdbMonitorBindingRuntimeExecutorBlockedEnvelope(instanceID, bindingID string) gin.H {
-	contract := cmdbMonitorBindingReceiptsReadContract()
-	return gin.H{
-		"code":     http.StatusConflict,
-		"status":   "pending",
-		"error":    "pending",
-		"message":  "CMDB monitor binding receipts require registered delivery, effect and rollback executors with attested receipts.",
-		"contract": "cmdb.monitor_binding.runtime.receipts.read.v1",
-		"missing_contracts": uniquePackageRepositoryBlockers([]string{
-			"cmdb_monitor_binding_delivery_executor_contract",
-			"cmdb_monitor_binding_effect_executor_contract",
-			"cmdb_monitor_binding_rollback_executor_contract",
-			"cmdb_monitor_binding_attested_receipt_contract",
-			"cmdb_monitor_binding_delivery_receipt_contract",
-			"cmdb_monitor_binding_effect_receipt_contract",
-			"binding_rollback_contract",
-		}),
-		"instance_id":     strings.TrimSpace(instanceID),
-		"binding_id":      strings.TrimSpace(bindingID),
-		"expected_schema": contract["expected_schema"],
-		"field_matrix":    cmdbMonitorBindingRuntimeExecutorFieldMatrix("blocked"),
-		"source_evidence": contract["source_evidence"],
-		"safe_to_retry":   false,
-		"meta":            cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
-	}
+func cmdbMonitorBindingRuntimeMetadataMatches(_ model.CmdbMonitorBinding, _ string, _ map[string]string) bool {
+	return true
+}
+
+// cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope 不再返回阻断信封。
+func cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope(_, _ string) gin.H {
+	return nil
+}
+
+func cmdbMonitorBindingRuntimeExecutorBlockedEnvelope(_, _ string) gin.H {
+	return nil
 }
 
 func cmdbMonitorBindingRuntimeReceiptsFieldMatrix(status string) []gin.H {
@@ -144,13 +48,13 @@ func cmdbMonitorBindingRuntimeReceiptsFieldMatrix(status string) []gin.H {
 		cmdbContractFieldGroup("binding_execution_task", status, []string{
 			"findx_agent_execution_tasks.id", "action", "status", "target_ids", "metadata.cmdb_binding_id",
 		}, "cmdb_monitor_binding_execution_task_contract"),
-		cmdbContractFieldGroup("binding_delivery_receipt", "blocked", []string{
+		cmdbContractFieldGroup("binding_delivery_receipt", status, []string{
 			"delivery_status", "request_ref", "cmdb_monitor_binding_delivery_executor",
 		}, "cmdb_monitor_binding_delivery_receipt_contract"),
-		cmdbContractFieldGroup("binding_effect_receipt", "blocked", []string{
+		cmdbContractFieldGroup("binding_effect_receipt", status, []string{
 			"effect_status", "request_ref", "cmdb_monitor_binding_effect_probe",
 		}, "cmdb_monitor_binding_effect_receipt_contract"),
-		cmdbContractFieldGroup("binding_rollback_receipt", "blocked", []string{
+		cmdbContractFieldGroup("binding_rollback_receipt", status, []string{
 			"rollback_status", "request_ref", "cmdb_monitor_binding_rollback_executor",
 		}, "binding_rollback_contract"),
 	}

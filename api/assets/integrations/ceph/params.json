@@ -1,0 +1,12 @@
+{
+  "id": "ceph",
+  "name": "Ceph",
+  "description": "监控 Ceph 分布式存储集群，包括 OSD 状态、PG 分布、IOPS、存储容量等",
+  "category": "storage",
+  "params": [
+    {"key": "mon_host", "label": "Monitor 地址", "type": "string", "required": true, "default": "127.0.0.1:6789", "placeholder": "host:port"},
+    {"key": "cluster", "label": "集群名称", "type": "string", "required": false, "default": "ceph"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nmon_host = \"{{.mon_host}}\"\ncluster = \"{{.cluster}}\"\ninterval = \"{{.interval}}\"\n"
+}

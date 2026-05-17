@@ -1,0 +1,14 @@
+{
+  "id": "oracle",
+  "name": "Oracle",
+  "description": "监控 Oracle 数据库，包括表空间使用、会话数、等待事件、SGA/PGA 内存等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "连接地址列表", "type": "string_array", "required": true, "placeholder": "host:1521"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "service_name", "label": "服务名", "type": "string", "required": true, "placeholder": "ORCL"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\nservice_name = \"{{.service_name}}\"\ninterval = \"{{.interval}}\"\n"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "sqlserver",
+  "name": "SQL Server",
+  "description": "监控 Microsoft SQL Server 数据库，包括连接数、查询性能、等待统计、缓冲池等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "服务器连接串列表", "type": "string_array", "required": true, "placeholder": "sqlserver://user:pass@host:1433"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\ninterval = \"{{.interval}}\"\n"
+}

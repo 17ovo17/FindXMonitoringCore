@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	cmdbBlockedByContract = "pending"
+	cmdbBlockedByContract = "pending" // 保留供其他模块引用
 	cmdbMaskedValue       = "******"
 )
 
@@ -446,7 +446,7 @@ func cmdbPersistenceStatus() cmdbPersistenceMeta {
 	if store.GormOK() {
 		return cmdbPersistenceMeta{Status: "ok", Driver: "gorm"}
 	}
-	return cmdbPersistenceMeta{Status: "blocked_by_persistence", Driver: "memory_fallback"}
+	return cmdbPersistenceMeta{Status: "memory_fallback", Driver: "memory_fallback"}
 }
 
 func inferCmdbValueType(value any) string {

@@ -32,6 +32,7 @@ export const alertsApi = {
   batchDisableRules: (ids) => post('/monitor/alert-rules/batch-disable', { ids }),
   batchDeleteRules: (ids) => post('/monitor/alert-rules/batch-delete', { ids }),
   importRules: (body) => post('/monitor/alert-rules/import', body),
+  exportRules: (ids) => post('/monitor/alert-rules/export', { ids }),
   listNotificationChannels: async () => normalizeAlertList(await get('/monitor/notification-channels'), 'channels'),
   listNotificationTemplates: async () => normalizeAlertList(await get('/monitor/notification-templates'), 'templates'),
   listBusinessGroups: async () => normalizeAlertList(await get('/monitor/business-groups'), 'groups'),

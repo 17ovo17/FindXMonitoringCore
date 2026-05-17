@@ -1,0 +1,12 @@
+{
+  "id": "whois",
+  "name": "Whois",
+  "description": "监控域名 WHOIS 信息，包括到期时间、注册商、DNS 状态等，用于域名过期预警",
+  "category": "network",
+  "params": [
+    {"key": "domains", "label": "域名列表", "type": "string_array", "required": true, "placeholder": "example.com"},
+    {"key": "timeout", "label": "查询超时", "type": "duration", "default": "10s"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "24h"}
+  ],
+  "toml_template": "[[instances]]\ndomains = [{{range $i, $d := .domains}}{{if $i}}, {{end}}\"{{$d}}\"{{end}}]\ntimeout = \"{{.timeout}}\"\ninterval = \"{{.interval}}\"\n"
+}

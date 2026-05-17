@@ -1,0 +1,13 @@
+{
+  "id": "minio",
+  "name": "MinIO",
+  "description": "监控 MinIO 对象存储，包括存储桶数量、对象数、磁盘使用、请求速率等",
+  "category": "storage",
+  "params": [
+    {"key": "endpoint", "label": "MinIO Endpoint", "type": "string", "required": true, "default": "http://127.0.0.1:9000", "placeholder": "http://host:port"},
+    {"key": "access_key", "label": "Access Key", "type": "string", "required": true},
+    {"key": "secret_key", "label": "Secret Key", "type": "password", "required": true},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nendpoint = \"{{.endpoint}}\"\naccess_key = \"{{.access_key}}\"\nsecret_key = \"{{.secret_key}}\"\ninterval = \"{{.interval}}\"\n"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "procstat",
+  "name": "Procstat",
+  "description": "监控指定进程的资源使用，包括 CPU、内存、文件描述符、线程数等",
+  "category": "os",
+  "params": [
+    {"key": "pattern", "label": "进程名匹配正则", "type": "string", "required": false, "placeholder": "nginx.*master"},
+    {"key": "pid_file", "label": "PID 文件路径", "type": "string", "required": false, "placeholder": "/var/run/nginx.pid"},
+    {"key": "exe", "label": "可执行文件路径", "type": "string", "required": false, "placeholder": "/usr/sbin/nginx"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\n{{- if .pattern}}\npattern = \"{{.pattern}}\"\n{{- end}}\n{{- if .pid_file}}\npid_file = \"{{.pid_file}}\"\n{{- end}}\n{{- if .exe}}\nexe = \"{{.exe}}\"\n{{- end}}\ninterval = \"{{.interval}}\"\n"
+}

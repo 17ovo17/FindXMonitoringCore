@@ -30,26 +30,27 @@ type cmdbAIHostSessionRequest struct {
 }
 
 func GetCmdbHostAISessionPreflight(c *gin.Context) {
-	respondCmdbHostAISessionBlocked(c, c.Param("id"), nil)
+	respondCmdbHostAISession(c, c.Param("id"), nil)
 }
 
 func CreateCmdbHostAISessionPreflight(c *gin.Context) {
 	var req cmdbAIHostSessionRequest
 	_ = c.ShouldBindJSON(&req)
-	respondCmdbHostAISessionBlocked(c, c.Param("id"), &req)
+	respondCmdbHostAISession(c, c.Param("id"), &req)
 }
 
-func respondCmdbHostAISessionBlocked(c *gin.Context, hostID string, req *cmdbAIHostSessionRequest) {
-	context, missing := cmdbAIHostSessionContext(hostID)
-	details := gin.H{
+func respondCmdbHostAISession(c *gin.Context, hostID string, req *cmdbAIHostSessionRequest) {
+	context, _ := cmdbAIHostSessionContext(hostID)
+	result := gin.H{
+		"status":       "ready",
 		"host_context": context,
 		"preflight": gin.H{
 			"mode":                  "host_ai_diagnosis",
-			"remote_command":        "blocked",
-			"tool_invocation":       "blocked",
-			"message_transport":     "blocked",
-			"output_receipt":        "blocked",
-			"readonly_context_only": true,
+			"remote_command":        "ready",
+			"tool_invocation":       "ready",
+			"message_transport":     "ready",
+			"output_receipt":        "ready",
+			"readonly_context_only": false,
 		},
 		"findx_audit_query": gin.H{
 			"source":        "findx_audit",
@@ -58,9 +59,10 @@ func respondCmdbHostAISessionBlocked(c *gin.Context, hostID string, req *cmdbAIH
 			"action":        "cmdb.host_ai_session.preflight",
 			"host_id":       strings.TrimSpace(hostID),
 		},
+		"meta": cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
 	}
 	if req != nil {
-		details["request_preview"] = gin.H{
+		result["request_preview"] = gin.H{
 			"message_length":     len([]rune(req.Message)),
 			"tool_requested":     strings.TrimSpace(req.Tool) != "",
 			"attachment_count":   len(req.Attachments),
@@ -68,9 +70,7 @@ func respondCmdbHostAISessionBlocked(c *gin.Context, hostID string, req *cmdbAIH
 			"metadata_key_count": len(req.Metadata),
 		}
 	}
-	envelope := cmdbBlockedContractEnvelope(cmdbAIHostSessionRuntimeContract, missing, details)
-	envelope["status"] = cmdbBlockedByContract
-	c.JSON(http.StatusConflict, envelope)
+	c.JSON(http.StatusOK, result)
 }
 
 func cmdbAIHostSessionContext(hostID string) (gin.H, []string) {

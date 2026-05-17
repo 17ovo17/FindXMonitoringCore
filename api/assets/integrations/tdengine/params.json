@@ -1,0 +1,13 @@
+{
+  "id": "tdengine",
+  "name": "TDengine",
+  "description": "监控 TDengine 时序数据库，包括 VNode 状态、写入速率、查询延迟、磁盘使用等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "服务器地址列表", "type": "string_array", "required": true, "placeholder": "http://127.0.0.1:6041"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true, "default": "root"},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\ninterval = \"{{.interval}}\"\n"
+}

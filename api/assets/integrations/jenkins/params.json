@@ -1,0 +1,14 @@
+{
+  "id": "jenkins",
+  "name": "Jenkins",
+  "description": "监控 Jenkins CI/CD 服务，包括构建队列、执行器状态、Job 成功率等",
+  "category": "application",
+  "params": [
+    {"key": "url", "label": "Jenkins URL", "type": "string", "required": true, "default": "http://127.0.0.1:8080", "placeholder": "http://host:port"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true},
+    {"key": "password", "label": "API Token", "type": "password", "required": true},
+    {"key": "max_build_age", "label": "最大构建年龄", "type": "duration", "default": "1h", "placeholder": "1h"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\nmax_build_age = \"{{.max_build_age}}\"\ninterval = \"{{.interval}}\"\n"
+}

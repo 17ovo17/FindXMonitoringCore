@@ -1,0 +1,13 @@
+{
+  "id": "tomcat",
+  "name": "Tomcat",
+  "description": "监控 Apache Tomcat 应用服务器，包括线程池、请求处理、会话数、JVM 内存等",
+  "category": "middleware",
+  "params": [
+    {"key": "url", "label": "JMX/Manager URL", "type": "string", "required": true, "default": "http://127.0.0.1:8080/manager/status/all", "placeholder": "http://host:port/manager/status/all"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\ninterval = \"{{.interval}}\"\n"
+}

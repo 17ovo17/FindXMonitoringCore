@@ -216,6 +216,18 @@ func (w *AlertRuleWorker) promoteToFiring(fingerprint string, event *model.Monit
 	event.Count = 1
 	w.fires[fingerprint] = event
 
+	// 抑制检查：收集当前所有 firing 事件作为源告警
+	firingEvents := make([]*model.MonitorAlertEvent, 0, len(w.fires))
+	for _, fe := range w.fires {
+		firingEvents = append(firingEvents, fe)
+	}
+	if GetInhibitManager().IsInhibited(event, firingEvents) {
+		log.Infof("worker[%s]: event %s inhibited, skip notification", w.Rule.ID, fingerprint)
+		// 仍然持久化事件，但不发送通知
+		store.UpsertMonitorAlertEvent(event)
+		return
+	}
+
 	// 持久化并发送通知
 	stored, err := store.UpsertMonitorAlertEvent(event)
 	if err != nil {

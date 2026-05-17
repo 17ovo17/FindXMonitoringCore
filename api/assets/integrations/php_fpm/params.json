@@ -1,0 +1,11 @@
+{
+  "id": "php_fpm",
+  "name": "PHP-FPM",
+  "description": "监控 PHP-FPM 进程管理器，包括活跃进程数、请求队列、慢请求、内存使用等",
+  "category": "application",
+  "params": [
+    {"key": "urls", "label": "Status 页面地址列表", "type": "string_array", "required": true, "placeholder": "http://127.0.0.1:9000/status"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurls = [{{range $i, $u := .urls}}{{if $i}}, {{end}}\"{{$u}}\"{{end}}]\ninterval = \"{{.interval}}\"\n"
+}

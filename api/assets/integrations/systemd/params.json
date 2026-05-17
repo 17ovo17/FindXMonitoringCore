@@ -1,0 +1,11 @@
+{
+  "id": "systemd",
+  "name": "Systemd",
+  "description": "监控 Systemd 服务单元状态，包括运行状态、启动时间、重启次数等",
+  "category": "os",
+  "params": [
+    {"key": "unit_names", "label": "服务单元名称列表", "type": "string_array", "required": true, "placeholder": "nginx.service"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nunit_names = [{{range $i, $u := .unit_names}}{{if $i}}, {{end}}\"{{$u}}\"{{end}}]\ninterval = \"{{.interval}}\"\n"
+}

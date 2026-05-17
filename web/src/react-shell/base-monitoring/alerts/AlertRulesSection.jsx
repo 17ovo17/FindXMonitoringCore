@@ -93,6 +93,8 @@ export function AlertRulesSection() {
   const [formError, setFormError] = useState('')
   const [showColumnConfig, setShowColumnConfig] = useState(false)
   const [page, setPage] = useState(1)
+  const [importPreview, setImportPreview] = useState(null)
+  const [importing, setImporting] = useState(false)
 
   const loadRules = async () => {
     setLoading(true); setError('')
@@ -208,6 +210,67 @@ export function AlertRulesSection() {
 
   const isColVisible = (key) => visibleCols.includes(key)
 
+  // 导出选中规则为 JSON 文件
+  const handleExport = async () => {
+    if (!selectedIds.length) {
+      setModal({ title: '提示', body: '请先选择要导出的规则' })
+      return
+    }
+    try {
+      const data = await alertsApi.exportRules(selectedIds)
+      const rules = Array.isArray(data?.rules || data) ? (data?.rules || data) : selectedRules
+      const blob = new Blob([JSON.stringify(rules, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `alert-rules-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setModal({ title: '导出失败', body: makeError(err) })
+    }
+  }
+
+  // 导入 JSON 文件 — 选择文件后预览
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result)
+        const rules = Array.isArray(parsed) ? parsed : (parsed?.rules || [])
+        if (!rules.length) {
+          setModal({ title: '导入失败', body: '文件中未找到有效规则' })
+          return
+        }
+        setImportPreview(rules)
+      } catch {
+        setModal({ title: '导入失败', body: 'JSON 文件解析失败' })
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  // 确认导入
+  const confirmImport = async () => {
+    if (!importPreview?.length) return
+    setImporting(true)
+    try {
+      await alertsApi.importRules({ rules: importPreview })
+      setImportPreview(null)
+      await loadRules()
+      setModal({ title: '导入成功', body: `成功导入 ${importPreview.length} 条规则` })
+    } catch (err) {
+      setModal({ title: '导入失败', body: makeError(err) })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <section className='fx-alert-section fx-alert-section--with-tree'>
       <BusinessGroupTree selectedGroup={businessGroup} onSelect={setBusinessGroup} />
@@ -222,6 +285,11 @@ export function AlertRulesSection() {
           <select value={severity} onChange={(e) => setSeverity(e.target.value)}><option value=''>全部级别</option>{severities.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
           <select value={status} onChange={(e) => setStatus(e.target.value)}><option value=''>全部状态</option><option value='active'>启用</option><option value='disabled'>停用</option></select>
           <button type='button' className='is-primary' onClick={() => { setFormError(''); setDraft(emptyDraft) }}>新建</button>
+          <button type='button' onClick={handleExport} disabled={!selectedIds.length}>导出</button>
+          <label className='fx-alert-import-btn'>
+            导入
+            <input type='file' accept='.json' onChange={handleImportFile} style={{ display: 'none' }} />
+          </label>
           <button type='button' onClick={() => setShowColumnConfig(true)}>列配置</button>
         </div>
         <BatchRuleActions
@@ -274,6 +342,24 @@ export function AlertRulesSection() {
       {deleteTarget && <ConfirmDeleteModal rule={deleteTarget} deleting={deleting} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} />}
       {showColumnConfig && <ColumnConfigModal onClose={() => setShowColumnConfig(false)} onSave={setVisibleCols} />}
       {modal && <div className='fx-alert-modal'><div className='fx-alert-modal__body'><header><h2>{modal.title}</h2><button type='button' onClick={() => setModal(null)}>关闭</button></header><pre>{modal.body}</pre></div></div>}
+      {importPreview && (
+        <div className='fx-alert-modal'>
+          <div className='fx-alert-modal__body'>
+            <header><h2>导入预览</h2><button type='button' onClick={() => setImportPreview(null)}>关闭</button></header>
+            <p>即将导入 <strong>{importPreview.length}</strong> 条规则：</p>
+            <ul className='fx-alert-import-list'>
+              {importPreview.slice(0, 20).map((rule, i) => (
+                <li key={i}>{rule.name || rule.id || `规则 ${i + 1}`}</li>
+              ))}
+              {importPreview.length > 20 && <li>...还有 {importPreview.length - 20} 条</li>}
+            </ul>
+            <div className='fx-alert-actions'>
+              <button type='button' onClick={() => setImportPreview(null)}>取消</button>
+              <button type='button' className='is-primary' disabled={importing} onClick={confirmImport}>{importing ? '导入中...' : '确认导入'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

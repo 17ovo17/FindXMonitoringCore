@@ -1,0 +1,11 @@
+{
+  "id": "zookeeper",
+  "name": "ZooKeeper",
+  "description": "监控 Apache ZooKeeper 集群，包括节点数、连接数、延迟、Leader/Follower 状态等",
+  "category": "middleware",
+  "params": [
+    {"key": "servers", "label": "ZooKeeper 地址列表", "type": "string_array", "required": true, "placeholder": "127.0.0.1:2181"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [{{range $i, $s := .servers}}{{if $i}}, {{end}}\"{{$s}}\"{{end}}]\ninterval = \"{{.interval}}\"\n"
+}

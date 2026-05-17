@@ -1,0 +1,14 @@
+{
+  "id": "rabbitmq",
+  "name": "RabbitMQ",
+  "description": "监控 RabbitMQ 消息队列，包括队列深度、消费速率、连接数、内存使用等",
+  "category": "middleware",
+  "params": [
+    {"key": "url", "label": "Management API URL", "type": "string", "required": true, "default": "http://127.0.0.1:15672", "placeholder": "http://host:port"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true, "default": "guest"},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "queues", "label": "监控队列列表", "type": "string_array", "required": false, "placeholder": "queue_name"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\n{{- if .queues}}\nqueues = [{{range $i, $q := .queues}}{{if $i}}, {{end}}\"{{$q}}\"{{end}}]\n{{- end}}\ninterval = \"{{.interval}}\"\n"
+}

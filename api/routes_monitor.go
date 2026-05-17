@@ -73,6 +73,8 @@ func registerMonitorCatalogRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 func registerMonitorAlertRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/monitor/alert-rules", mw.monitorRequired("monitor.alert_rule", "read"), handler.ListMonitorAlertRules)
 	v1.POST("/monitor/alert-rules", mw.monitorRequired("monitor.alert_rule", "create"), handler.CreateMonitorAlertRule)
+	v1.POST("/monitor/alert-rules/export", mw.monitorRequired("monitor.alert_rule", "read"), handler.ExportMonitorAlertRules)
+	v1.POST("/monitor/alert-rules/import", mw.monitorRequired("monitor.alert_rule", "create"), handler.ImportMonitorAlertRules)
 	v1.GET("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "read"), handler.GetMonitorAlertRule)
 	v1.PUT("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "update"), handler.UpdateMonitorAlertRule)
 	v1.DELETE("/monitor/alert-rules/:id", mw.monitorRequired("monitor.alert_rule", "delete"), handler.DeleteMonitorAlertRule)
@@ -99,4 +101,8 @@ func registerMonitorAlertRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.POST("/alert-pipelines", mw.monitorRequired("monitor.alert_pipeline", "create"), handler.CreateAlertPipeline)
 	v1.PUT("/alert-pipelines/:id", mw.monitorRequired("monitor.alert_pipeline", "update"), handler.UpdateAlertPipeline)
 	v1.DELETE("/alert-pipelines/:id", mw.monitorRequired("monitor.alert_pipeline", "delete"), handler.DeleteAlertPipeline)
+	v1.GET("/alert-inhibits", mw.monitorRequired("monitor.alert_inhibit", "read"), handler.ListAlertInhibits)
+	v1.POST("/alert-inhibits", mw.monitorRequired("monitor.alert_inhibit", "create"), handler.CreateAlertInhibit)
+	v1.PUT("/alert-inhibits/:id", mw.monitorRequired("monitor.alert_inhibit", "update"), handler.UpdateAlertInhibit)
+	v1.DELETE("/alert-inhibits/:id", mw.monitorRequired("monitor.alert_inhibit", "delete"), handler.DeleteAlertInhibit)
 }

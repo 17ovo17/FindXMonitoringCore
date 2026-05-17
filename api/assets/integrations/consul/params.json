@@ -1,0 +1,13 @@
+{
+  "id": "consul",
+  "name": "Consul",
+  "description": "监控 Consul 服务发现与配置中心，包括节点健康、服务注册、KV 存储等",
+  "category": "middleware",
+  "params": [
+    {"key": "address", "label": "Consul 地址", "type": "string", "required": true, "default": "http://127.0.0.1:8500", "placeholder": "http://host:port"},
+    {"key": "token", "label": "ACL Token", "type": "password", "required": false},
+    {"key": "datacenter", "label": "数据中心", "type": "string", "required": false, "placeholder": "dc1"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\naddress = \"{{.address}}\"\n{{- if .token}}\ntoken = \"{{.token}}\"\n{{- end}}\n{{- if .datacenter}}\ndatacenter = \"{{.datacenter}}\"\n{{- end}}\ninterval = \"{{.interval}}\"\n"
+}

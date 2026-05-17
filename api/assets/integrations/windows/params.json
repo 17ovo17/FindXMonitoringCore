@@ -1,0 +1,13 @@
+{
+  "id": "windows",
+  "name": "Windows",
+  "description": "监控 Windows 操作系统指标，包括 CPU、内存、磁盘、网络、服务状态等",
+  "category": "os",
+  "params": [
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"},
+    {"key": "collect_cpu", "label": "采集 CPU 指标", "type": "bool", "default": "true"},
+    {"key": "collect_mem", "label": "采集内存指标", "type": "bool", "default": "true"},
+    {"key": "collect_disk", "label": "采集磁盘指标", "type": "bool", "default": "true"}
+  ],
+  "toml_template": "[[instances]]\ninterval = \"{{.interval}}\"\ncollect_cpu = {{.collect_cpu}}\ncollect_mem = {{.collect_mem}}\ncollect_disk = {{.collect_disk}}\n"
+}

@@ -89,6 +89,7 @@ func registerCmdbRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 		cmdb.POST("/datacenters/:id/racks", mw.monitorRequired("cmdb.datacenter", "create"), handler.CmdbCreateRack)
 		cmdb.GET("/datacenters/:id/racks/:rackId/units", mw.monitorRequired("cmdb.datacenter", "read"), handler.CmdbGetRackUnits)
 		cmdb.POST("/datacenters/:id/racks/:rackId/units", mw.monitorRequired("cmdb.datacenter", "create"), handler.CmdbAssignRackUnit)
+		cmdb.GET("/racks/:id/devices", mw.monitorRequired("cmdb.datacenter", "read"), handler.CmdbGetRackDevices)
 
 		// F4: 自动发现增强
 		cmdb.GET("/discovery/rules", mw.monitorRequired("cmdb.discovery", "read"), handler.CmdbListDiscoveryRules)

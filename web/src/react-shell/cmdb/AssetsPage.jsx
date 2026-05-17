@@ -12,6 +12,7 @@ import { ModelDetailSection } from './ModelDetailSection.jsx'
 import { ModelTreeSection } from './ModelTreeSection.jsx'
 import { GroupTree, ResourceGroupsSection } from './ResourceGroupsSection.jsx'
 import { DatacenterView } from './DatacenterView.jsx'
+import { DatacenterSection } from './DatacenterSection.jsx'
 import { ErrorBox, Status } from './Shared.jsx'
 import './assets.css'
 
@@ -88,7 +89,7 @@ export function AssetsPage({ query, onNavigate }) {
       {section === 'topology' && <TopologySection query={query} />}
       {section === 'instance-detail' && <InstanceDetailContractSection query={query} onNavigate={onNavigate} />}
       {section === 'resource-stats' && <ResourceStatsSection />}
-      {section === 'datacenter-view' && <DatacenterView />}
+      {section === 'datacenter-view' && <DatacenterSection />}
       {approvalRouteViews[section] && <ResourceApprovalSection section={section} meta={meta} />}
     </main>
   )

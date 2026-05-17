@@ -1,0 +1,12 @@
+{
+  "id": "canal",
+  "name": "Canal",
+  "description": "监控 Canal 数据同步中间件，包括 Binlog 位点、延迟、TPS、连接状态等",
+  "category": "middleware",
+  "params": [
+    {"key": "address", "label": "Canal 地址", "type": "string", "required": true, "default": "127.0.0.1:11111", "placeholder": "host:port"},
+    {"key": "destination", "label": "Destination 名称", "type": "string", "required": true, "placeholder": "example"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\naddress = \"{{.address}}\"\ndestination = \"{{.destination}}\"\ninterval = \"{{.interval}}\"\n"
+}
