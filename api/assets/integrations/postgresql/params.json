@@ -1,0 +1,15 @@
+{
+  "id": "postgresql",
+  "name": "PostgreSQL",
+  "description": "监控 PostgreSQL 数据库性能指标，包括连接数、事务、锁、复制延迟等",
+  "category": "database",
+  "params": [
+    {"key": "address", "label": "连接地址", "type": "string", "required": true, "default": "host=127.0.0.1 port=5432 sslmode=disable", "placeholder": "host=IP port=5432 user=X password=Y dbname=Z sslmode=disable"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true, "default": "monitor"},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "dbname", "label": "数据库名", "type": "string", "required": true, "default": "postgres"},
+    {"key": "databases", "label": "监控数据库列表", "type": "string_array", "required": false, "placeholder": "postgres,mydb"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\naddress = \"host={{index_field .address \"host\"}} port={{index_field .address \"port\"}} user={{.username}} password={{.password}} dbname={{.dbname}} sslmode=disable\"\nlabels = { instance=\"{{.address}}\" }\ninterval = \"{{.interval}}\"\n\nignored_databases = [\"template0\", \"template1\"]\n"
+}

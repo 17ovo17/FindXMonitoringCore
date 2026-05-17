@@ -1,0 +1,15 @@
+{
+  "id": "redis",
+  "name": "Redis",
+  "description": "监控 Redis 实例性能指标，包括内存使用、连接数、QPS、持久化状态等",
+  "category": "database",
+  "params": [
+    {"key": "address", "label": "Redis 地址", "type": "string", "required": true, "default": "127.0.0.1:6379", "placeholder": "host:port"},
+    {"key": "password", "label": "密码", "type": "password", "required": false},
+    {"key": "username", "label": "用户名(Redis 6+)", "type": "string", "required": false, "default": ""},
+    {"key": "commands", "label": "自定义命令", "type": "string_array", "required": false, "placeholder": "INFO,DBSIZE"},
+    {"key": "cluster_mode", "label": "集群模式", "type": "bool", "default": "false"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\ntargets = [\"{{.address}}\"]\n{{- if .password}}\npassword = \"{{.password}}\"\n{{- end}}\n{{- if .username}}\nusername = \"{{.username}}\"\n{{- end}}\n\nlabels = { instance=\"{{.address}}\" }\ninterval = \"{{.interval}}\"\n"
+}

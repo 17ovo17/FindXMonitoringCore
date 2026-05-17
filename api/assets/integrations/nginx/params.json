@@ -1,0 +1,12 @@
+{
+  "id": "nginx",
+  "name": "Nginx",
+  "description": "监控 Nginx 状态指标，包括活跃连接数、请求速率、连接状态分布等",
+  "category": "webserver",
+  "params": [
+    {"key": "urls", "label": "Status URL", "type": "string_array", "required": true, "default": "http://127.0.0.1/nginx_status", "placeholder": "http://host/nginx_status"},
+    {"key": "response_timeout", "label": "响应超时", "type": "duration", "default": "5s"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurls = [{{range $i, $v := split .urls \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\nresponse_timeout = \"{{.response_timeout}}\"\nlabels = { instance=\"{{.urls}}\" }\ninterval = \"{{.interval}}\"\n"
+}

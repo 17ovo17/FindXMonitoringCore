@@ -1,0 +1,15 @@
+{
+  "id": "net_response",
+  "name": "Net Response",
+  "description": "TCP/UDP 端口拨测，检测服务端口可达性和响应时间",
+  "category": "network",
+  "params": [
+    {"key": "targets", "label": "目标地址(逗号分隔)", "type": "string_array", "required": true, "placeholder": "host1:22,host2:3306"},
+    {"key": "protocol", "label": "协议", "type": "enum", "default": "tcp", "options": ["tcp", "udp"]},
+    {"key": "timeout", "label": "超时时间", "type": "duration", "default": "1s"},
+    {"key": "send", "label": "发送内容", "type": "string", "required": false, "default": ""},
+    {"key": "expect", "label": "期望返回", "type": "string", "required": false, "default": ""},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\ntargets = [{{range $i, $v := split .targets \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\nprotocol = \"{{.protocol}}\"\ntimeout = \"{{.timeout}}\"\n{{- if .send}}\nsend = \"{{.send}}\"\n{{- end}}\n{{- if .expect}}\nexpect = \"{{.expect}}\"\n{{- end}}\ninterval = \"{{.interval}}\"\n\n[instances.connectivity]\nseverity = \"Critical\"\n"
+}

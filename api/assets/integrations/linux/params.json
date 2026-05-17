@@ -1,0 +1,14 @@
+{
+  "id": "linux",
+  "name": "Linux",
+  "description": "监控 Linux 主机基础指标，包括 CPU、内存、磁盘、网络、进程等",
+  "category": "os",
+  "params": [
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"},
+    {"key": "collect_cpu", "label": "采集 CPU", "type": "bool", "default": "true"},
+    {"key": "collect_mem", "label": "采集内存", "type": "bool", "default": "true"},
+    {"key": "collect_disk", "label": "采集磁盘", "type": "bool", "default": "true"},
+    {"key": "collect_net", "label": "采集网络", "type": "bool", "default": "true"}
+  ],
+  "toml_template": "# Linux 基础监控由 categraf 内置插件自动采集\n# 以下配置控制各子插件的开关\n\n[cpu]\ncollect = {{.collect_cpu}}\ninterval = \"{{.interval}}\"\n\n[mem]\ncollect = {{.collect_mem}}\ninterval = \"{{.interval}}\"\n\n[disk]\ncollect = {{.collect_disk}}\ninterval = \"{{.interval}}\"\n\n[net]\ncollect = {{.collect_net}}\ninterval = \"{{.interval}}\"\n"
+}

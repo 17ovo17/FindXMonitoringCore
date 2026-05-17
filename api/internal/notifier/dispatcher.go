@@ -133,6 +133,16 @@ func sendToChannel(ch *model.NotificationChannel, event *model.MonitorAlertEvent
 		return sendFeishu(ch, event)
 	case "email":
 		return sendEmail(ch, event)
+	case "telegram":
+		return sendTelegram(ch, event)
+	case "lark":
+		return sendLark(ch, event)
+	case "feishucard":
+		return sendFeishuCard(ch, event)
+	case "callback":
+		return sendCallback(ch, event)
+	case "mattermost":
+		return sendMattermost(ch, event)
 	default:
 		log.Warnf("notifier: unsupported channel type: %s", ch.Type)
 		return fmt.Errorf("unsupported channel type: %s", ch.Type)
@@ -201,6 +211,26 @@ func sendFeishu(ch *model.NotificationChannel, event *model.MonitorAlertEvent) e
 
 func sendEmail(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
 	return sendEmailReal(ch, event)
+}
+
+func sendTelegram(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
+	return sendTelegramReal(ch, event)
+}
+
+func sendLark(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
+	return sendLarkReal(ch, event)
+}
+
+func sendFeishuCard(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
+	return sendFeishuCardReal(ch, event)
+}
+
+func sendCallback(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
+	return sendCallbackReal(ch, event)
+}
+
+func sendMattermost(ch *model.NotificationChannel, event *model.MonitorAlertEvent) error {
+	return sendMattermostReal(ch, event)
 }
 
 func firstNonEmpty(values ...string) string {

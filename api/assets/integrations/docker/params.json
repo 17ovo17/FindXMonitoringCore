@@ -1,0 +1,13 @@
+{
+  "id": "docker",
+  "name": "Docker",
+  "description": "监控 Docker 容器状态、资源使用率、重启检测等",
+  "category": "container",
+  "params": [
+    {"key": "endpoint", "label": "Docker Endpoint", "type": "string", "required": true, "default": "unix:///var/run/docker.sock"},
+    {"key": "gather_services", "label": "采集 Services", "type": "bool", "default": "false"},
+    {"key": "container_names", "label": "容器名过滤(逗号分隔)", "type": "string_array", "default": "*", "placeholder": "*,nginx,redis"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nendpoint = \"{{.endpoint}}\"\ngather_services = {{.gather_services}}\n\ncontainer_names = [{{range $i, $v := split .container_names \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\n\nlabels = { endpoint=\"{{.endpoint}}\" }\ninterval = \"{{.interval}}\"\n"
+}

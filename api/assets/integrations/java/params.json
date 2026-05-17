@@ -1,0 +1,16 @@
+{
+  "id": "java",
+  "name": "Java (JMX)",
+  "description": "通过 JMX 监控 Java 应用指标，包括 JVM 堆内存、GC、线程数等",
+  "category": "application",
+  "params": [
+    {"key": "jmx_url", "label": "JMX URL", "type": "string", "required": true, "default": "service:jmx:rmi:///jndi/rmi://127.0.0.1:9999/jmxrmi", "placeholder": "service:jmx:rmi:///jndi/rmi://host:port/jmxrmi"},
+    {"key": "username", "label": "JMX 用户名", "type": "string", "required": false},
+    {"key": "password", "label": "JMX 密码", "type": "password", "required": false},
+    {"key": "collect_jvm_heap", "label": "采集 JVM 堆内存", "type": "bool", "default": "true"},
+    {"key": "collect_jvm_gc", "label": "采集 GC 指标", "type": "bool", "default": "true"},
+    {"key": "collect_jvm_threads", "label": "采集线程指标", "type": "bool", "default": "true"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\njmx_url = \"{{.jmx_url}}\"\n{{- if .username}}\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\n{{- end}}\n\ncollect_jvm_heap = {{.collect_jvm_heap}}\ncollect_jvm_gc = {{.collect_jvm_gc}}\ncollect_jvm_threads = {{.collect_jvm_threads}}\n\nlabels = { instance=\"{{.jmx_url}}\" }\ninterval = \"{{.interval}}\"\n"
+}

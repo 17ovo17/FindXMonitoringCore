@@ -1,0 +1,14 @@
+{
+  "id": "http_response",
+  "name": "HTTP Response",
+  "description": "HTTP 拨测监控，检测 URL 可达性、响应时间、状态码、证书过期等",
+  "category": "network",
+  "params": [
+    {"key": "targets", "label": "目标 URL(逗号分隔)", "type": "string_array", "required": true, "placeholder": "https://example.com,http://api.local/health"},
+    {"key": "method", "label": "HTTP 方法", "type": "enum", "default": "GET", "options": ["GET", "POST", "HEAD"]},
+    {"key": "timeout", "label": "超时时间", "type": "duration", "default": "5s"},
+    {"key": "expect_status", "label": "期望状态码", "type": "int", "default": "200"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\ntargets = [{{range $i, $v := split .targets \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\nmethod = \"{{.method}}\"\ntimeout = \"{{.timeout}}\"\ninterval = \"{{.interval}}\"\n\n[instances.status_code]\nexpect = [\"{{.expect_status}}*\"]\nseverity = \"Warning\"\n\n[instances.connectivity]\nseverity = \"Critical\"\n"
+}

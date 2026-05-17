@@ -1,0 +1,15 @@
+{
+  "id": "prometheus",
+  "name": "Prometheus",
+  "description": "抓取 Prometheus Exporter 暴露的 metrics 端点",
+  "category": "monitoring",
+  "params": [
+    {"key": "urls", "label": "Metrics URL(逗号分隔)", "type": "string_array", "required": true, "placeholder": "http://host:9090/metrics"},
+    {"key": "metrics_path", "label": "Metrics 路径", "type": "string", "required": false, "default": "/metrics"},
+    {"key": "username", "label": "Basic Auth 用户名", "type": "string", "required": false},
+    {"key": "password", "label": "Basic Auth 密码", "type": "password", "required": false},
+    {"key": "metric_name_filter", "label": "指标名过滤(正则)", "type": "string", "required": false, "default": ""},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s"}
+  ],
+  "toml_template": "[[instances]]\nurls = [{{range $i, $v := split .urls \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\n{{- if .username}}\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\n{{- end}}\n{{- if .metric_name_filter}}\nname_filter = \"{{.metric_name_filter}}\"\n{{- end}}\nlabels = { instance=\"{{.urls}}\" }\ninterval = \"{{.interval}}\"\n"
+}

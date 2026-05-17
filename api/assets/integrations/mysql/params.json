@@ -1,0 +1,16 @@
+{
+  "id": "mysql",
+  "name": "MySQL",
+  "description": "监控 MySQL 数据库性能指标，包括连接数、查询吞吐、慢查询、复制延迟等",
+  "category": "database",
+  "params": [
+    {"key": "address", "label": "数据库地址", "type": "string", "required": true, "default": "127.0.0.1:3306", "placeholder": "host:port"},
+    {"key": "username", "label": "用户名", "type": "string", "required": true, "default": "monitor"},
+    {"key": "password", "label": "密码", "type": "password", "required": true},
+    {"key": "extra_status_metrics", "label": "额外状态指标", "type": "bool", "default": "true"},
+    {"key": "extra_innodb_metrics", "label": "InnoDB 指标", "type": "bool", "default": "true"},
+    {"key": "gather_slave_status", "label": "采集从库状态", "type": "bool", "default": "false"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "15s", "placeholder": "15s"}
+  ],
+  "toml_template": "[[instances]]\naddress = \"{{.username}}:{{.password}}@tcp({{.address}})/\"\ninterval_times = 1\nlabels = { instance=\"{{.address}}\" }\n\nextra_status_metrics = {{.extra_status_metrics}}\nextra_innodb_metrics = {{.extra_innodb_metrics}}\ngather_slave_status = {{.gather_slave_status}}\n\ninterval = \"{{.interval}}\"\n"
+}

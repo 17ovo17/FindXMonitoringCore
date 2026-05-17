@@ -6,16 +6,20 @@ export const notificationSections = [
   { value: 'templates', label: '消息模板' },
 ]
 
-export const supportedChannelTypes = new Set(['dingtalk', 'feishu', 'wecom', 'email', 'webhook', 'telegram', 'slack'])
+export const supportedChannelTypes = new Set(['dingtalk', 'feishu', 'wecom', 'email', 'webhook', 'telegram', 'slack', 'lark', 'feishucard', 'callback', 'mattermost'])
 
 export const channelTypes = [
   { ident: 'dingtalk', label: '钉钉', supported: true },
   { ident: 'feishu', label: '飞书', supported: true },
+  { ident: 'feishucard', label: '飞书卡片', supported: true },
+  { ident: 'lark', label: 'Lark', supported: true },
   { ident: 'wecom', label: '企业微信', supported: true },
   { ident: 'email', label: 'Email', supported: true },
   { ident: 'webhook', label: 'Webhook', supported: true },
   { ident: 'telegram', label: 'Telegram', supported: true },
   { ident: 'slack', label: 'Slack', supported: true },
+  { ident: 'mattermost', label: 'Mattermost', supported: true },
+  { ident: 'callback', label: '通用回调', supported: true },
 ]
 
 export const channelFormFields = {
@@ -61,6 +65,25 @@ export const channelFormFields = {
     { key: 'channel', label: 'Channel', type: 'text', placeholder: '#alerts' },
     { key: 'username', label: 'Bot 名称', type: 'text', placeholder: 'FindX Alert' },
     { key: 'icon_emoji', label: 'Icon Emoji', type: 'text', placeholder: ':warning:' },
+  ],
+  lark: [
+    { key: 'endpoint', label: 'Webhook URL', type: 'text', required: true, placeholder: 'https://open.larksuite.com/open-apis/bot/v2/hook/...' },
+    { key: 'secret', label: '签名密钥', type: 'password', placeholder: 'Sign Key (可选)' },
+  ],
+  feishucard: [
+    { key: 'endpoint', label: 'Webhook URL', type: 'text', required: true, placeholder: 'https://open.feishu.cn/open-apis/bot/v2/hook/...' },
+    { key: 'secret', label: '签名密钥', type: 'password', placeholder: '签名校验密钥 (可选)' },
+  ],
+  callback: [
+    { key: 'endpoint', label: '回调 URL', type: 'text', required: true, placeholder: 'https://your-service.com/alert-callback' },
+    { key: 'http_method', label: 'HTTP Method', type: 'select', options: ['POST', 'PUT'], placeholder: 'POST' },
+    { key: 'headers', label: '自定义 Headers (JSON)', type: 'textarea', placeholder: '{"Authorization": "Bearer ..."}' },
+    { key: 'secret', label: 'Body 模板', type: 'textarea', placeholder: '{"rule":"{{.RuleName}}","severity":"{{.Severity}}","value":"{{.Value}}","starts_at":"{{.StartsAt}}"}' },
+  ],
+  mattermost: [
+    { key: 'endpoint', label: 'Webhook URL', type: 'text', required: true, placeholder: 'https://mattermost.example.com/hooks/...' },
+    { key: 'receiver', label: 'Channel', type: 'text', placeholder: 'town-square' },
+    { key: 'username', label: 'Bot 名称', type: 'text', placeholder: 'FindX Alert' },
   ],
 }
 

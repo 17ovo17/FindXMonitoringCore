@@ -1,0 +1,15 @@
+{
+  "id": "elasticsearch",
+  "name": "Elasticsearch",
+  "description": "监控 Elasticsearch 集群健康、节点状态、索引性能等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "ES 节点地址", "type": "string_array", "required": true, "default": "http://127.0.0.1:9200", "placeholder": "http://host:9200"},
+    {"key": "username", "label": "用户名", "type": "string", "required": false},
+    {"key": "password", "label": "密码", "type": "password", "required": false},
+    {"key": "cluster_health", "label": "采集集群健康", "type": "bool", "default": "true"},
+    {"key": "cluster_stats", "label": "采集集群统计", "type": "bool", "default": "true"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [\"{{.servers}}\"]\n{{- if .username}}\nusername = \"{{.username}}\"\npassword = \"{{.password}}\"\n{{- end}}\ncluster_health = {{.cluster_health}}\ncluster_stats = {{.cluster_stats}}\nlabels = { instance=\"{{.servers}}\" }\ninterval = \"{{.interval}}\"\n"
+}

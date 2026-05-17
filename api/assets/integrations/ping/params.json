@@ -1,0 +1,13 @@
+{
+  "id": "ping",
+  "name": "Ping",
+  "description": "ICMP Ping 拨测，检测主机可达性、丢包率、RTT 延迟等",
+  "category": "network",
+  "params": [
+    {"key": "targets", "label": "目标地址(逗号分隔)", "type": "string_array", "required": true, "placeholder": "8.8.8.8,192.168.1.1"},
+    {"key": "count", "label": "Ping 包数量", "type": "int", "default": "3"},
+    {"key": "timeout", "label": "超时时间", "type": "duration", "default": "3s"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\ntargets = [{{range $i, $v := split .targets \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\ncount = {{.count}}\ntimeout = \"{{.timeout}}\"\ninterval = \"{{.interval}}\"\n\n[instances.connectivity]\nseverity = \"Critical\"\n\n[instances.packet_loss]\nwarn_ge = 1.0\ncritical_ge = 50.0\n"
+}

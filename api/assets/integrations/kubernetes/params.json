@@ -1,0 +1,14 @@
+{
+  "id": "kubernetes",
+  "name": "Kubernetes",
+  "description": "监控 Kubernetes 集群指标，包括 Node、Pod、Deployment 状态等",
+  "category": "container",
+  "params": [
+    {"key": "url", "label": "API Server 地址", "type": "string", "required": true, "default": "https://kubernetes.default.svc", "placeholder": "https://host:6443"},
+    {"key": "bearer_token_file", "label": "Token 文件路径", "type": "string", "default": "/var/run/secrets/kubernetes.io/serviceaccount/token"},
+    {"key": "namespace", "label": "命名空间(空=全部)", "type": "string", "required": false, "placeholder": "default,kube-system"},
+    {"key": "insecure_skip_verify", "label": "跳过 TLS 验证", "type": "bool", "default": "true"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nurl = \"{{.url}}\"\nbearer_token_file = \"{{.bearer_token_file}}\"\ninsecure_skip_verify = {{.insecure_skip_verify}}\nlabels = { instance=\"{{.url}}\" }\ninterval = \"{{.interval}}\"\n"
+}

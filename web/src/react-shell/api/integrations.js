@@ -126,3 +126,36 @@ export const integrationsApi = {
 }
 
 export { normalizeList, redactText }
+
+/* --- Categraf 集成模板 API --- */
+export const categrafTemplateApi = {
+  listTemplates(params) {
+    return withRedactedError('list integration templates', () => get('/integration-templates', { params: compactParams(params) }))
+  },
+
+  getTemplate(id) {
+    return withRedactedError('get integration template', () => get(`/integration-templates/${encodeURIComponent(id)}`))
+  },
+
+  renderConfig(templateId, params) {
+    return withRedactedError('render categraf config', () => post('/categraf/render', { template_id: templateId, params }))
+  },
+
+  deployConfig(templateId, params, targetIPs, credentialId, port) {
+    return withRedactedError('deploy categraf config', () => post('/categraf/deploy', {
+      template_id: templateId,
+      params,
+      target_ips: targetIPs,
+      credential_id: credentialId,
+      port: port || 22,
+    }))
+  },
+
+  verifyArrival(targetIP, metricPrefix, timeoutSec) {
+    return withRedactedError('verify categraf arrival', () => post('/categraf/verify-arrival', {
+      target_ip: targetIP,
+      metric_prefix: metricPrefix,
+      timeout_sec: timeoutSec || 60,
+    }))
+  },
+}

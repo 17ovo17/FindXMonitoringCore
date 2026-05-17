@@ -19,9 +19,17 @@ const templateVariables = [
   { name: '$event.rule_name', desc: '规则名称' },
   { name: '$event.rule_id', desc: '规则 ID' },
   { name: '$event.group_name', desc: '业务组名称' },
+  { name: '$event.duration', desc: '持续时长' },
+  { name: '$event.host', desc: '主机名' },
+  { name: '$event.ip', desc: 'IP 地址' },
   { name: '{{range .Events}}', desc: '遍历事件列表' },
   { name: '{{end}}', desc: '结束遍历' },
   { name: '{{if eq .Status "firing"}}', desc: '条件判断' },
+  { name: '{{timeFormat .StartsAt "2006-01-02 15:04:05"}}', desc: '时间格式化' },
+  { name: '{{jsonEscape .Name}}', desc: 'JSON 转义' },
+  { name: '{{truncate .Name 50}}', desc: '截断字符串' },
+  { name: '{{upper .Severity}}', desc: '转大写' },
+  { name: '{{lower .Status}}', desc: '转小写' },
 ]
 
 const emptyDraft = { id: '', name: '', ident: '', notifyChannelIdent: 'dingtalk', private: 0, content: '{\n  "title": "告警: {{.Name}}",\n  "content": "级别: {{.Severity}}\\n状态: {{.Status}}\\n对象: {{.TargetIdent}}"\n}' }
@@ -56,6 +64,25 @@ function MonacoTemplateEditor({ value, onChange }) {
 }
 
 function TemplateForm({ draft, setDraft, saving, onSave, onPreview, onClose }) {
+  const [livePreview, setLivePreview] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  const insertVariable = (varName) => {
+    const content = draft.content || ''
+    setDraft({ ...draft, content: content + varName })
+  }
+
+  const requestLivePreview = async () => {
+    setPreviewLoading(true)
+    try {
+      const body = { tpl: { content: parseJson(draft.content, {}) }, event_ids: [], event: sampleEvent() }
+      const result = await notificationsApi.previewTemplate(body)
+      setLivePreview(typeof result === 'string' ? result : displayJson(result))
+    } catch (err) {
+      setLivePreview('预览失败: ' + (err.message || '未知错误'))
+    } finally { setPreviewLoading(false) }
+  }
+
   return (
     <Modal title={draft.id ? '编辑消息模板' : '新建消息模板'} onClose={onClose}>
       <div className='fx-notify-template-editor'>
@@ -70,14 +97,21 @@ function TemplateForm({ draft, setDraft, saving, onSave, onPreview, onClose }) {
             <label><span>模板内容</span></label>
             <MonacoTemplateEditor value={draft.content} onChange={(val) => setDraft({ ...draft, content: val })} />
           </div>
+          {livePreview && (
+            <div className='fx-notify-template-editor__preview'>
+              <label><span>实时预览</span></label>
+              <pre>{livePreview}</pre>
+            </div>
+          )}
         </div>
         <aside className='fx-notify-template-editor__vars'>
-          <strong>可用变量</strong>
-          <ul>{templateVariables.map((v) => <li key={v.name}><code>{v.name}</code><span>{v.desc}</span></li>)}</ul>
+          <strong>可用变量 <small>(点击插入)</small></strong>
+          <ul>{templateVariables.map((v) => <li key={v.name} onClick={() => insertVariable(v.name)} style={{ cursor: 'pointer' }}><code>{v.name}</code><span>{v.desc}</span></li>)}</ul>
         </aside>
       </div>
       <div className='fx-notify-actions'>
         <button type='button' onClick={onClose}>取消</button>
+        <button type='button' disabled={previewLoading} onClick={requestLivePreview}>{previewLoading ? '渲染中...' : '实时预览'}</button>
         <button type='button' onClick={onPreview}>预览</button>
         <button type='button' className='is-primary' disabled={saving} onClick={onSave}>{saving ? '保存中...' : '保存'}</button>
       </div>

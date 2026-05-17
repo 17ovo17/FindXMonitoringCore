@@ -1,0 +1,16 @@
+{
+  "id": "mongodb",
+  "name": "MongoDB",
+  "description": "监控 MongoDB 实例指标，包括连接数、操作计数、复制集状态、WiredTiger 引擎等",
+  "category": "database",
+  "params": [
+    {"key": "servers", "label": "MongoDB URI", "type": "string_array", "required": true, "default": "mongodb://127.0.0.1:27017", "placeholder": "mongodb://user:pass@host:27017"},
+    {"key": "username", "label": "用户名", "type": "string", "required": false},
+    {"key": "password", "label": "密码", "type": "password", "required": false},
+    {"key": "gather_repl_set_status", "label": "采集复制集状态", "type": "bool", "default": "true"},
+    {"key": "gather_cluster_status", "label": "采集集群状态", "type": "bool", "default": "false"},
+    {"key": "gather_db_stats", "label": "采集数据库统计", "type": "bool", "default": "true"},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nservers = [\"{{.servers}}\"]\ngather_repl_set_status = {{.gather_repl_set_status}}\ngather_cluster_status = {{.gather_cluster_status}}\ngather_db_stats = {{.gather_db_stats}}\nlabels = { instance=\"{{.servers}}\" }\ninterval = \"{{.interval}}\"\n"
+}

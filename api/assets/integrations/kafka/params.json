@@ -1,0 +1,15 @@
+{
+  "id": "kafka",
+  "name": "Kafka",
+  "description": "监控 Kafka 集群指标，包括 Broker 状态、Topic 吞吐、消费者 Lag 等",
+  "category": "middleware",
+  "params": [
+    {"key": "brokers", "label": "Broker 地址", "type": "string_array", "required": true, "default": "127.0.0.1:9092", "placeholder": "host1:9092,host2:9092"},
+    {"key": "topics", "label": "监控 Topic(逗号分隔,空=全部)", "type": "string_array", "required": false, "placeholder": "topic1,topic2"},
+    {"key": "consumer_groups", "label": "消费组(逗号分隔,空=全部)", "type": "string_array", "required": false, "placeholder": "group1,group2"},
+    {"key": "sasl_username", "label": "SASL 用户名", "type": "string", "required": false},
+    {"key": "sasl_password", "label": "SASL 密码", "type": "password", "required": false},
+    {"key": "interval", "label": "采集间隔", "type": "duration", "default": "30s"}
+  ],
+  "toml_template": "[[instances]]\nbrokers = [{{range $i, $v := split .brokers \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\n{{- if .topics}}\ntopics = [{{range $i, $v := split .topics \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\n{{- end}}\n{{- if .consumer_groups}}\nconsumer_groups = [{{range $i, $v := split .consumer_groups \",\"}}{{if $i}}, {{end}}\"{{trim $v}}\"{{end}}]\n{{- end}}\n{{- if .sasl_username}}\nsasl_username = \"{{.sasl_username}}\"\nsasl_password = \"{{.sasl_password}}\"\nsasl_mechanism = \"PLAIN\"\n{{- end}}\nlabels = { instance=\"{{.brokers}}\" }\ninterval = \"{{.interval}}\"\n"
+}
