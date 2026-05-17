@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -33,19 +34,22 @@ func registerLogsTools() {
 		},
 	})
 	registerTool(&AITool{
-		Name: "logs_context", Description: "获取日志上下文（前后 N 行）", Category: "logs", RiskLevel: 0,
+		Name: "logs_context", Description: "查看某条日志前后的上下文日志", Category: "logs", RiskLevel: 0,
 		Params: []AIToolParam{
-			{Name: "log_id", Type: "string", Required: true, Description: "日志条目 ID"},
-			{Name: "lines", Type: "number", Required: false, Description: "上下文行数 (默认 10)"},
+			{Name: "log_id", Type: "string", Required: true, Description: "日志ID"},
+			{Name: "before", Type: "number", Required: false, Description: "前N条"},
+			{Name: "after", Type: "number", Required: false, Description: "后N条"},
 		},
 		Handler: func(ctx context.Context, params map[string]any) (any, error) {
 			logID := fmt.Sprint(params["log_id"])
-			req := model.LogContextRequest{LogID: logID, Before: 10, After: 10}
+			before := logsToolParamInt(params, "before", 5)
+			after := logsToolParamInt(params, "after", 5)
+			req := model.LogContextRequest{LogID: logID, Before: before, After: after}
 			resp, err := store.ContextFindXAuditLogs(req)
 			if err != nil {
 				return map[string]any{"log_id": logID, "error": err.Error()}, nil
 			}
-			return map[string]any{"log_id": logID, "before": resp.Before, "after": resp.After, "center": resp.Center}, nil
+			return map[string]any{"log_id": logID, "before": resp.Before, "after": resp.After, "center": resp.Center, "total": resp.Total}, nil
 		},
 	})
 	registerTool(&AITool{
@@ -170,6 +174,23 @@ func registerTracesTools() {
 			}, nil
 		},
 	})
+}
+
+// logsToolParamInt safely extracts an int param with default.
+func logsToolParamInt(params map[string]any, key string, def int) int {
+	if v, ok := params[key]; ok {
+		switch n := v.(type) {
+		case float64:
+			return int(n)
+		case int:
+			return n
+		case json.Number:
+			if i, err := n.Int64(); err == nil {
+				return int(i)
+			}
+		}
+	}
+	return def
 }
 
 // logsToolParamStr safely extracts a string param with default.

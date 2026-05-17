@@ -28,7 +28,7 @@ function formatMetricLabel(series) {
   return labels ? `${name}{${labels}}` : name || 'series'
 }
 
-function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
+function TimeSeriesChart({ series, annotations = [], thresholds = [], overrides = [], onBrushEnd, unit }) {
   const containerRef = useRef(null)
   const chartRef = useRef(null)
 
@@ -42,20 +42,43 @@ function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
     if (!timestamps.length) return
 
     const timeMap = new Map(timestamps.map((t, i) => [t, i]))
+
+    // 应用 overrides 到每条线
+    const resolveOverride = (seriesName, prop, defaultVal) => {
+      if (!overrides || overrides.length === 0) return defaultVal
+      for (const o of overrides) {
+        const matcher = o.matcher || {}
+        let matched = false
+        if (matcher.type === 'byName' && matcher.value === seriesName) matched = true
+        else if (matcher.type === 'byRegex' && matcher.value) {
+          try { matched = new RegExp(matcher.value).test(seriesName) } catch { matched = false }
+        }
+        if (matched) {
+          const p = (o.properties || []).find((pp) => pp.key === prop)
+          if (p) return p.value
+        }
+      }
+      return defaultVal
+    }
+
     const uSeries = series.map((s, i) => {
+      const name = formatMetricLabel(s)
       const values = new Float64Array(timestamps.length).fill(NaN)
       s.values.forEach(([t, v]) => {
         const idx = timeMap.get(Number(t))
         if (idx !== undefined) values[idx] = Number(v)
       })
-      return { name: formatMetricLabel(s), values, color: COLORS[i % COLORS.length] }
+      const color = resolveOverride(name, 'color', COLORS[i % COLORS.length])
+      const lineWidth = Number(resolveOverride(name, 'lineWidth', 1.5))
+      const hidden = resolveOverride(name, 'hidden', false)
+      return { name, values, color, lineWidth, hidden: hidden === true || hidden === 'true' }
     })
 
     const uData = [timestamps, ...uSeries.map((s) => Array.from(s.values))]
     const width = containerRef.current.clientWidth || 400
     const height = Math.min(Math.max(containerRef.current.clientHeight - 30, 120), 300)
 
-    /* DEGRADE-005: Annotations 渲染 hook */
+    /* Annotations 渲染 hook */
     const drawAnnotations = (u) => {
       if (!annotations || annotations.length === 0) return
       const ctx = u.ctx
@@ -82,13 +105,63 @@ function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
       }
     }
 
+    /* Thresholds 渲染 hook - 水平虚线 + 颜色区域 */
+    const drawThresholds = (u) => {
+      if (!thresholds || thresholds.length === 0) return
+      const ctx = u.ctx
+      const yScale = u.scales.y
+      if (!yScale) return
+
+      const sortedThresholds = [...thresholds].sort((a, b) => Number(a.value) - Number(b.value))
+
+      for (let i = 0; i < sortedThresholds.length; i++) {
+        const th = sortedThresholds[i]
+        const val = Number(th.value)
+        if (val < yScale.min || val > yScale.max) continue
+
+        const py = u.valToPos(val, 'y', true)
+        const color = th.color || '#e6550d'
+
+        // 绘制半透明区域（从当前阈值到下一个阈值或图表顶部）
+        ctx.save()
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.06
+        const nextPy = i < sortedThresholds.length - 1
+          ? u.valToPos(Number(sortedThresholds[i + 1].value), 'y', true)
+          : u.bbox.top
+        const regionTop = Math.min(py, nextPy)
+        const regionHeight = Math.abs(py - nextPy)
+        ctx.fillRect(u.bbox.left, regionTop, u.bbox.width, regionHeight)
+        ctx.restore()
+
+        // 绘制水平虚线
+        ctx.save()
+        ctx.strokeStyle = color
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([6, 3])
+        ctx.beginPath()
+        ctx.moveTo(u.bbox.left, py)
+        ctx.lineTo(u.bbox.left + u.bbox.width, py)
+        ctx.stroke()
+        ctx.setLineDash([])
+
+        // 绘制标签
+        const label = th.label || String(val)
+        ctx.fillStyle = color
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillText(label, u.bbox.left + 4, py - 3)
+        ctx.restore()
+      }
+    }
+
     const opts = {
       width,
       height,
       cursor: { drag: { x: true, y: false } },
       select: { show: true },
       hooks: {
-        drawAxes: [drawAnnotations],
+        drawAxes: [drawAnnotations, drawThresholds],
         setSelect: [
           (u) => {
             if (!u.select.width || u.select.width < 5) return
@@ -103,7 +176,12 @@ function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
       },
       series: [
         { label: 'Time' },
-        ...uSeries.map((s) => ({ label: s.name, stroke: s.color, width: 1.5 })),
+        ...uSeries.map((s) => ({
+          label: s.name,
+          stroke: s.color,
+          width: s.lineWidth,
+          show: !s.hidden,
+        })),
       ],
       axes: [
         { stroke: '#8c99a8', grid: { stroke: '#e8ecf0' }, size: 40 },
@@ -126,7 +204,7 @@ function TimeSeriesChart({ series, annotations = [], onBrushEnd, unit }) {
       window.removeEventListener('resize', handleResize)
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
     }
-  }, [series, annotations, onBrushEnd, unit])
+  }, [series, annotations, thresholds, overrides, onBrushEnd, unit])
 
   if (series.length === 0) {
     return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>无数据</div>
@@ -212,6 +290,8 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
   const type = (panel.type || '').toLowerCase()
   const displayOpts = rawPanel.displayOptions || panel.displayOptions || {}
   const unit = rawPanel.unit || panel.unit
+  const panelThresholds = rawPanel.thresholds || panel.thresholds || []
+  const panelOverrides = rawPanel.overrides || panel.overrides || []
 
   /* text 和 iframe 不需要查询数据 */
   if (type === 'text') {
@@ -263,7 +343,7 @@ export default function PanelChart({ panel, timeRange, datasourceId, annotations
     return <BarChartPanel series={series} options={{ ...displayOpts, unit }} />
   }
   if (type === 'timeseries' || type === 'graph' || type === '') {
-    return <TimeSeriesChart series={series} annotations={annotations} onBrushEnd={onBrushEnd} unit={unit} />
+    return <TimeSeriesChart series={series} annotations={annotations} thresholds={panelThresholds} overrides={panelOverrides} onBrushEnd={onBrushEnd} unit={unit} />
   }
 
   return <div style={{ color: 'var(--fx-muted)', padding: '20px', textAlign: 'center' }}>{panel.type} 暂不支持</div>

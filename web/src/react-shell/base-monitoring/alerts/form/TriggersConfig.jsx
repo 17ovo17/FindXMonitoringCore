@@ -1,9 +1,11 @@
 import React from 'react'
 import { severities, noDataPolicies } from '../alertModel.js'
+import { AlertPromQLEditor } from './PromQLEditor.jsx'
 
 /**
  * Triggers 配置组件
  * 对齐夜莺 Triggers 组件：多条件触发、severity、比较操作符、阈值、for duration、nodata 策略、恢复条件
+ * 增强：多查询条件（A、B、C...）+ JOIN 操作
  */
 
 const operators = [
@@ -14,6 +16,106 @@ const operators = [
   { value: '==', label: '==' },
   { value: '!=', label: '!=' },
 ]
+
+const JOIN_TYPES = [
+  { value: 'none', label: '无 JOIN' },
+  { value: 'left', label: 'LEFT JOIN' },
+  { value: 'right', label: 'RIGHT JOIN' },
+  { value: 'inner', label: 'INNER JOIN' },
+]
+
+const emptyQuery = (letter) => ({
+  ref: letter,
+  expr: '',
+  legendFormat: '',
+  join: 'none',
+  join_on: '',
+})
+
+function QueryItem({ query, index, onChange, onRemove, canRemove, datasourceId }) {
+  const letter = String.fromCharCode(65 + index)
+  const update = (field, val) => onChange(index, { ...query, [field]: val, ref: letter })
+
+  return (
+    <div className="fx-alert-query-item">
+      <div className="fx-alert-query-item__head">
+        <span className="fx-alert-query-letter">{letter}</span>
+        {index > 0 && (
+          <select
+            className="fx-alert-query-join"
+            value={query.join || 'none'}
+            onChange={(e) => update('join', e.target.value)}
+          >
+            {JOIN_TYPES.map((j) => <option key={j.value} value={j.value}>{j.label}</option>)}
+          </select>
+        )}
+        {index > 0 && query.join && query.join !== 'none' && (
+          <input
+            className="fx-alert-query-join-on"
+            value={query.join_on || ''}
+            onChange={(e) => update('join_on', e.target.value)}
+            placeholder="ON 标签（逗号分隔）"
+            style={{ width: 180 }}
+          />
+        )}
+        <span style={{ flex: 1 }} />
+        {canRemove && (
+          <button type="button" className="fx-alert-link" style={{ color: '#dc2626' }} onClick={() => onRemove(index)}>
+            删除
+          </button>
+        )}
+      </div>
+      <AlertPromQLEditor
+        value={query.expr || ''}
+        onChange={(val) => update('expr', val)}
+        datasourceId={datasourceId}
+        height={80}
+        showPreview={false}
+        placeholder={`查询 ${letter} 的 PromQL 表达式`}
+      />
+      <input
+        className="fx-alert-query-legend"
+        value={query.legendFormat || ''}
+        onChange={(e) => update('legendFormat', e.target.value)}
+        placeholder="Legend 格式（如 {{instance}}）"
+        style={{ marginTop: 4, width: '100%', padding: '4px 8px', fontSize: 12, border: '1px solid var(--fx-border, #e5e7eb)', borderRadius: 4 }}
+      />
+    </div>
+  )
+}
+
+function QueriesConfig({ queries, onChange, datasourceId }) {
+  const addQuery = () => {
+    const letter = String.fromCharCode(65 + queries.length)
+    onChange([...queries, emptyQuery(letter)])
+  }
+  const updateQuery = (index, query) => {
+    const next = [...queries]
+    next[index] = query
+    onChange(next)
+  }
+  const removeQuery = (index) => onChange(queries.filter((_, i) => i !== index))
+
+  return (
+    <div className="fx-alert-queries-section">
+      <div className="fx-alert-effective-ranges-head">
+        <span className="fx-alert-effective-label">查询条件</span>
+        <button type="button" onClick={addQuery}>添加查询</button>
+      </div>
+      {queries.map((query, index) => (
+        <QueryItem
+          key={index}
+          query={query}
+          index={index}
+          onChange={updateQuery}
+          onRemove={removeQuery}
+          canRemove={queries.length > 1}
+          datasourceId={datasourceId}
+        />
+      ))}
+    </div>
+  )
+}
 
 function TriggerItem({ trigger, index, onChange, onRemove, canRemove }) {
   const update = (field, val) => onChange(index, { ...trigger, [field]: val })
@@ -54,14 +156,17 @@ function TriggerItem({ trigger, index, onChange, onRemove, canRemove }) {
   )
 }
 
-export function TriggersConfig({ value, onChange }) {
+export function TriggersConfig({ value, onChange, datasourceId }) {
   const config = value || {
+    queries: [emptyQuery('A')],
     triggers: [{ severity: 'warning', operator: '>', value: 0, for_duration: '5m' }],
     nodata_trigger: { enable: false, severity: 'warning', action: 'keep_state' },
     recover_config: { enable: true, recover_duration: 0 },
   }
 
   const update = (patch) => onChange?.({ ...config, ...patch })
+
+  const queries = config.queries || [emptyQuery('A')]
 
   const updateTrigger = (index, trigger) => {
     const triggers = [...(config.triggers || [])]
@@ -89,6 +194,11 @@ export function TriggersConfig({ value, onChange }) {
 
   return (
     <div className='fx-alert-triggers'>
+      <QueriesConfig
+        queries={queries}
+        onChange={(q) => update({ queries: q })}
+        datasourceId={datasourceId}
+      />
       <div className='fx-alert-triggers-section'>
         <div className='fx-alert-effective-ranges-head'>
           <span className='fx-alert-effective-label'>触发条件</span>

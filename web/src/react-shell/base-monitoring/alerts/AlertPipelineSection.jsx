@@ -12,6 +12,7 @@ const PROCESSOR_TYPES = [
   { value: 'drop', label: '丢弃', icon: '🗑' },
   { value: 'callback', label: '回调', icon: '🔗' },
   { value: 'enrich', label: '富化', icon: '📝' },
+  { value: 'aisummary', label: 'AI 摘要', icon: '🤖' },
 ]
 
 const emptyCondition = () => ({ key: '', operator: '=', value: '' })
@@ -23,6 +24,7 @@ const emptyProcessor = (type = 'relabel') => ({
   config: type === 'relabel' ? { action: 'set', key: '', value: '' }
     : type === 'callback' ? { url: '', method: 'POST', headers: {} }
     : type === 'enrich' ? { annotations: {} }
+    : type === 'aisummary' ? { prompt_template: '', model: 'default', target_field: 'ai_summary' }
     : {},
 })
 
@@ -137,6 +139,35 @@ function ProcessorCard({ processor, index, total, onChange, onRemove, onMove }) 
         <EnrichEditor annotations={processor.config.annotations || {}} onChange={(annotations) => updateConfig('annotations', annotations)} />
       )}
 
+      {processor.type === 'aisummary' && (
+        <div className='fx-alert-pipeline-row' style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+            <span>Prompt 模板</span>
+            <textarea
+              value={processor.config.prompt_template || ''}
+              onChange={(e) => updateConfig('prompt_template', e.target.value)}
+              rows={3}
+              placeholder='请根据以下告警事件生成摘要：{{.Labels}} {{.Annotations}}'
+            />
+          </label>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, flex: 1 }}>
+              <span>模型</span>
+              <select value={processor.config.model || 'default'} onChange={(e) => updateConfig('model', e.target.value)}>
+                <option value='default'>默认</option>
+                <option value='gpt-4'>GPT-4</option>
+                <option value='gpt-3.5-turbo'>GPT-3.5</option>
+                <option value='claude'>Claude</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, flex: 1 }}>
+              <span>目标字段</span>
+              <input value={processor.config.target_field || 'ai_summary'} onChange={(e) => updateConfig('target_field', e.target.value)} />
+            </label>
+          </div>
+        </div>
+      )}
+
       <ConditionsEditor conditions={processor.conditions || [emptyCondition()]} onChange={updateConditions} />
     </div>
   )
@@ -165,6 +196,95 @@ function EnrichEditor({ annotations, onChange }) {
         </div>
       ))}
       <button type='button' onClick={addPair} style={{ marginTop: 4 }}>+ 添加</button>
+    </div>
+  )
+}
+
+function PipelinePreview({ processors }) {
+  const [input, setInput] = useState(JSON.stringify({
+    labels: { alertname: 'HighCPU', instance: 'server-01', severity: 'critical' },
+    annotations: { summary: 'CPU 使用率超过 90%' },
+    status: 'firing',
+    value: '95.2',
+  }, null, 2))
+  const [output, setOutput] = useState(null)
+  const [previewError, setPreviewError] = useState(null)
+
+  const runPreview = () => {
+    try {
+      const event = JSON.parse(input)
+      let result = { ...event }
+
+      for (const proc of processors) {
+        if (!proc.enabled) continue
+
+        // 检查条件
+        const conditions = (proc.conditions || []).filter((c) => c.key)
+        if (conditions.length > 0) {
+          const matched = conditions.every((cond) => {
+            const val = result.labels?.[cond.key] || ''
+            if (cond.operator === '=') return val === cond.value
+            if (cond.operator === '!=') return val !== cond.value
+            if (cond.operator === '=~') { try { return new RegExp(cond.value).test(val) } catch { return false } }
+            if (cond.operator === '!~') { try { return !new RegExp(cond.value).test(val) } catch { return true } }
+            return false
+          })
+          if (!matched) continue
+        }
+
+        if (proc.type === 'relabel') {
+          if (proc.config.action === 'set') {
+            result = { ...result, labels: { ...result.labels, [proc.config.key]: proc.config.value } }
+          } else if (proc.config.action === 'delete') {
+            const labels = { ...result.labels }
+            delete labels[proc.config.key]
+            result = { ...result, labels }
+          }
+        } else if (proc.type === 'drop') {
+          result = { ...result, _dropped: true }
+          break
+        } else if (proc.type === 'enrich') {
+          result = { ...result, annotations: { ...result.annotations, ...proc.config.annotations } }
+        } else if (proc.type === 'aisummary') {
+          result = { ...result, annotations: { ...result.annotations, [proc.config.target_field || 'ai_summary']: '[AI 摘要将在运行时生成]' } }
+        }
+      }
+
+      setOutput(result)
+      setPreviewError(null)
+    } catch (err) {
+      setPreviewError(err.message)
+      setOutput(null)
+    }
+  }
+
+  return (
+    <div className='fx-alert-pipeline-section' style={{ marginTop: 16, borderTop: '1px solid var(--fx-border, #e5e7eb)', paddingTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <strong style={{ fontSize: 14 }}>事件预览</strong>
+        <button type='button' onClick={runPreview}>运行预览</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>
+          <span style={{ fontSize: 12, color: '#475569', display: 'block', marginBottom: 4 }}>输入事件 (JSON)</span>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={8}
+            style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, padding: 8, border: '1px solid var(--fx-border, #e5e7eb)', borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <span style={{ fontSize: 12, color: '#475569', display: 'block', marginBottom: 4 }}>输出结果</span>
+          {previewError && <div style={{ color: '#dc2626', fontSize: 12 }}>{previewError}</div>}
+          {output && (
+            <pre style={{ fontSize: 11, padding: 8, background: 'var(--fx-bg-alt, #f8fafc)', border: '1px solid var(--fx-border, #e5e7eb)', borderRadius: 4, overflow: 'auto', maxHeight: 200 }}>
+              {JSON.stringify(output, null, 2)}
+            </pre>
+          )}
+          {!output && !previewError && <div style={{ color: '#9ca3af', fontSize: 12 }}>点击"运行预览"查看结果</div>}
+        </div>
+      </div>
     </div>
   )
 }
@@ -234,6 +354,7 @@ function PipelineDrawer({ form, setForm, onSave, onClose, saving }) {
           ))}
           {form.processors.length === 0 && <div className='fx-alert-empty'>暂无处理器，点击上方按钮添加</div>}
         </div>
+        <PipelinePreview processors={form.processors} />
       </div>
     </FxDrawer>
   )

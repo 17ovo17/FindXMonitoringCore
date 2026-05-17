@@ -54,6 +54,7 @@ export function RuleFormModal({ draft, setDraft, saving, error, onSubmit, onClos
             <TriggersConfig
               value={draft.triggers_config}
               onChange={(val) => updateField('triggers_config', val)}
+              datasourceId={draft.datasourceId}
             />
           </section>
           <section>
