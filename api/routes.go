@@ -42,6 +42,7 @@ func registerRootRoutes(r *gin.Engine) {
 func registerAPIV1Routes(r *gin.Engine, v1 *gin.RouterGroup, mw routeMiddleware) {
 	registerAIOpsRoutes(v1, mw)
 	registerAIOpsEnhancedRoutes(v1, mw)
+	registerAIEngineRoutes(v1, mw)
 	registerDiagnoseAndAgentRoutes(v1, mw)
 	registerPlatformRoutes(v1, mw)
 	registerAssetsAndLogsRoutes(v1, mw)
@@ -59,5 +60,6 @@ func registerAPIV1Routes(r *gin.Engine, v1 *gin.RouterGroup, mw routeMiddleware)
 	registerSettingsRoutes(v1, mw)
 	registerTracingRoutes(v1, mw)
 	registerEngineeringRoutes(v1, mw)
+	registerSandboxRoutes(v1, mw)
 	registerDownloadRoute(r)
 }

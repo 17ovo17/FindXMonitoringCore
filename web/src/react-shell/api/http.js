@@ -1,5 +1,17 @@
 import axios from 'axios'
-import { applyStoredAuthHeader } from '../../api/authHeaders'
+
+const applyStoredAuthHeader = (config) => {
+  const token = localStorage.getItem('aiw-token')
+  const headers = { ...config.headers }
+  for (const key of ['common', 'get', 'post', 'put', 'patch', 'delete', 'head', 'options']) {
+    delete headers[key]
+  }
+  delete headers.Authorization
+  delete headers.authorization
+  if (token) headers.Authorization = `Bearer ${token}`
+  config.headers = headers
+  return config
+}
 
 const SECRET_RE = /((?:api[_-]?key|token|password|passwd|secret|dsn|cookie|authorization)\s*["']?\s*[:=]\s*["']?)[^"',\s}&]+/ig
 const BEARER_RE = /(bearer\s+)[^"',\s}]+/ig

@@ -1,0 +1,325 @@
+/* ─── Sandbox Approval Overlay ─── */
+.fx-sandbox-approval-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  animation: fx-sandbox-slide-in 0.3s ease-out;
+}
+
+@keyframes fx-sandbox-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.fx-sandbox-approval-card {
+  border: 1px solid #ffd9a8;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.fx-sandbox-approval-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fff8ed;
+  border-bottom: 1px solid #ffd9a8;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8a4b00;
+}
+
+.fx-sandbox-approval-icon {
+  font-size: 18px;
+}
+
+.fx-sandbox-approval-body {
+  padding: 12px 16px;
+}
+
+.fx-sandbox-approval-field {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fx-sandbox-approval-label {
+  flex-shrink: 0;
+  width: 40px;
+  color: #66758d;
+  font-weight: 700;
+}
+
+.fx-sandbox-approval-value {
+  color: #25324a;
+  word-break: break-all;
+}
+
+.fx-sandbox-approval-params {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.fx-sandbox-approval-params summary {
+  cursor: pointer;
+  color: #1769ff;
+}
+
+.fx-sandbox-approval-params pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  background: #f5f7fb;
+  border-radius: 6px;
+  font-size: 11px;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.fx-sandbox-approval-timer {
+  position: relative;
+  height: 24px;
+  background: #f5f7fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #66758d;
+}
+
+.fx-sandbox-approval-progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #ffd9a8;
+  transition: width 1s linear;
+  opacity: 0.4;
+}
+
+.fx-sandbox-approval-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  justify-content: flex-end;
+}
+
+.fx-sandbox-btn-deny {
+  min-height: 32px;
+  border: 1px solid #d8e1ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #25324a;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.fx-sandbox-btn-approve {
+  min-height: 32px;
+  border: 1px solid #1769ff;
+  border-radius: 8px;
+  background: #1769ff;
+  color: #fff;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fx-sandbox-btn-deny:hover { background: #f5f7fb; }
+.fx-sandbox-btn-approve:hover { background: #1255d6; }
+
+/* ─── Sandbox Settings ─── */
+.fx-sandbox-settings {
+  padding: 0;
+}
+
+.fx-sandbox-settings h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #17233c;
+}
+
+.fx-sandbox-settings h3 {
+  margin: 20px 0 10px;
+  font-size: 14px;
+  color: #17233c;
+}
+
+.fx-sandbox-desc,
+.fx-sandbox-note {
+  margin: 0 0 12px;
+  color: #66758d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.fx-sandbox-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.fx-sandbox-mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border: 2px solid #e3e8f1;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fx-sandbox-mode-card:hover {
+  border-color: #1769ff;
+}
+
+.fx-sandbox-mode-card.is-active {
+  border-color: #1769ff;
+  background: #f0f6ff;
+  box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.1);
+}
+
+.fx-sandbox-mode-icon {
+  font-size: 24px;
+}
+
+.fx-sandbox-mode-card strong {
+  font-size: 14px;
+  color: #17233c;
+}
+
+.fx-sandbox-mode-desc {
+  font-size: 12px;
+  color: #66758d;
+  line-height: 1.4;
+}
+
+.fx-sandbox-blacklist {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid #d8e1ee;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #25324a;
+  resize: vertical;
+}
+
+.fx-sandbox-save-btn {
+  margin-top: 8px;
+  min-height: 32px;
+  border: 1px solid #1769ff;
+  border-radius: 8px;
+  background: #1769ff;
+  color: #fff;
+  padding: 0 16px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.fx-sandbox-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fx-sandbox-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #66758d;
+}
+
+.fx-sandbox-empty {
+  padding: 20px;
+  text-align: center;
+  color: #66758d;
+  font-size: 13px;
+}
+
+.fx-sandbox-audit-toolbar {
+  margin-bottom: 10px;
+}
+
+.fx-sandbox-audit-toolbar button {
+  min-height: 30px;
+  border: 1px solid #d8e1ee;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.fx-sandbox-audit-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e3e8f1;
+  border-radius: 8px;
+}
+
+.fx-sandbox-audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fx-sandbox-audit-table th,
+.fx-sandbox-audit-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e3e8f1;
+}
+
+.fx-sandbox-audit-table th {
+  background: #f5f7fb;
+  color: #66758d;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.fx-sandbox-audit-table tr:last-child td {
+  border-bottom: none;
+}
+
+.fx-sandbox-risk {
+  display: inline-block;
+  min-width: 24px;
+  text-align: center;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fx-sandbox-risk-0 { background: #e8f8ef; color: #167346; }
+.fx-sandbox-risk-1 { background: #fff3df; color: #a35a00; }
+.fx-sandbox-risk-2 { background: #fff7f7; color: #9f3a38; }
+
+.fx-sandbox-status { font-weight: 600; }
+.fx-sandbox-status-executed { color: #167346; }
+.fx-sandbox-status-denied { color: #9f3a38; }
+.fx-sandbox-status-timeout { color: #a35a00; }
+.fx-sandbox-status-error { color: #9f3a38; }
+
+.fx-sandbox-audit-error {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #9f3a38;
+}

@@ -1,0 +1,358 @@
+# AI 全链路故障自愈工作流 v2
+# 融入 Context Engineering 理念：每步只注入必要上下文，结构化状态迁移
+id: alert_diagnosis_v2
+name: AI 全链路故障自愈
+version: "2.0.0"
+trigger: alert_firing
+
+context_engineering:
+  # 每步只注入必要上下文，不堆积历史
+  state_transfer: structured_json
+  history_mode: compressed_summary
+  token_budget: 4000
+
+workflow:
+  nodes:
+    - id: start
+      type: start
+      title: 接收告警事件
+      inputs:
+        alert_id: ""
+        alert_title: ""
+        alert_expr: ""
+        target_ip: ""
+        severity: ""
+        labels: "{}"
+        threshold: ""
+      next: classify
+
+    - id: classify
+      type: code
+      title: 错误分类
+      config:
+        language: javascript
+        timeout: 5000
+        code: |
+          // ErrorClassifier 逻辑的 JS 版本
+          var title = (inputs.alert_title || "").toLowerCase();
+          var severity = inputs.severity || "warning";
+          var category = "unknown";
+          var layer = "unknown";
+          var workflow = "alert_diagnosis";
+
+          // 基础设施层
+          if (title.match(/cpu|load|负载/)) { layer = "infrastructure"; category = "cpu_high"; workflow = "health_inspection"; }
+          else if (title.match(/memory|内存|mem|swap/)) { layer = "infrastructure"; category = "memory_high"; workflow = "health_inspection"; }
+          else if (title.match(/disk|磁盘|空间|inode/)) { layer = "infrastructure"; category = "disk_full"; workflow = "storage_health_check"; }
+          else if (title.match(/network|网络|丢包|unreachable/)) { layer = "network"; category = "network_issue"; workflow = "network_check"; }
+          // 应用层
+          else if (title.match(/oom|out of memory|killed/)) { layer = "application"; category = "oom"; }
+          else if (title.match(/timeout|超时/)) { layer = "application"; category = "timeout"; }
+          else if (title.match(/deadlock|死锁/)) { layer = "application"; category = "deadlock"; workflow = "db_lock_analysis"; }
+          // 数据层
+          else if (title.match(/slow.?query|慢查询/)) { layer = "data"; category = "slow_query"; workflow = "slow_query_diagnosis"; }
+          else if (title.match(/replication|主从|replica/)) { layer = "data"; category = "replication_lag"; }
+          // 中间件层
+          else if (title.match(/queue|队列|堆积|consumer/)) { layer = "middleware"; category = "queue_backlog"; workflow = "middleware_inspection"; }
+          else if (title.match(/redis|cache|缓存/)) { layer = "middleware"; category = "cache_issue"; workflow = "middleware_inspection"; }
+
+          return { category: category, layer: layer, severity: severity, recommended_workflow: workflow };
+      next: collect_evidence
+
+    - id: collect_evidence
+      type: parallel
+      title: 并行采集证据
+      parallel_group: evidence_group
+      tasks:
+        - id: evidence_metrics
+          type: http_request
+          title: 查询关键指标
+          config:
+            method: POST
+            url: "http://127.0.0.1:8080/api/v1/aiops/data/prometheus/range"
+            headers:
+              Content-Type: application/json
+            body:
+              hostname: "{{start.target_ip}}"
+              time_range: "10m"
+              metrics: "cpu_usage_active,mem_used_percent,disk_used_percent,net_bytes_recv"
+              step: "30s"
+            timeout: 15000
+          fallback:
+            on_error: continue
+            fallback_value: '{"metrics":{}}'
+
+        - id: evidence_logs
+          type: http_request
+          title: 查询错误日志
+          config:
+            method: POST
+            url: "http://127.0.0.1:8080/api/v1/aiops/data/logs"
+            headers:
+              Content-Type: application/json
+            body:
+              ip: "{{start.target_ip}}"
+              level: "error"
+              limit: 20
+              time_range: "10m"
+            timeout: 15000
+          fallback:
+            on_error: continue
+            fallback_value: '{"logs":[]}'
+
+        - id: evidence_cmdb
+          type: http_request
+          title: 查询 CMDB 资产
+          config:
+            method: GET
+            url: "http://127.0.0.1:8080/api/v1/cmdb/resources?ip={{start.target_ip}}"
+            timeout: 10000
+          fallback:
+            on_error: continue
+            fallback_value: '{"resource":{}}'
+
+        - id: evidence_alerts
+          type: http_request
+          title: 关联告警查询
+          config:
+            method: GET
+            url: "http://127.0.0.1:8080/api/v1/alerts/correlate?alert_id={{start.alert_id}}&window=10m"
+            timeout: 10000
+          fallback:
+            on_error: continue
+            fallback_value: '{"correlated":[]}'
+      next: summarize_evidence
+
+    - id: summarize_evidence
+      type: code
+      title: 证据摘要（Context Engineering - 只传摘要不传原始数据）
+      config:
+        language: javascript
+        timeout: 10000
+        code: |
+          var metrics = inputs.evidence_metrics || {};
+          var logs = inputs.evidence_logs || {};
+          var cmdb = inputs.evidence_cmdb || {};
+          var alerts = inputs.evidence_alerts || {};
+
+          // 指标摘要：只保留异常指标
+          var metricsSummary = {};
+          var raw = metrics.metrics || {};
+          var keys = Object.keys(raw);
+          for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            var series = raw[k];
+            if (!series || !series.length) continue;
+            var last = parseFloat(series[series.length - 1].value) || 0;
+            if (k.indexOf("cpu") >= 0 && last > 70) metricsSummary[k] = { current: last, status: "high" };
+            else if (k.indexOf("mem") >= 0 && last > 80) metricsSummary[k] = { current: last, status: "high" };
+            else if (k.indexOf("disk") >= 0 && last > 80) metricsSummary[k] = { current: last, status: "high" };
+            else metricsSummary[k] = { current: last, status: "normal" };
+          }
+
+          // 日志摘要：提取错误模式
+          var logPatterns = [];
+          var logList = logs.logs || [];
+          var patternMap = {};
+          for (var j = 0; j < logList.length && j < 20; j++) {
+            var msg = (logList[j].message || "").substring(0, 100);
+            if (!patternMap[msg]) { patternMap[msg] = 0; }
+            patternMap[msg]++;
+          }
+          var pkeys = Object.keys(patternMap);
+          for (var p = 0; p < pkeys.length; p++) {
+            logPatterns.push({ pattern: pkeys[p], count: patternMap[pkeys[p]] });
+          }
+
+          // CMDB 摘要
+          var cmdbSummary = {
+            hostname: (cmdb.resource || {}).hostname || inputs.target_ip,
+            business: (cmdb.resource || {}).business_group || "unknown",
+            sla: (cmdb.resource || {}).sla_level || "unknown"
+          };
+
+          // 关联告警摘要
+          var correlatedCount = (alerts.correlated || []).length;
+
+          return {
+            metrics_summary: metricsSummary,
+            log_patterns: logPatterns,
+            cmdb_summary: cmdbSummary,
+            correlated_alert_count: correlatedCount,
+            evidence_quality: keys.length > 0 ? "sufficient" : "limited"
+          };
+      next: diagnose
+
+    - id: diagnose
+      type: llm
+      title: AI 根因诊断
+      config:
+        system_prompt: |
+          你是故障诊断专家。基于以下结构化证据进行根因分析。
+          要求：
+          1. 按证据链推理，每个结论必须有数据支撑
+          2. 区分「确认」和「疑似」结论
+          3. 输出 JSON 格式
+        user_prompt: |
+          ## 告警信息
+          标题: {{start.alert_title}}
+          主机: {{start.target_ip}}
+          严重级别: {{start.severity}}
+          分类: {{classify.category}} ({{classify.layer}})
+
+          ## 证据摘要（非原始数据）
+          指标异常: {{summarize_evidence.metrics_summary}}
+          日志模式: {{summarize_evidence.log_patterns}}
+          CMDB: {{summarize_evidence.cmdb_summary}}
+          关联告警数: {{summarize_evidence.correlated_alert_count}}
+
+          请输出 JSON:
+          {"root_cause":"...","confidence":0.0-1.0,"affected_scope":"...","recommended_action":"..."}
+        temperature: 0.1
+        max_tokens: 1500
+        json_mode: true
+      context_engineering:
+        # 只注入本步需要的上下文，不注入完整历史
+        inject_mode: structured_summary
+        max_input_tokens: 1000
+      next: plan_recovery
+
+    - id: plan_recovery
+      type: llm
+      title: 制定恢复方案
+      config:
+        system_prompt: |
+          你是故障自愈引擎。根据诊断结果制定恢复方案。
+          要求：
+          1. 方案必须包含风险评估（1-5级）
+          2. 高风险操作需标记为需人工确认
+          3. 必须包含回滚方案
+          4. 输出 JSON 格式
+        user_prompt: |
+          ## 诊断结果
+          根因: {{diagnose.root_cause}}
+          置信度: {{diagnose.confidence}}
+          影响范围: {{diagnose.affected_scope}}
+          分类: {{classify.category}}
+          CMDB: {{summarize_evidence.cmdb_summary}}
+
+          请输出 JSON:
+          {"steps":[{"action":"...","target":"...","risk":1}],"overall_risk":1,"rollback_plan":"...","estimated_duration":"...","needs_approval":false}
+        temperature: 0.1
+        max_tokens: 1500
+        json_mode: true
+      next: execute_or_escalate
+
+    - id: execute_or_escalate
+      type: condition
+      title: 决策：自动执行 or 升级人工
+      config:
+        # 低风险 + 高置信度 → 自动执行
+        # 否则 → 升级人工
+        condition: "{{plan_recovery.overall_risk}} <= 2 && {{diagnose.confidence}} >= 0.8"
+        true_branch: auto_execute
+        false_branch: escalate_to_human
+
+    - id: auto_execute
+      type: http_request
+      title: 沙箱执行修复
+      config:
+        method: POST
+        url: "http://127.0.0.1:8080/api/v1/aiops/sandbox/execute"
+        headers:
+          Content-Type: application/json
+        body:
+          session_id: "{{start.alert_id}}"
+          steps: "{{plan_recovery.steps}}"
+          mode: "auto_review"
+          rollback_plan: "{{plan_recovery.rollback_plan}}"
+        timeout: 60000
+      fallback:
+        on_error: stop
+      next: verify
+
+    - id: escalate_to_human
+      type: http_request
+      title: 升级通知值班人员
+      config:
+        method: POST
+        url: "http://127.0.0.1:8080/api/v1/notifications/send"
+        headers:
+          Content-Type: application/json
+        body:
+          channels: ["oncall", "feishu"]
+          template: "escalation"
+          data:
+            alert_id: "{{start.alert_id}}"
+            alert_title: "{{start.alert_title}}"
+            target_ip: "{{start.target_ip}}"
+            root_cause: "{{diagnose.root_cause}}"
+            confidence: "{{diagnose.confidence}}"
+            risk_level: "{{plan_recovery.overall_risk}}"
+            suggested_plan: "{{plan_recovery.steps}}"
+        timeout: 10000
+      fallback:
+        on_error: continue
+      next: record_trajectory
+
+    - id: verify
+      type: http_request
+      title: 验证修复结果
+      config:
+        method: POST
+        url: "http://127.0.0.1:8080/api/v1/aiops/data/prometheus/query"
+        headers:
+          Content-Type: application/json
+        body:
+          query: "{{start.alert_expr}}"
+          ip: "{{start.target_ip}}"
+        timeout: 30000
+      fallback:
+        on_error: continue
+        fallback_value: '{"status":"unknown"}'
+      next: record_trajectory
+
+    - id: record_trajectory
+      type: code
+      title: 记录执行轨迹 + 提取经验
+      config:
+        language: javascript
+        timeout: 5000
+        code: |
+          var outcome = "escalated";
+          if (inputs.verify && inputs.verify.status === "resolved") {
+            outcome = "resolved";
+          } else if (inputs.auto_execute && inputs.auto_execute.status === "success") {
+            outcome = "resolved";
+          }
+
+          return {
+            trajectory: {
+              alert_id: inputs.alert_id,
+              intent: "self_heal",
+              outcome: outcome,
+              classification: inputs.classify,
+              diagnosis: inputs.diagnose,
+              plan: inputs.plan_recovery,
+              duration_ms: Date.now() - inputs._start_time
+            },
+            learn: outcome === "resolved"
+          };
+      next: end
+
+    - id: end
+      type: end
+      title: 输出自愈结果
+      outputs:
+        outcome: "{{record_trajectory.trajectory.outcome}}"
+        root_cause: "{{diagnose.root_cause}}"
+        confidence: "{{diagnose.confidence}}"
+        classification: "{{classify.category}}"
+        trajectory: "{{record_trajectory.trajectory}}"
+
+  global:
+    error_handling: continue_on_failure
+    timeout: 120000
+    retry:
+      max_attempts: 1
+      backoff: 2000

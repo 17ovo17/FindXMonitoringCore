@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"ai-workbench-api/internal/sandbox"
 	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -107,11 +108,108 @@ func AIToolExecute(c *gin.Context) {
 			}
 		}
 	}
+
+	// 沙箱前置检查
+	sb := GetSandbox()
+	approvalReq, err := sb.PreExecute(name, tool.RiskLevel, req.Params)
+	if err != nil {
+		// 被拒绝（黑名单或权限不足）
+		sb.RecordAudit(sandbox.AuditEntry{
+			ToolName:  name,
+			RiskLevel: tool.RiskLevel,
+			Params:    req.Params,
+			Error:     err.Error(),
+			Status:    "denied",
+			CreatedAt: time.Now(),
+		})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"tool": name, "error": err.Error(), "denied": true}})
+		return
+	}
+
+	if approvalReq != nil {
+		// 需要用户确认 — 通过 SSE 推送确认请求到前端
+		// 返回 pending 状态，前端通过 /sandbox/approvals 轮询或 SSE 获取
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{
+			"tool":             name,
+			"approval_pending": true,
+			"approval_id":     approvalReq.ID,
+			"description":     approvalReq.Description,
+			"impact":          approvalReq.Impact,
+			"expires_at":      approvalReq.ExpiresAt,
+		}})
+
+		// 异步等待审批结果
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+			defer cancel()
+			status, _ := sb.WaitApproval(ctx, approvalReq)
+			auditStatus := string(status)
+			if status == sandbox.ApprovalApproved {
+				// 审批通过，执行工具
+				execCtx, execCancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer execCancel()
+				start := time.Now()
+				result, execErr := tool.Handler(execCtx, req.Params)
+				duration := time.Since(start).Milliseconds()
+				errMsg := ""
+				if execErr != nil {
+					errMsg = execErr.Error()
+					auditStatus = "error"
+				} else {
+					auditStatus = "executed"
+					_ = result
+				}
+				sb.RecordAudit(sandbox.AuditEntry{
+					ToolName:   name,
+					RiskLevel:  tool.RiskLevel,
+					Params:     req.Params,
+					Result:     result,
+					Error:      errMsg,
+					Status:     auditStatus,
+					Duration:   duration,
+					CreatedAt:  time.Now(),
+					ApprovalID: approvalReq.ID,
+				})
+			} else {
+				sb.RecordAudit(sandbox.AuditEntry{
+					ToolName:   name,
+					RiskLevel:  tool.RiskLevel,
+					Params:     req.Params,
+					Status:     auditStatus,
+					CreatedAt:  time.Now(),
+					ApprovalID: approvalReq.ID,
+				})
+			}
+		}()
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 	start := time.Now()
 	result, err := tool.Handler(ctx, req.Params)
 	latency := time.Since(start).Milliseconds()
+
+	// 记录审计（Level 1+ 或 AuditAll）
+	if tool.RiskLevel >= 1 || sb.GetPolicy().AuditAll {
+		auditStatus := "executed"
+		errMsg := ""
+		if err != nil {
+			auditStatus = "error"
+			errMsg = err.Error()
+		}
+		sb.RecordAudit(sandbox.AuditEntry{
+			ToolName:  name,
+			RiskLevel: tool.RiskLevel,
+			Params:    req.Params,
+			Result:    result,
+			Error:     errMsg,
+			Status:    auditStatus,
+			Duration:  latency,
+			CreatedAt: time.Now(),
+		})
+	}
+
 	if err != nil {
 		logrus.WithError(err).Warnf("tool %s execution failed", name)
 		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"tool": name, "error": err.Error(), "latency_ms": latency}})

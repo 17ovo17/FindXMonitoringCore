@@ -301,6 +301,7 @@ export const navGroups = [
       { section: 'variables', label: '变量设置' },
       { section: 'sso', label: '单点登录' },
       { section: 'alerting-engines', label: '告警引擎' },
+      { section: 'sandbox', label: 'AI 执行沙箱' },
       { section: 'health', label: '运行自检' },
       { section: 'audit', label: '审计日志' },
     ],

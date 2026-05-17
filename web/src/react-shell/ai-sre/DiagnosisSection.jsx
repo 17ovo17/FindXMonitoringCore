@@ -16,6 +16,14 @@ const QUICK_QUESTIONS = [
   '证书即将过期',
 ]
 
+/* ─── NL2Query 快捷示例 ─── */
+const NL2QUERY_EXAMPLES = [
+  '最近1小时CPU使用率超过80%的主机',
+  '连接数最多的前10个MySQL实例',
+  '最近30分钟的错误日志',
+  'Redis内存使用情况',
+]
+
 const SANITIZE_OPTS = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3', 'h4', 'details', 'summary', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
   allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, img: ['src', 'alt'], code: ['class'], span: ['class'] },
@@ -114,6 +122,75 @@ function StreamingIndicator() {
   )
 }
 
+/* ─── NL2Query 面板 ─── */
+function NL2QueryPanel({ onClose }) {
+  const [input, setInput] = useState('')
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleTranslate = async (text) => {
+    const query = (text || input).trim()
+    if (!query) return
+    setLoading(true)
+    setError('')
+    setResult(null)
+    try {
+      const resp = await fetch('/api/v1/ai/nl2query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: query }),
+      })
+      const data = await resp.json()
+      if (data.code !== 0) throw new Error(data.error || '查询转换失败')
+      setResult(data.data)
+    } catch (err) {
+      setError(err.message || '请求失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className='fx-nl2query-panel'>
+      <div className='fx-nl2query-header'>
+        <h4>自然语言查询</h4>
+        <button type='button' onClick={onClose} title='关闭'>&times;</button>
+      </div>
+      <div className='fx-nl2query-body'>
+        <div className='fx-nl2query-input-row'>
+          <input
+            type='text'
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleTranslate() }}
+            placeholder='输入中文问题，如：最近1小时CPU使用率超过80%的主机'
+          />
+          <button type='button' onClick={() => handleTranslate()} disabled={loading || !input.trim()}>
+            {loading ? '转换中...' : '转换'}
+          </button>
+        </div>
+        <div className='fx-nl2query-examples'>
+          {NL2QUERY_EXAMPLES.map(ex => (
+            <button key={ex} type='button' className='fx-chat-chip' onClick={() => { setInput(ex); handleTranslate(ex) }}>{ex}</button>
+          ))}
+        </div>
+        {error && <div className='fx-nl2query-error'>{error}</div>}
+        {result && (
+          <div className='fx-nl2query-result'>
+            <div className='fx-nl2query-result-lang'>
+              <span className='fx-nl2query-badge'>{result.target_language}</span>
+              <span className='fx-nl2query-confidence'>置信度: {Math.round((result.confidence || 0) * 100)}%</span>
+            </div>
+            <pre className='fx-nl2query-code'>{result.generated_query}</pre>
+            <p className='fx-nl2query-explanation'>{result.explanation}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── 主组件 ─── */
 export function DiagnosisSection({ query, onNavigate, addEvidence }) {
   const [sessions, setSessions] = useState([])
@@ -124,6 +201,7 @@ export function DiagnosisSection({ query, onNavigate, addEvidence }) {
   const [streamContent, setStreamContent] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showNL2Query, setShowNL2Query] = useState(false)
   const messagesEndRef = useRef(null)
   const abortRef = useRef(null)
 
@@ -306,6 +384,7 @@ export function DiagnosisSection({ query, onNavigate, addEvidence }) {
         {/* 输入区域 */}
         <div className='fx-chat-input-area'>
           <ErrorBox>{error}</ErrorBox>
+          {showNL2Query && <NL2QueryPanel onClose={() => setShowNL2Query(false)} />}
           {!messages.length && !streaming && null}
           {(messages.length > 0 || streaming) && (
             <div className='fx-chat-chips fx-chat-chips-inline'>
@@ -324,6 +403,14 @@ export function DiagnosisSection({ query, onNavigate, addEvidence }) {
               rows={2}
               disabled={streaming}
             />
+            <button
+              type='button'
+              className='fx-chat-nl2query-btn'
+              onClick={() => setShowNL2Query(v => !v)}
+              title='自然语言查询'
+            >
+              NL
+            </button>
             <button
               type='button'
               className='fx-chat-send-btn'

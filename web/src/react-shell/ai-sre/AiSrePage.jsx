@@ -6,6 +6,7 @@ import { KnowledgeSection } from './KnowledgeSection.jsx'
 import { RemediationSection } from './RemediationSection.jsx'
 import { ReportSection } from './ReportSection.jsx'
 import { WorkflowSection } from './WorkflowSection.jsx'
+import { SandboxApprovalOverlay } from './SandboxApproval.jsx'
 import { sections, sectionSet } from './aiSreModel.js'
 import { Blocked, SectionTabs } from './AiSreShared.jsx'
 import { AISRE_BLOCKERS } from '../api/aiSre.js'
@@ -52,6 +53,7 @@ export function AiSrePage({ query, onNavigate }) {
       {section === 'evidence' && <EvidenceSection evidence={evidence} onNavigate={navigate} />}
       {section === 'knowledge' && <KnowledgeSection query={query || {}} onNavigate={navigate} addEvidence={addEvidence} />}
       {section === 'remediation' && <RemediationSection onNavigate={navigate} evidence={evidence} />}
+      <SandboxApprovalOverlay />
     </main>
   )
 }

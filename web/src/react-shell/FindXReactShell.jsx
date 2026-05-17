@@ -11,6 +11,7 @@ import { ParticleBackground } from './shared/ParticleBackground.jsx'
 import { ErrorBoundary } from './shared/ErrorBoundary.jsx'
 import { CommandPalette } from './shared/CommandPalette.jsx'
 import { ToastContainer } from './shared/Toast.jsx'
+import { useAppStore } from './stores/useAppStore.js'
 import './shared/fx-base.css'
 import './styles.css'
 
@@ -259,6 +260,28 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const { lang, setLang, t } = useI18n()
+  const appStoreTheme = useAppStore((s) => s.theme)
+  const toggleStoreTheme = useAppStore((s) => s.toggleTheme)
+  const setAlertCount = useAppStore((s) => s.setAlertCount)
+
+  // 同步 store 主题到本地 state（store 作为 source of truth）
+  useEffect(() => {
+    setTheme(appStoreTheme)
+  }, [appStoreTheme])
+
+  // 告警计数轮询（每 30 秒）
+  useEffect(() => {
+    if (!token || authState !== 'ready') return
+    let alive = true
+    const poll = () => {
+      get('/api/alert/cur-events?limit=0').then((res) => {
+        if (alive && typeof res?.total === 'number') setAlertCount(res.total)
+      }).catch(() => {})
+    }
+    poll()
+    const timer = setInterval(poll, 30000)
+    return () => { alive = false; clearInterval(timer) }
+  }, [token, authState, setAlertCount])
 
   // Cmd+K / Ctrl+K 打开命令面板
   useEffect(() => {
@@ -436,7 +459,7 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
               <div><p>{route.name === 'not-found' ? 'FindX' : activeNav.group.label}</p><h1>{route.name === 'not-found' ? '页面不存在' : activeNav.child.label}</h1></div>
               <div className='fx-header-actions'>
                 <button type='button' className='fx-lang-toggle' onClick={() => setLang(lang === 'zh-CN' ? 'en-US' : 'zh-CN')}>{lang === 'zh-CN' ? 'EN' : '中'}</button>
-                <ThemeToggle theme={theme} onToggle={setTheme} />
+                <ThemeToggle theme={theme} onToggle={(next) => { setTheme(next); toggleStoreTheme() }} />
                 <button type='button' onClick={() => setPasswordModalOpen(true)}>改密</button>
                 <button type='button' className='fx-user' onClick={logout}><span>{userInitial}</span>{user?.username || '用户'} / 退出</button>
               </div>

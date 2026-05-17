@@ -6,8 +6,10 @@ import { SiteSettingsSection } from './SiteSettingsSection.jsx'
 import { VariablesSection } from './VariablesSection.jsx'
 import { AlertingEnginesSection } from './AlertingEnginesSection.jsx'
 import { AuditSection } from './AuditSection.jsx'
+import { SandboxSettings } from './SandboxSettings.jsx'
 import { useConfirm } from '../shared/ConfirmModal.jsx'
 import './platform.css'
+import './sandbox.css'
 
 const sections = [
   { value: 'models', label: 'AI 模型配置', desc: '统一管理大模型、Embedding、Reranker 与健康检测。' },
@@ -16,6 +18,7 @@ const sections = [
   { value: 'variables', label: '变量设置', desc: '统一变量、密文变量和引用影响分析。' },
   { value: 'sso', label: '单点登录', desc: '登录协议、默认角色和团队映射。' },
   { value: 'alerting-engines', label: '告警引擎', desc: '告警执行节点和心跳状态。' },
+  { value: 'sandbox', label: 'AI 沙箱', desc: 'AI 执行权限策略、命令黑名单与审计日志。' },
   { value: 'health', label: '运行自检', desc: '平台依赖、存储与配置链路状态。' },
   { value: 'audit', label: '审计日志', desc: '敏感操作、权限和配置变更留痕。' },
 ]
@@ -283,6 +286,7 @@ export function PlatformPage({ query = {}, onNavigate }) {
       {section === 'site' && <SiteSettingsSection />}
       {section === 'variables' && <VariablesSection />}
       {section === 'alerting-engines' && <AlertingEnginesSection />}
+      {section === 'sandbox' && <SandboxSettings />}
       {section === 'health' && <HealthSection />}
       {section === 'audit' && <AuditSection q={q} />}
     </main>

@@ -1,0 +1,206 @@
+# 业务拓扑分析工作流
+# Context Engineering: 结构化状态迁移，每步只注入必要上下文
+id: topology_analysis
+name: 业务拓扑智能分析
+version: "1.0.0"
+trigger: manual
+
+context_engineering:
+  state_transfer: structured_json
+  history_mode: compressed_summary
+  token_budget: 4000
+
+workflow:
+  nodes:
+    - id: start
+      type: start
+      title: 接收拓扑分析请求
+      inputs:
+        business_id: ""
+        hostname: ""
+        scope: "full"
+        analysis_focus: "risk"
+      next: fetch_topology
+
+    - id: fetch_topology
+      type: http_request
+      title: 获取 CMDB 拓扑数据
+      config:
+        method: GET
+        url: "http://127.0.0.1:8080/api/v1/cmdb/topology?business_id={{start.business_id}}&hostname={{start.hostname}}&depth=3"
+        timeout: 15000
+      fallback:
+        on_error: stop
+      next: fetch_monitoring_state
+
+    - id: fetch_monitoring_state
+      type: parallel
+      title: 并行获取监控状态
+      parallel_group: monitoring_group
+      tasks:
+        - id: active_alerts
+          type: http_request
+          title: 获取活跃告警
+          config:
+            method: GET
+            url: "http://127.0.0.1:8080/api/v1/alerts/active?business_id={{start.business_id}}"
+            timeout: 10000
+          fallback:
+            on_error: continue
+            fallback_value: '{"alerts":[]}'
+
+        - id: node_metrics
+          type: http_request
+          title: 获取节点指标
+          config:
+            method: POST
+            url: "http://127.0.0.1:8080/api/v1/aiops/data/prometheus/batch"
+            headers:
+              Content-Type: application/json
+            body:
+              targets: "{{fetch_topology.nodes}}"
+              metrics: "cpu_usage_active,mem_used_percent,request_rate,error_rate"
+              time_range: "5m"
+            timeout: 15000
+          fallback:
+            on_error: continue
+            fallback_value: '{"metrics":{}}'
+
+        - id: sla_status
+          type: http_request
+          title: 获取 SLA 状态
+          config:
+            method: GET
+            url: "http://127.0.0.1:8080/api/v1/slo/status?business_id={{start.business_id}}"
+            timeout: 10000
+          fallback:
+            on_error: continue
+            fallback_value: '{"slo":[]}'
+      next: analyze_topology
+
+    - id: analyze_topology
+      type: code
+      title: 拓扑结构化分析
+      config:
+        language: javascript
+        timeout: 10000
+        code: |
+          var topology = inputs.fetch_topology || {};
+          var alerts = (inputs.active_alerts || {}).alerts || [];
+          var metrics = (inputs.node_metrics || {}).metrics || {};
+          var slo = (inputs.sla_status || {}).slo || [];
+
+          var nodes = topology.nodes || [];
+          var edges = topology.edges || [];
+
+          // 1. 识别单点故障（入度=1 且无冗余的关键节点）
+          var singlePoints = [];
+          var inDegree = {};
+          for (var i = 0; i < edges.length; i++) {
+            var target = edges[i].target;
+            inDegree[target] = (inDegree[target] || 0) + 1;
+          }
+          for (var j = 0; j < nodes.length; j++) {
+            var node = nodes[j];
+            if ((inDegree[node.id] || 0) <= 1 && node.type === "service") {
+              singlePoints.push(node.id);
+            }
+          }
+
+          // 2. 标注异常节点（有活跃告警的）
+          var alertedNodes = [];
+          for (var a = 0; a < alerts.length; a++) {
+            var alertNode = alerts[a].labels && alerts[a].labels.instance;
+            if (alertNode) alertedNodes.push(alertNode);
+          }
+
+          // 3. 性能瓶颈（高负载节点）
+          var bottlenecks = [];
+          var metricKeys = Object.keys(metrics);
+          for (var m = 0; m < metricKeys.length; m++) {
+            var nodeMetrics = metrics[metricKeys[m]];
+            if (nodeMetrics && nodeMetrics.cpu_usage_active > 80) {
+              bottlenecks.push({ node: metricKeys[m], reason: "CPU高负载", value: nodeMetrics.cpu_usage_active });
+            }
+            if (nodeMetrics && nodeMetrics.error_rate > 5) {
+              bottlenecks.push({ node: metricKeys[m], reason: "错误率高", value: nodeMetrics.error_rate });
+            }
+          }
+
+          // 4. 监控覆盖率
+          var monitoredCount = metricKeys.length;
+          var totalNodes = nodes.length;
+          var coverageRate = totalNodes > 0 ? (monitoredCount / totalNodes * 100).toFixed(1) : 0;
+
+          return {
+            summary: {
+              total_nodes: totalNodes,
+              total_edges: edges.length,
+              single_points: singlePoints.length,
+              alerted_nodes: alertedNodes.length,
+              bottlenecks: bottlenecks.length,
+              monitoring_coverage: coverageRate + "%"
+            },
+            single_points: singlePoints,
+            alerted_nodes: alertedNodes,
+            bottlenecks: bottlenecks,
+            slo_violations: slo.filter(function(s) { return s.status === "violated"; })
+          };
+      next: llm_analysis
+
+    - id: llm_analysis
+      type: llm
+      title: AI 拓扑风险分析
+      config:
+        system_prompt: |
+          你是业务拓扑分析专家。基于结构化拓扑分析结果，输出风险评估和优化建议。
+          要求：
+          1. 基于数据分析，不猜测
+          2. 按风险优先级排序建议
+          3. 输出结构化 Markdown
+        user_prompt: |
+          ## 拓扑概览
+          {{analyze_topology.summary}}
+
+          ## 单点故障节点
+          {{analyze_topology.single_points}}
+
+          ## 当前异常节点（有活跃告警）
+          {{analyze_topology.alerted_nodes}}
+
+          ## 性能瓶颈
+          {{analyze_topology.bottlenecks}}
+
+          ## SLO 违规
+          {{analyze_topology.slo_violations}}
+
+          请按以下格式输出分析报告：
+          1. 拓扑概览
+          2. 单点故障风险
+          3. 当前异常分析
+          4. 性能瓶颈定位
+          5. 监控覆盖短板
+          6. 优化建议（按优先级排序）
+        temperature: 0.2
+        max_tokens: 2000
+      context_engineering:
+        inject_mode: structured_summary
+        max_input_tokens: 1500
+      next: end
+
+    - id: end
+      type: end
+      title: 输出拓扑分析报告
+      outputs:
+        report: "{{llm_analysis.result}}"
+        summary: "{{analyze_topology.summary}}"
+        single_points: "{{analyze_topology.single_points}}"
+        bottlenecks: "{{analyze_topology.bottlenecks}}"
+        alerted_nodes: "{{analyze_topology.alerted_nodes}}"
+
+  global:
+    error_handling: continue_on_failure
+    timeout: 90000
+    retry:
+      max_attempts: 1
+      backoff: 2000

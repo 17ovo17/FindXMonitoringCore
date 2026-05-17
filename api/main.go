@@ -32,6 +32,7 @@ func main() {
 	embedding.Init()
 	go knowledge.LoadExistingDocsToSearchEngine()
 	handler.InitAuth()
+	handler.InitSandbox()
 	scheduler.SetDiagnoseFunc(handler.RunDiagnose)
 	scheduler.Start()
 	scheduler.StartWorkflowScheduler()
