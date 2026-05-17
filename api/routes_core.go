@@ -145,6 +145,9 @@ func registerLogRoutes(v1 *gin.RouterGroup, mw routeMiddleware) {
 	v1.GET("/logs/tail/ws", mw.readRequired, handler.LogsTailWebSocket)
 	v1.GET("/logs/aggregate", mw.readRequired, handler.LogsAggregateLoki)
 	v1.GET("/logs/context", mw.readRequired, handler.GetLogContext)
+	v1.GET("/logs/es/query", mw.readRequired, handler.LogsESQuery)
+	v1.GET("/logs/es/aggregate", mw.readRequired, handler.LogsESAggregate)
+	v1.GET("/logs/es/fields", mw.readRequired, handler.LogsESFields)
 	v1.GET("/logs/realtime", mw.readRequired, handler.RealtimeLogsBlocked)
 	v1.GET("/logs/stream", mw.readRequired, handler.RealtimeLogsBlocked)
 	// Deploy pipeline lifecycle

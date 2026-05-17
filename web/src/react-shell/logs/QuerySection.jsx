@@ -56,7 +56,8 @@ export function QuerySection() {
     setError('')
     setActiveRow(null)
     setPage(1)
-    if (source !== 'findx_audit') {
+    const sourceInfo = LOG_SOURCES.find(s => s.value === source)
+    if (!sourceInfo?.real) {
       setRows([])
       setMeta(null)
       setError(`需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`)
@@ -64,7 +65,8 @@ export function QuerySection() {
       return
     }
     try {
-      const resp = await logsApi.query(buildParams(1))
+      const queryFn = source === 'elasticsearch' ? logsApi.queryES : logsApi.query
+      const resp = await queryFn(buildParams(1))
       const items = Array.isArray(resp?.items) ? resp.items : []
       setRows(items)
       setMeta(resp || null)
@@ -84,7 +86,8 @@ export function QuerySection() {
     setLoadingMore(true)
     const nextPage = page + 1
     try {
-      const resp = await logsApi.query(buildParams(nextPage))
+      const queryFn = source === 'elasticsearch' ? logsApi.queryES : logsApi.query
+      const resp = await queryFn(buildParams(nextPage))
       const items = Array.isArray(resp?.items) ? resp.items : []
       setRows(prev => [...prev, ...items])
       setMeta(resp || null)
@@ -171,7 +174,7 @@ export function QuerySection() {
         onClearAll={activeFilters.length ? clearFilters : null}
       />
 
-      {source !== 'findx_audit' && <Blocked>{`需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`}</Blocked>}
+      {!LOG_SOURCES.find(s => s.value === source)?.real && <Blocked>{`需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`}</Blocked>}
       {error && <Blocked>{error}</Blocked>}
 
       <ViewToolbar

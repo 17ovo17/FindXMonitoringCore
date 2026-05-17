@@ -13,7 +13,8 @@ export function AggregateSection() {
   const runAggregate = async () => {
     setLoading(true)
     setBlocked('')
-    if (source !== 'findx_audit') {
+    const sourceInfo = LOG_SOURCES.find(s => s.value === source)
+    if (!sourceInfo?.real) {
       setBuckets([])
       setMeta(null)
       setBlocked(LOG_BLOCKERS.aggregate)
@@ -21,7 +22,8 @@ export function AggregateSection() {
       return
     }
     try {
-      const resp = await logsApi.aggregate({ source, group_by: groupBy, limit: 200 })
+      const aggFn = source === 'elasticsearch' ? logsApi.aggregateES : logsApi.aggregate
+      const resp = await aggFn({ source, group_by: groupBy, limit: 200 })
       setBuckets(Array.isArray(resp?.buckets) ? resp.buckets : [])
       setMeta(resp || null)
     } catch (err) {
@@ -49,7 +51,7 @@ export function AggregateSection() {
         <Field label='函数'><select disabled><option>count()</option></select></Field>
         <button type='button' onClick={runAggregate} disabled={loading}>{loading ? '分析中' : '分析'}</button>
       </div>
-      {source !== 'findx_audit' && <Blocked>{LOG_BLOCKERS.aggregate}</Blocked>}
+      {!LOG_SOURCES.find(s => s.value === source)?.real && <Blocked>{LOG_BLOCKERS.aggregate}</Blocked>}
       {blocked && <Blocked>{blocked}</Blocked>}
       {buckets.length ? (
         <div className='fx-logs-table'><table><thead><tr><th>分组</th><th>计数</th><th>来源</th></tr></thead><tbody>{buckets.map(bucket => <tr key={bucket.key}><td>{bucket.label || bucket.key}</td><td>{bucket.count}</td><td>{meta?.source_name || 'FindX 审计日志'}</td></tr>)}</tbody></table></div>

@@ -14,8 +14,8 @@ export const LOG_BLOCKERS = {
 
 export const LOG_SOURCES = [
   { value: 'findx_audit', label: 'FindX 审计日志', real: true },
+  { value: 'elasticsearch', label: 'Elasticsearch', real: true },
   { value: 'loki', label: 'Loki', real: false },
-  { value: 'elasticsearch', label: 'Elasticsearch', real: false },
   { value: 'custom', label: '自定义', real: false },
   { value: 'otel', label: '通用 OTel 日志', real: false },
 ]
@@ -32,7 +32,9 @@ export const formatLogError = error => {
 
 export const logsApi = {
   query: params => get('/logs', { params: cleanParams(params) }),
+  queryES: params => get('/logs/es/query', { params: cleanParams(params) }),
   fields: () => get('/logs/fields'),
+  fieldsES: () => get('/logs/es/fields'),
   addField: body => post('/logs/fields', body),
   removeField: body => del('/logs/fields', { data: body }),
   toggleIndex: (fieldName, indexed) => put(`/logs/fields/${encodeURIComponent(fieldName)}/index`, { indexed }),
@@ -42,6 +44,7 @@ export const logsApi = {
     remove: fieldName => del(`/logs/fields/indexes/${encodeURIComponent(fieldName)}`),
   },
   aggregate: params => get('/logs/aggregate', { params: cleanParams(params) }),
+  aggregateES: params => get('/logs/es/aggregate', { params: cleanParams(params) }),
   context: params => get('/logs/context', { params: cleanParams(params) }),
   contextById: (id, params) => get(`/api/v1/logs/context`, { params: cleanParams({ id, ...params }) }),
   pipelines: {
