@@ -10,6 +10,7 @@ import { FindXIcon } from './shared/FindXIcon.jsx'
 import { ParticleBackground } from './shared/ParticleBackground.jsx'
 import { ErrorBoundary } from './shared/ErrorBoundary.jsx'
 import { CommandPalette } from './shared/CommandPalette.jsx'
+import { ToastContainer } from './shared/Toast.jsx'
 import './shared/fx-base.css'
 import './styles.css'
 
@@ -450,6 +451,7 @@ export function FindXReactShell({ authBoundary, navigationItems, themeBoundary }
           </section>
           <ChangePasswordModal user={user} open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} onDone={onPasswordModalDone} />
           <CommandPalette open={cmdPaletteOpen} onClose={() => setCmdPaletteOpen(false)} onNavigate={navigate} />
+          <ToastContainer />
         </div>
       </ThemeBoundaryProvider>
     </AuthBoundaryProvider>
