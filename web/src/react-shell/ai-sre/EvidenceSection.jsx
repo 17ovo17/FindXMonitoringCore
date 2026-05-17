@@ -82,6 +82,8 @@ export function EvidenceSection({ evidence, onNavigate }) {
   const [filterType, setFilterType] = useState('')
   const [filterTarget, setFilterTarget] = useState('')
   const [timeRange, setTimeRange] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
   useEffect(() => {
     let active = true
@@ -118,6 +120,8 @@ export function EvidenceSection({ evidence, onNavigate }) {
     if (filterType) items = items.filter(i => (i.kind || i.category) === filterType)
     return items
   }, [allItems, filterType])
+
+  useEffect(() => { setPage(1) }, [filterType, filterTarget, timeRange])
 
   const handleExport = () => {
     alert('导出报告功能即将上线，敬请期待。')
@@ -164,14 +168,21 @@ export function EvidenceSection({ evidence, onNavigate }) {
       {!loading && filteredItems.length > 0 && (
         <div className='fx-aisre-timeline'>
           <div className='fx-aisre-timeline-line' />
-          {filteredItems.map((item, idx) => (
+          {filteredItems.slice((page - 1) * pageSize, page * pageSize).map((item, idx) => (
             <TimelineItem
               key={`${item._source}-${item.id || idx}-${item.kind || ''}`}
               item={item}
-              isExpanded={expandedId === idx}
-              onToggle={() => setExpandedId(expandedId === idx ? null : idx)}
+              isExpanded={expandedId === (page - 1) * pageSize + idx}
+              onToggle={() => { const id = (page - 1) * pageSize + idx; setExpandedId(expandedId === id ? null : id) }}
             />
           ))}
+        </div>
+      )}
+      {!loading && filteredItems.length > pageSize && (
+        <div className='fx-aisre-pagination'>
+          <button type='button' disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+          <span>第 {page} / {Math.ceil(filteredItems.length / pageSize)} 页（共 {filteredItems.length} 条）</span>
+          <button type='button' disabled={page >= Math.ceil(filteredItems.length / pageSize)} onClick={() => setPage(p => p + 1)}>下一页</button>
         </div>
       )}
     </section>
