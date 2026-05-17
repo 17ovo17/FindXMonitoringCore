@@ -59,7 +59,7 @@ export function QuerySection() {
     if (source !== 'findx_audit') {
       setRows([])
       setMeta(null)
-      setError(`PENDING: 需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`)
+      setError(`需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`)
       setLoading(false)
       return
     }
@@ -109,7 +109,7 @@ export function QuerySection() {
       const rowsValue = await agentApi.dataArrival()
       const logsRow = findLogsArrival(rowsValue)
       setArrival(logsRow)
-      if (!logsRow) setError('PENDING: FindX Agent 数据到达契约未返回日志通道。')
+      if (!logsRow) setError('FindX Agent 数据到达契约未返回日志通道。')
       if (logsRow && logsRow.status !== 'reported') setError(logsRow.blocker || LOG_BLOCKERS.agentLinkage)
     } catch (err) {
       setArrival(null)
@@ -171,7 +171,7 @@ export function QuerySection() {
         onClearAll={activeFilters.length ? clearFilters : null}
       />
 
-      {source !== 'findx_audit' && <Blocked>{`PENDING: 需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`}</Blocked>}
+      {source !== 'findx_audit' && <Blocked>{`需要部署 ${sourceLabel(source)} 并配置 /logs/query 代理`}</Blocked>}
       {error && <Blocked>{error}</Blocked>}
 
       <ViewToolbar

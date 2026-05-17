@@ -1,6 +1,6 @@
 import { redactText, safeJson } from '../../api/http.js'
 
-export const PENDING = 'PENDING'
+export const PENDING = ''
 
 export const alertSections = [
   { value: 'rules', label: '规则' },
@@ -39,23 +39,23 @@ export const noDataPolicies = [
 ]
 
 export const blockedContracts = {
-  job: 'PENDING: 缺少告警自愈模板、任务列表、执行参数、审批、审计、回滚和执行记录契约。',
-  'tracing-alarms': 'PENDING: 缺少链路告警规则、链路告警事件、服务/实例/端点关联、Trace 反查和复盘证据契约。',
-  mutes: 'PENDING: 缺少屏蔽规则列表、时间窗口、对象选择、启停、克隆、删除与审计契约。',
-  subscriptions: 'PENDING: 缺少订阅规则列表、接收对象、级别重定义、过滤条件、启停、克隆、删除与投递记录契约。',
-  'event-pipelines': 'PENDING: 缺少事件流水线列表、触发方式、用途、启停、编辑、克隆、删除、执行记录与调试契约。',
-  businessGroup: 'PENDING: 缺少业务组列表、我的业务组、跨组权限和按业务组过滤契约。',
-  category: 'PENDING: 缺少规则分类/采集类型枚举及后端过滤契约。',
-  columnSettings: 'PENDING: 缺少用户级列配置保存、恢复默认和服务端持久化契约。',
-  batchRuleUpdate: 'PENDING: 缺少规则批量编辑、批量克隆到目标范围、批量删除、导入和导出服务端契约。',
-  notificationConfig: 'PENDING: 缺少通知组、通知规则、通知渠道、模板和投递预览契约。',
-  pipelineConfig: 'PENDING: 缺少事件流水线绑定、执行顺序、调试和执行记录契约。',
-  effectiveTime: 'PENDING: 缺少生效时间、周期窗口、时区和节假日策略契约。',
-  eventTimeRange: 'PENDING: 缺少事件服务端时间范围查询、自动刷新、时区和刷新间隔契约；当前只在已加载事件上做本地筛选。',
-  eventAggregation: 'PENDING: 缺少服务端聚合规则、聚合卡片钻取和按聚合结果回填事件筛选契约；当前仅展示本地统计。',
-  eventBatch: 'PENDING: 缺少事件批量删除、批量确认/反确认、批量屏蔽和批量分派契约。',
-  eventMute: 'PENDING: 缺少从事件生成屏蔽规则的后端契约。',
-  eventDelete: 'PENDING: 缺少事件删除契约；当前只接入确认、分派、恢复、归档。',
+  job: '缺少告警自愈模板、任务列表、执行参数、审批、审计、回滚和执行记录契约。',
+  'tracing-alarms': '缺少链路告警规则、链路告警事件、服务/实例/端点关联、Trace 反查和复盘证据契约。',
+  mutes: '缺少屏蔽规则列表、时间窗口、对象选择、启停、克隆、删除与审计契约。',
+  subscriptions: '缺少订阅规则列表、接收对象、级别重定义、过滤条件、启停、克隆、删除与投递记录契约。',
+  'event-pipelines': '缺少事件流水线列表、触发方式、用途、启停、编辑、克隆、删除、执行记录与调试契约。',
+  businessGroup: '缺少业务组列表、我的业务组、跨组权限和按业务组过滤契约。',
+  category: '缺少规则分类/采集类型枚举及后端过滤契约。',
+  columnSettings: '缺少用户级列配置保存、恢复默认和服务端持久化契约。',
+  batchRuleUpdate: '缺少规则批量编辑、批量克隆到目标范围、批量删除、导入和导出服务端契约。',
+  notificationConfig: '缺少通知组、通知规则、通知渠道、模板和投递预览契约。',
+  pipelineConfig: '缺少事件流水线绑定、执行顺序、调试和执行记录契约。',
+  effectiveTime: '缺少生效时间、周期窗口、时区和节假日策略契约。',
+  eventTimeRange: '缺少事件服务端时间范围查询、自动刷新、时区和刷新间隔契约；当前只在已加载事件上做本地筛选。',
+  eventAggregation: '缺少服务端聚合规则、聚合卡片钻取和按聚合结果回填事件筛选契约；当前仅展示本地统计。',
+  eventBatch: '缺少事件批量删除、批量确认/反确认、批量屏蔽和批量分派契约。',
+  eventMute: '缺少从事件生成屏蔽规则的后端契约。',
+  eventDelete: '缺少事件删除契约；当前只接入确认、分派、恢复、归档。',
 }
 
 export const sanitizeDisplay = (value) => redactText(value ?? '').slice(0, 500)

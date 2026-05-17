@@ -1,12 +1,12 @@
 import { del, get, normalizeList, post, put, redactText, safeJson } from './http.js'
 
 export const PLATFORM_BLOCKERS = {
-  llmCrud: 'PENDING: 成熟 LLM 配置的单条详情、extra_config、单条测试和删除禁用契约尚未完整开放。',
-  site: 'PENDING: 站点配置读取/保存、权限点、审计和回滚契约尚未开放。',
-  variables: 'PENDING: 变量配置 CRUD、加密字段和引用影响分析契约尚未开放。',
-  sso: 'PENDING: SSO 配置读取/保存、回调校验、启停和测试登录契约尚未开放。',
-  engines: 'PENDING: 告警引擎列表、心跳、启停和删除契约尚未开放。',
-  healthAction: 'PENDING: 平台健康修复动作缺少执行、审计和回滚契约。',
+  llmCrud: '成熟 LLM 配置的单条详情、extra_config、单条测试和删除禁用契约尚未完整开放。',
+  site: '站点配置读取/保存、权限点、审计和回滚契约尚未开放。',
+  variables: '变量配置 CRUD、加密字段和引用影响分析契约尚未开放。',
+  sso: 'SSO 配置读取/保存、回调校验、启停和测试登录契约尚未开放。',
+  engines: '告警引擎列表、心跳、启停和删除契约尚未开放。',
+  healthAction: '平台健康修复动作缺少执行、审计和回滚契约。',
 }
 
 const cleanParams = (params = {}) => Object.fromEntries(
@@ -15,7 +15,7 @@ const cleanParams = (params = {}) => Object.fromEntries(
 
 const blockedError = (error, label) => {
   if ([404, 405, 501].includes(error?.status)) {
-    const blocked = new Error(`PENDING: ${label} 未接入或未开放。`)
+    const blocked = new Error(`${label} 未接入或未开放。`)
     blocked.status = error.status
     blocked.blocked = true
     return blocked

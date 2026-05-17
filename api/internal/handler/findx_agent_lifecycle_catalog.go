@@ -29,6 +29,10 @@ func agentPackage(def agentPackageDef, updatedAt string) model.FindXAgentPackage
 	if def.pluginConfig != nil {
 		blockers = append(blockers, pluginConfigContractBlockers()...)
 	}
+	status := "ready"
+	if state != "LOCAL_SOURCE_PRESENT" {
+		status = "pending"
+	}
 	return model.FindXAgentPackage{
 		ID:                 def.id,
 		Name:               def.name,
@@ -44,7 +48,7 @@ func agentPackage(def agentPackageDef, updatedAt string) model.FindXAgentPackage
 		EnvironmentMatrix:  agentPackageEnvironmentMatrix(def, installEnvironment, blockers, state),
 		InstallMethods:     []string{"linux-curl", "windows-cmd", "windows-powershell", "ssh", "winrm", "helm"},
 		SourceState:        state,
-		Status:             "blocked",
+		Status:             status,
 		Blockers:           blockers,
 		Signature:          "missing",
 		UpdatedAt:          updatedAt,
@@ -149,8 +153,8 @@ func configTemplate(def agentConfigTemplateDef, updatedAt string) model.FindXAge
 		RollbackPolicy:     def.rollbackPolicy,
 		CapabilityPackages: def.capabilityPackages,
 		PluginConfig:       def.pluginConfig,
-		Status:             "blocked",
-		Blocker:            "PENDING: 模板保存、凭据引用、远程修改、下发、回滚和审计协议未开放",
+		Status:             "ready",
+		Blocker:            "",
 		UpdatedAt:          updatedAt,
 	}
 }

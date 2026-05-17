@@ -44,7 +44,7 @@ export function FieldsSection() {
       }
     } catch (err) {
       if (err?.status === 404 || err?.status === 501) {
-        setBlocked('PENDING: 后端不支持字段索引切换接口。')
+        setBlocked('后端不支持字段索引切换接口。')
       } else {
         setBlocked(formatLogError(err))
       }
@@ -114,7 +114,7 @@ export function FieldsSection() {
       <div className='fx-logs-panel'>
         <h3>已索引字段（{indexedFields.length}）</h3>
         <Status ok={fields.length > 0}>{fields.length ? '字段目录已加载' : '待契约'}</Status>
-        <p>来源：本地字段目录；实时字段发现：{meta?.live_discovery?.status || 'PENDING'}</p>
+        <p>来源：本地字段目录；实时字段发现：{meta?.live_discovery?.status || '待确认'}</p>
         {indexedFields.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {indexedFields.map(f => (

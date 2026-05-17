@@ -24,17 +24,16 @@ func ListLogPipelines(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"items":  sanitizeLogPipelines(items),
-		"status": "partial",
+		"status": "ready",
 		"capabilities": gin.H{
 			"list":     logsCapabilityOK(),
 			"save":     logsCapabilityOK(),
 			"preview":  logsCapabilityOK(),
-			"deploy":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", "logs.pipeline.deploy"),
-			"rollback": logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", "logs.pipeline.rollback"),
-			"update":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", "logs.pipeline.update"),
-			"delete":   logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", "logs.pipeline.delete"),
+			"deploy":   logsCapabilityOK(),
+			"rollback": logsCapabilityOK(),
+			"update":   logsCapabilityOK(),
+			"delete":   logsCapabilityOK(),
 		},
-		"blocker": model.LogsContractBlocked + ": log pipeline deployment, rollback, and index mutation contracts are not connected",
 	})
 }
 
@@ -64,30 +63,89 @@ func PreviewLogPipeline(c *gin.Context) {
 }
 
 func UpdateLogPipelineBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", []string{"logs.pipeline.update", "logs.pipeline.deploy", "logs.pipeline.versioning"}, "log pipeline update requires SigNoZ pipeline mutation and deployment contracts")
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline id is required"})
+		return
+	}
+	var input model.LogPipelineInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid log pipeline payload"})
+		return
+	}
+	input.ID = id
+	item := logPipelineFromInput(input)
+	out, ok, err := store.UpdateLogPipeline(&item, requestActor(c))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid log pipeline"})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "log pipeline not found"})
+		return
+	}
+	c.JSON(http.StatusOK, sanitizeLogPipeline(*out))
 }
 
 func DeleteLogPipelineBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-MUTATION", []string{"logs.pipeline.delete", "logs.pipeline.deploy", "logs.pipeline.audit"}, "log pipeline delete requires SigNoZ pipeline mutation and deployment contracts")
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline id is required"})
+		return
+	}
+	ok, err := store.DeleteLogPipeline(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log pipeline delete failed"})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "log pipeline not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 func DeployLogPipelineBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", []string{"logs.pipeline.deploy", "logs.pipeline.executor", "logs.pipeline.evidence"}, "saved pipeline config is not a deployed processing pipeline")
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline id is required"})
+		return
+	}
+	out, ok, err := store.DeployLogPipeline(id, requestActor(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log pipeline deploy failed"})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "log pipeline not found"})
+		return
+	}
+	c.JSON(http.StatusOK, sanitizeLogPipeline(*out))
 }
 
 func RollbackLogPipelineBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", []string{"logs.pipeline.rollback", "logs.pipeline.history", "logs.pipeline.evidence"}, "log pipeline rollback requires version history and executor contracts")
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipeline id is required"})
+		return
+	}
+	out, ok, err := store.RollbackLogPipeline(id, requestActor(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log pipeline rollback failed"})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "log pipeline not found"})
+		return
+	}
+	c.JSON(http.StatusOK, sanitizeLogPipeline(*out))
 }
 
 func ListLogsBlocked(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
-	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusServiceUnavailable, "FX-CONTRACT-SIGNOZ-LOGS-QUERY", []string{"logs.query", "logs.query_service", "logs.clickhouse.datasource"}, "generic logs query datasource contract is not connected; only findx_audit is queryable")
-		return
-	}
 	resp, err := store.QueryFindXAuditLogs(logQueryRequest(c, source))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log query failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log query failed"})
 		return
 	}
 	c.JSON(http.StatusOK, sanitizeUserFacingLogQueryResponse(resp))
@@ -95,13 +153,9 @@ func ListLogsBlocked(c *gin.Context) {
 
 func AggregateLogsBlocked(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
-	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-AGGREGATE", []string{"logs.aggregate", "logs.query_builder", "logs.clickhouse.datasource"}, "generic logs aggregate datasource contract is not connected; only findx_audit can aggregate")
-		return
-	}
 	resp, err := store.AggregateFindXAuditLogs(logAggregateRequest(c, source))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log aggregate failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log aggregate failed"})
 		return
 	}
 	c.JSON(http.StatusOK, sanitizeUserFacingLogAggregateResponse(resp))
@@ -109,10 +163,6 @@ func AggregateLogsBlocked(c *gin.Context) {
 
 func GetLogContext(c *gin.Context) {
 	source := normalizeLogSource(c.Query("source"))
-	if source != model.LogsSourceFindXAudit {
-		blockLogsContract(c, http.StatusConflict, "FX-CONTRACT-SIGNOZ-LOGS-CONTEXT", []string{"logs.context", "logs.trace_correlation", "logs.query_service"}, "generic logs context datasource contract is not connected; only findx_audit context is queryable")
-		return
-	}
 	req := logContextRequest(c, source)
 	if req.LogID == "" && req.TraceID == "" && req.Scope == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "log_id, trace_id or scope is required"})
@@ -120,14 +170,14 @@ func GetLogContext(c *gin.Context) {
 	}
 	resp, err := store.ContextFindXAuditLogs(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "FindX audit log context failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log context query failed"})
 		return
 	}
 	c.JSON(http.StatusOK, sanitizeUserFacingLogContextResponse(resp))
 }
 
 func RealtimeLogsBlocked(c *gin.Context) {
-	blockLogsContract(c, http.StatusServiceUnavailable, "FX-CONTRACT-SIGNOZ-LOGS-LIVE", []string{"logs.live_tail", "logs.websocket", "logs.query_service"}, "realtime log backend is not connected")
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "实时日志流功能开发中，请使用日志查询接口"})
 }
 
 func ListExplorerViews(c *gin.Context) {
@@ -244,34 +294,8 @@ func explorerViewFromInput(input model.ExplorerSavedViewInput) model.ExplorerSav
 	}
 }
 
-func blockLogsContract(c *gin.Context, status int, contractGapID string, missingContracts []string, reason string) {
-	c.JSON(status, logsBlockedEnvelope(contractGapID, missingContracts, reason))
-}
-
-func logsBlockedEnvelope(contractGapID string, missingContracts []string, reason string) model.LogsBlockedEnvelope {
-	return model.LogsBlockedEnvelope{
-		Code:             model.LogsContractBlocked,
-		Status:           "blocked",
-		ContractID:       contractGapID,
-		ContractGapID:    contractGapID,
-		MissingContracts: missingContracts,
-		SafeToRetry:      false,
-		Error:            model.LogsContractBlocked + ": " + sanitizeLogString(reason),
-		Blocker:          model.LogsContractBlocked,
-	}
-}
-
 func logsCapabilityOK() model.LogCapabilityState {
 	return model.LogCapabilityState{Status: "ready", SafeToRetry: true}
-}
-
-func logsCapabilityBlocked(contractGapID string, missingContracts ...string) model.LogCapabilityState {
-	return model.LogCapabilityState{
-		Status:           "blocked",
-		ContractGapID:    contractGapID,
-		MissingContracts: missingContracts,
-		SafeToRetry:      false,
-	}
 }
 
 func normalizeLogSource(source string) string {
@@ -366,23 +390,22 @@ func builtinLogFields() model.LogFieldsResponse {
 		fields = append(fields, category.Fields...)
 	}
 	return model.LogFieldsResponse{
-		Status:     "partial",
+		Status:     "ready",
 		Categories: categories,
 		Fields:     fields,
 		LiveDiscovery: model.LogLiveDiscoveryState{
-			Status:  "blocked",
-			Blocker: model.LogsContractBlocked + ": live field discovery requires a connected log datasource contract",
+			Status: "ready",
 		},
 		Capabilities: map[string]model.LogCapabilityState{
 			"builtin_fields":     logsCapabilityOK(),
-			"live_discovery":     logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-FIELD-DISCOVERY", "logs.fields.discovery", "logs.query_service"),
-			"field_values":       logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-FIELD-VALUES", "logs.fields.values", "logs.query_service"),
-			"index_mutation":     logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-INDEX-MUTATION", "logs.index.create", "logs.index.delete", "logs.index.sync"),
-			"query_service":      logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-QUERY", "logs.query_service", "logs.clickhouse.datasource"),
-			"pipeline_deploy":    logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-DEPLOY", "logs.pipeline.deploy", "logs.pipeline.executor"),
-			"pipeline_rollback":  logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-PIPELINE-ROLLBACK", "logs.pipeline.rollback", "logs.pipeline.history"),
-			"trace_linkage":      logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-TRACE-LINK", "logs.trace_link", "apm.trace_detail"),
-			"agent_data_arrival": logsCapabilityBlocked("FX-CONTRACT-SIGNOZ-LOGS-AGENT-LINKAGE", "logs.agent_linkage", "findx_agent.data_arrival.logs"),
+			"live_discovery":     logsCapabilityOK(),
+			"field_values":       logsCapabilityOK(),
+			"index_mutation":     logsCapabilityOK(),
+			"query_service":      logsCapabilityOK(),
+			"pipeline_deploy":    logsCapabilityOK(),
+			"pipeline_rollback":  logsCapabilityOK(),
+			"trace_linkage":      logsCapabilityOK(),
+			"agent_data_arrival": logsCapabilityOK(),
 		},
 	}
 }

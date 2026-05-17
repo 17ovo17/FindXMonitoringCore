@@ -47,17 +47,11 @@ func DownloadFindXAgentPackageArtifact(c *gin.Context) {
 
 func blockFindXAgentPackageDownload(c *gin.Context, blockers []string) {
 	structuredBlockers := uniquePackageRepositoryBlockers(blockers)
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             packageDownloadBlocker,
-		"status":            "blocked",
-		"missing_contracts": packageDownloadMissingContracts(structuredBlockers),
-		"blockers":          structuredBlockers,
-		"safe": gin.H{
-			"credential_echo": false,
-			"path_traversal":  false,
-			"safe_to_retry":   false,
-		},
+	c.JSON(http.StatusOK, gin.H{
+		"code":     http.StatusOK,
+		"status":   "pending",
+		"message":  "package artifact not yet available",
+		"blockers": structuredBlockers,
 	})
 }
 

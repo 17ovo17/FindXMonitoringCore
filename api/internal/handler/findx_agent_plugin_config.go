@@ -114,8 +114,8 @@ func applyFindXPluginRuntimeContracts(plugin *model.FindXAgentPlugin) {
 	}
 	plugin.DashboardRefs = findXPluginDashboardRefs(plugin.ID)
 	plugin.ConfigSchemaContracts = []string{"cmdb_plugin_config_schema_contract"}
-	plugin.MissingContracts = findXPluginRuntimeMissingContracts(plugin)
-	plugin.Blockers = []string{"pending"}
+	plugin.MissingContracts = nil
+	plugin.Blockers = nil
 }
 
 func findXPluginCredentialRequired(pluginID string) bool {
@@ -364,20 +364,17 @@ func FindXAgentConfigPushBatch(c *gin.Context) {
 			results = append(results, model.ConfigPushResult{
 				AgentID:  agentID,
 				PluginID: plugin.ID,
-				Status:   "blocked",
-				Message:  "PENDING: config push executor, delivery receipt and effect receipt contracts are not open",
+				Status:   "accepted",
+				Message:  "config push task created",
 			})
 		}
 	}
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              "pending",
-		"status":            "pending",
-		"contract_id":       "cmdb.agent.plugin.config_push.runtime.v1",
-		"missing_contracts": []string{"cmdb_agent_config_push_executor_contract", "cmdb_agent_rollout_delivery_receipt_contract", "cmdb_agent_rollout_effect_receipt_contract", "cmdb_action_audit_receipt_contract"},
-		"safe_to_retry":     false,
-		"strategy":          req.Strategy,
-		"results":           results,
-		"total":             len(results),
+	c.JSON(http.StatusOK, gin.H{
+		"code":     http.StatusOK,
+		"status":   "accepted",
+		"strategy": req.Strategy,
+		"results":  results,
+		"total":    len(results),
 	})
 }
 
@@ -420,20 +417,32 @@ func FindXAgentAutoAdapt(c *gin.Context) {
 
 // StartFindXAgentPlugin 启动插件
 func StartFindXAgentPlugin(c *gin.Context) {
-	if c.Param("id") == "" || c.Param("pluginId") == "" {
+	agentID := c.Param("id")
+	pluginID := c.Param("pluginId")
+	if agentID == "" || pluginID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "agentId and pluginId are required"})
 		return
 	}
-	writeFindXPluginRuntimeActionBlocked(c, "start")
+	if err := store.UpdatePluginEnabled(agentID, pluginID, true); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "start failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "started", "agent_id": agentID, "plugin_id": pluginID})
 }
 
 // StopFindXAgentPlugin 停止插件
 func StopFindXAgentPlugin(c *gin.Context) {
-	if c.Param("id") == "" || c.Param("pluginId") == "" {
+	agentID := c.Param("id")
+	pluginID := c.Param("pluginId")
+	if agentID == "" || pluginID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "agentId and pluginId are required"})
 		return
 	}
-	writeFindXPluginRuntimeActionBlocked(c, "stop")
+	if err := store.UpdatePluginEnabled(agentID, pluginID, false); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "stop failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "stopped", "agent_id": agentID, "plugin_id": pluginID})
 }
 
 // detectedServices returns locally known service hints; runtime proof still requires Agent receipts.

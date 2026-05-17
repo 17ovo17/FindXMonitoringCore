@@ -1,6 +1,6 @@
 import React from 'react'
 
-const CONTRACT_STATUS = 'PENDING'
+const CONTRACT_STATUS = ''
 export const REMOTE_MUTATION_REF_KEYS = [
   'plugin_config_writer_ref',
   'reload_command_ref',

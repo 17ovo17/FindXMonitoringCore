@@ -47,16 +47,16 @@ const pick = (record, ...keys) => keys.map(key => record?.[key]).find(value => v
 const safeObject = value => value && typeof value === 'object' ? value : {}
 const metadataOf = record => safeObject(record?.metadata)
 const safeList = value => Array.isArray(value) ? value.filter(Boolean) : []
-const blockedReason = record => pick(record, 'blocked_reason', 'blocker', 'reason', 'error_summary', 'message') || 'PENDING'
-const statusText = record => isBlocked(record) ? 'blocked' : 'PENDING'
+const blockedReason = record => pick(record, 'blocked_reason', 'blocker', 'reason', 'error_summary', 'message') || ''
+const statusText = record => isBlocked(record) ? 'blocked' : '待处理'
 const runnerText = record => {
   const raw = String(pick(record, 'runner', 'runner_name', 'execution_runner') || '').trim()
-  if (!raw) return 'PENDING'
+  if (!raw) return '待处理'
   const label = RUNNER_LABELS[raw.toLowerCase()]
   return label ? `${label} / ${raw}` : raw
 }
-const targetText = record => displayText(pick(record, 'target_id', 'target', 'host_id', 'agent_id'), 'PENDING')
-const planText = record => displayText(pick(record, 'plan_id', 'plan', 'install_plan_id'), 'PENDING')
+const targetText = record => displayText(pick(record, 'target_id', 'target', 'host_id', 'agent_id'), '待确认')
+const planText = record => displayText(pick(record, 'plan_id', 'plan', 'install_plan_id'), '待确认')
 const evidenceRefs = record => safeList(pick(record, 'evidence_refs') || metadataOf(record).evidence_refs)
 const safeText = value => {
   const text = String(value ?? '').trim()
@@ -64,14 +64,14 @@ const safeText = value => {
   if (SENSITIVE_REF_RE.test(text)) return '<REDACTED_REF>'
   return text.length > MAX_REF_LENGTH ? `${text.slice(0, MAX_REF_LENGTH)}...` : text
 }
-const stepNameText = step => displayText(step?.name, 'PENDING')
+const stepNameText = step => displayText(step?.name, '待确认')
 const stepLabelText = step => {
   const name = String(step?.name || '').trim().toLowerCase()
-  if (!name) return 'PENDING'
+  if (!name) return '待确认'
   const label = STEP_LABELS[name]
   return label ? `${label} / ${name}` : name
 }
-const stepStatusText = step => String(step?.status || '').toLowerCase() === 'blocked' ? 'blocked' : 'PENDING'
+const stepStatusText = step => String(step?.status || '').toLowerCase() === 'blocked' ? 'blocked' : '待处理'
 const stepReasonText = step => safeText(step?.error_summary || step?.blocked_reason || step?.reason || blockedReason(step))
 const evidenceTags = record => evidenceRefs(record).map(item => safeText(item)).filter(Boolean)
 
@@ -107,7 +107,7 @@ function RecordRow({ record, loadingDetail, onSelect }) {
       <td>{runnerText(record)}</td>
       <td><Status ok={false}>{statusText(record)}</Status></td>
       <td><span className='fx-agent-muted'>{displayText(blockedReason(record))}</span></td>
-      <td>{refs.length ? <Tags items={refs} /> : <Blocked>PENDING: 缺少 evidence_refs。</Blocked>}</td>
+      <td>{refs.length ? <Tags items={refs} /> : <Blocked>缺少 evidence_refs。</Blocked>}</td>
       <td>{fmtTime(pick(record, 'updated_at', 'updatedAt', 'created_at'))}</td>
       <td className='fx-agent-actions'><button type='button' disabled={!id || loadingDetail === id} onClick={() => onSelect(id)}>{loadingDetail === id ? '加载中...' : '详情'}</button></td>
     </tr>
@@ -116,7 +116,7 @@ function RecordRow({ record, loadingDetail, onSelect }) {
 
 function EvidenceTable({ record }) {
   const refs = evidenceTags(record)
-  if (!refs.length) return <Blocked>PENDING: 当前记录没有可见 evidence_refs。</Blocked>
+  if (!refs.length) return <Blocked>当前记录没有可见 evidence_refs。</Blocked>
   return (
     <div className='fx-agent-table'>
       <table>
@@ -129,7 +129,7 @@ function EvidenceTable({ record }) {
 
 function StepsTable({ record }) {
   const steps = Array.isArray(record?.steps) ? record.steps : []
-  if (!steps.length) return <Blocked>PENDING: 当前记录没有可见 steps。</Blocked>
+  if (!steps.length) return <Blocked>当前记录没有可见 steps。</Blocked>
   return (
     <div className='fx-agent-table'>
       <table>

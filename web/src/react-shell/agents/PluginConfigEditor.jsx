@@ -70,9 +70,9 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
         plugins: [{ id: plugin.id, enabled: true, config }],
         strategy: 'all',
       })
-      showFeedback(`PENDING: 配置预检返回 ${res?.status || 'non-blocked'}；不显示完成态。`)
+      showFeedback(`配置预检返回 ${res?.status || 'non-blocked'}；不显示完成态。`)
     } catch (err) {
-      showFeedback(`PENDING: ${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
+      showFeedback(`${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
     } finally { setSaving(false) }
   }
 
@@ -85,7 +85,7 @@ export function PluginConfigEditor({ plugin, agentId, onBack }) {
         <h3>{plugin?.name} - 配置编辑</h3>
       </div>
       <ErrorBox>{error}</ErrorBox>
-      {feedback && <div className='fx-agent-blocked'><strong>PENDING</strong> {feedback.replace(/^PENDING:\s*/, '')}</div>}
+      {feedback && <div className='fx-agent-blocked'>{feedback}</div>}
       <div className='fx-plugin-editor-layout'>
         <div className='fx-plugin-editor-main'>
           <LazyMonacoEditor language={language} value={config}

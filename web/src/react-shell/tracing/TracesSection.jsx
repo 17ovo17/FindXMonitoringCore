@@ -52,7 +52,7 @@ export function TracesSection(props) {
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) setBlocked(msg); else setError(msg)
+      setError(msg)
     } finally { setLoading(false) }
   }, [draft])
 
@@ -66,7 +66,7 @@ export function TracesSection(props) {
       setDetail({ spans: spans || [], loading: false, error: '', blocked: '' })
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) {
+      if ([404, 405, 501].includes(err?.status)) {
         setDetail({ spans: [], loading: false, error: '', blocked: msg })
       } else {
         setDetail({ spans: [], loading: false, error: msg, blocked: '' })

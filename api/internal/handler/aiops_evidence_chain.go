@@ -149,26 +149,42 @@ func dataArrivalEvidenceChainItem(item model.FindXAgentDataArrivalEvidence) aiop
 }
 
 func installPlanEvidenceChainItem(item model.FindXAgentInstallPlan) aiopsEvidenceChainItem {
-	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "install_plan", "install_plan", ""), Category: "install_plan", SourceType: "install_plan", Status: "blocked", Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(item.Metadata), UpdatedAt: item.UpdatedAt}
+	status := "reported"
+	if item.Blocker != "" {
+		status = "error"
+	}
+	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "install_plan", "install_plan", ""), Category: "install_plan", SourceType: "install_plan", Status: status, Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(item.Metadata), UpdatedAt: item.UpdatedAt}
 }
 
 func installExecutionEvidenceChainItem(item model.FindXAgentInstallExecution) aiopsEvidenceChainItem {
+	status := "reported"
+	if item.ErrorSummary != "" {
+		status = "error"
+	}
 	metadata := map[string]string{"plan_id": item.PlanID, "target_id": item.TargetID, "runner": item.Runner}
-	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "install_execution", "install_execution", ""), Category: "install_execution", SourceType: "install_execution", Status: "blocked", Blocker: cleanEvidenceChainBlocker(item.ErrorSummary), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(metadata), UpdatedAt: item.UpdatedAt}
+	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "install_execution", "install_execution", ""), Category: "install_execution", SourceType: "install_execution", Status: status, Blocker: cleanEvidenceChainBlocker(item.ErrorSummary), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(metadata), UpdatedAt: item.UpdatedAt}
 }
 
 func configRolloutEvidenceChainItem(item model.FindXAgentConfigRollout) aiopsEvidenceChainItem {
-	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "config_rollout", "config_rollout", ""), Category: "config_rollout", SourceType: "config_rollout", Status: "blocked", Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(item.Metadata), UpdatedAt: item.UpdatedAt}
+	status := "reported"
+	if item.Blocker != "" {
+		status = "error"
+	}
+	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "config_rollout", "config_rollout", ""), Category: "config_rollout", SourceType: "config_rollout", Status: status, Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: safeEvidenceChainMetadata(item.Metadata), UpdatedAt: item.UpdatedAt}
 }
 
 func taskEvidenceChainItem(item model.FindXAgentExecutionTask) aiopsEvidenceChainItem {
+	status := "reported"
+	if item.Blocker != "" {
+		status = "error"
+	}
 	metadata := safeEvidenceChainMetadata(item.Metadata)
 	metadata["action"] = item.Action
-	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "lifecycle_task", "agent_lifecycle_task", item.Action), Category: "lifecycle_task", SourceType: "agent_lifecycle_task", Status: "blocked", Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: metadata, UpdatedAt: item.UpdatedAt}
+	return aiopsEvidenceChainItem{ID: safeEvidenceChainID(item.ID, "lifecycle_task", "agent_lifecycle_task", item.Action), Category: "lifecycle_task", SourceType: "agent_lifecycle_task", Status: status, Blocker: cleanEvidenceChainBlocker(item.Blocker), EvidenceRefs: safeEvidenceChainRefs(item.EvidenceRefs), Metadata: metadata, UpdatedAt: item.UpdatedAt}
 }
 
 func missingEvidenceChainItem(kind string) aiopsEvidenceChainItem {
-	return aiopsEvidenceChainItem{ID: "missing-" + kind, Category: categoryForEvidenceChainKind(kind), SourceType: "contract_gap", Kind: kind, Status: "blocked", Blocker: evidenceChainBlockedByContract + ": missing " + kind + " evidence"}
+	return aiopsEvidenceChainItem{ID: "missing-" + kind, Category: categoryForEvidenceChainKind(kind), SourceType: "contract_gap", Kind: kind, Status: "missing", Blocker: "missing " + kind + " evidence"}
 }
 
 func requiredEvidenceChainContracts() []string {
@@ -196,6 +212,6 @@ func normalizeEvidenceChainStatus(status string) string {
 	case model.FindXAgentDataArrivalStatusError:
 		return model.FindXAgentDataArrivalStatusError
 	default:
-		return model.FindXAgentDataArrivalStatusBlocked
+		return "unknown"
 	}
 }

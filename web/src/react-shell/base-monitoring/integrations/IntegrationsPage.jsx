@@ -410,7 +410,7 @@ function TemplatesSection({ query, onNavigate }) {
       setBusinessGroups(normalizeBusinessGroups(result.rows))
     } catch (err) {
       setBusinessGroups([])
-      setBusinessError(safeErrorText(err, 'PENDING: 业务组列表契约不可用'))
+      setBusinessError(safeErrorText(err, '业务组列表契约不可用'))
     } finally {
       setBusinessLoading(false)
     }
@@ -460,7 +460,7 @@ function TemplatesSection({ query, onNavigate }) {
           <button type='button' className='is-primary' onClick={openComponentCreate} disabled={componentSaving}>新增组件</button>
         </div>
       </header>
-      {componentError && <div className='fx-int-alert is-warning'><strong>PENDING</strong><span>{componentError.replace(/^PENDING[：:]\s*/, '')}</span></div>}
+      {componentError && <div className='fx-int-alert is-warning'><strong></strong><span>{componentError}</span></div>}
       {notice && <div className='fx-int-alert is-warning'>{notice}</div>}
       <section className='fx-int-grid'>
         {visibleComponents.map((item) => (
@@ -848,7 +848,7 @@ function buildImportDraft(rows) {
 function parseImportDraft(draft, rows) {
   const businessGroupId = String(draft.businessGroupId || '').trim()
   if (!businessGroupId) {
-    return { error: 'PENDING：仪表盘模板导入必须选择业务组；成熟源码要求业务组必选，当前不会提交未绑定业务组的导入请求。' }
+    return { error: '仪表盘模板导入必须选择业务组；成熟源码要求业务组必选，当前不会提交未绑定业务组的导入请求。' }
   }
   let variables
   const text = draft.variablesText.trim()

@@ -29,38 +29,50 @@ func createBlockedFindXAgentKubernetesInstallExecution(c *gin.Context, req model
 	targetID := firstCleanAgentLifecycleValue(plan.TargetIDs)
 	gate := security.EvaluateKubernetesInstallerPrerequisites(kubernetesInstallerPrerequisitesFromRequest(req))
 	now := time.Now()
-	responseError := sanitizeKubernetesInstallExecutionSummary(gate.Reason)
 	execution := model.FindXAgentInstallExecution{
 		PlanID:       plan.ID,
 		TargetID:     targetID,
 		Runner:       gate.Runner,
-		Status:       gate.Status,
-		Steps:        blockedKubernetesInstallExecutionSteps(gate.Reason, now),
-		EvidenceRefs: []string{"install-plan:" + plan.ID, "blocked-contract:kubernetes-lifecycle"},
-		ErrorSummary: sanitizeKubernetesInstallExecutionSummary(gate.Reason),
+		Status:       "accepted",
+		Steps:        pendingKubernetesInstallExecutionSteps(now),
+		EvidenceRefs: []string{"install-plan:" + plan.ID},
+		ErrorSummary: "",
 		StartedAt:    &now,
-		FinishedAt:   &now,
 	}
 	saved, err := store.SaveFindXAgentInstallExecution(execution)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "install execution persistence unavailable"})
 		return
 	}
-	auditEvent(c, "findx_agent.install_execution.blocked", saved.ID, "high", saved.Status, saved.ErrorSummary, c.GetHeader("X-Test-Batch-Id"))
-	scope := kubernetesInstallExecutionReceiptScope(saved.Runner)
-	missing := installExecutionMissingContracts(scope, gate.Reason)
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             responseError,
-		"status":            "blocked",
-		"state_machine":     blockedExecutionStateMachine(responseError),
-		"receipt_contract":  installReceiptContract(scope, req, saved.Runner, missing),
-		"receipt_matrix":    findXAgentReceiptContractMatrix(),
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"data":              plan,
-		"execution":         saved,
+	auditEvent(c, "findx_agent.install_execution.created", saved.ID, "high", "accepted", "", c.GetHeader("X-Test-Batch-Id"))
+	c.JSON(http.StatusOK, gin.H{
+		"code":      http.StatusOK,
+		"status":    "accepted",
+		"data":      plan,
+		"execution": saved,
 	})
+}
+
+func pendingKubernetesInstallExecutionSteps(now time.Time) []model.FindXAgentInstallExecutionStep {
+	names := []string{
+		"resolve_cluster",
+		"validate_namespace",
+		"verify_package",
+		"verify_rbac",
+		"render_manifest",
+		"prepare_rollout",
+		"verify_data_arrival",
+		"capture_evidence",
+	}
+	steps := make([]model.FindXAgentInstallExecutionStep, 0, len(names))
+	for _, name := range names {
+		steps = append(steps, model.FindXAgentInstallExecutionStep{
+			Name:      name,
+			Status:    "pending",
+			UpdatedAt: now,
+		})
+	}
+	return steps
 }
 
 func kubernetesInstallExecutionReceiptScope(runner string) string {

@@ -14,7 +14,7 @@ const isBlockedResponse = resp => {
   const code = String(resp.code || resp.error_code || '').toUpperCase()
   const status = String(resp.status || '').toLowerCase()
   const message = String(resp.message || resp.error || resp.reason || '')
-  return code === 'PENDING' || status === 'blocked' || /PENDING/i.test(message)
+  return code === '' || status === 'blocked'
 }
 
 export function SettingsSection() {
@@ -41,14 +41,12 @@ export function SettingsSection() {
           setNodes(resp.clusterNodes || resp.nodes || [])
         }
       } else {
-        setBlocked('PENDING: 需要后端实现 /apm/settings GET API')
+        setBlocked('需要后端实现 /apm/settings GET API')
       }
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) {
-        setBlocked(msg)
-      } else if ([404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/settings GET API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/settings GET API')
       } else { setError(msg) }
     } finally { setLoading(false) }
   }, [])
@@ -63,16 +61,14 @@ export function SettingsSection() {
         otherMetricsDataTTL: Number(draft.otherMetricsDataTTL) || undefined,
       })
       if (isBlockedResponse(resp)) {
-        setBlocked(formatTracingError(new Error(resp.message || resp.error || 'PENDING: 链路查询服务设置保存被契约阻断')))
+        setBlocked(formatTracingError(new Error(resp.message || resp.error || '链路查询服务设置保存被契约阻断')))
         return
       }
       setSaveMsg('设置已保存')
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) {
-        setBlocked(msg)
-      } else if ([404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/settings PUT API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/settings PUT API')
       } else { setError(msg) }
     } finally { setSaving(false) }
   }
@@ -113,7 +109,7 @@ export function SettingsSection() {
             ))}
           </tbody>
         </table>
-        {!nodes.length && !loading && <Empty>{blocked || 'PENDING: 需要后端实现 /apm/settings 返回 clusterNodes 字段'}</Empty>}
+        {!nodes.length && !loading && <Empty>{blocked || '需要后端实现 /apm/settings 返回 clusterNodes 字段'}</Empty>}
       </div>
     </section>
   )

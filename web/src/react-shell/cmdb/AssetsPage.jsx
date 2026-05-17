@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ASSET_BLOCKERS, assetsApi, formatAssetError } from '../api/assets.js'
+import { assetsApi, formatAssetError } from '../api/assets.js'
 import { cmdbApi, isCmdbContractAudit } from '../api/cmdb.js'
 import { agentOnline, displayText, fmtTime, hostIp, hostKey, hostName, isHostOnline, sectionSet, sections } from './assetsModel.js'
 import { AgentsSection } from './AgentsSection.jsx'
@@ -12,73 +12,20 @@ import { ModelDetailSection } from './ModelDetailSection.jsx'
 import { ModelTreeSection } from './ModelTreeSection.jsx'
 import { GroupTree, ResourceGroupsSection } from './ResourceGroupsSection.jsx'
 import { DatacenterView } from './DatacenterView.jsx'
-import { Blocked, ErrorBox, Status } from './Shared.jsx'
+import { ErrorBox, Status } from './Shared.jsx'
 import './assets.css'
 
 const CMDB_BUILD = '20260511b'
-const blockedRouteSections = [
-  'recycle-bin',
-  'room-view',
-  'model-relations',
-  'attribute-units',
-  'auto-discovery',
-  'auto-mapping',
-  'discovery-records',
-  'change-stats',
-  'model-change',
-  'instance-change-top',
-  'custom-report',
-  'cloud-bill',
-  'compliance-check',
-  'compliance-stats',
-  'change-notice',
-  'spare-management',
-  'inspection-config',
-  'relationship-query',
-  'event-subscription',
-  'notice-records',
-  'change-records',
-  'subscription-records',
-]
 const approvalRouteViews = {
   'approval-mine': 'mine',
   'approval-todo': 'todo',
   'approval-archive': 'archive',
 }
-const routeSections = new Set([...sectionSet, 'search', 'topology', 'instance-detail', 'resource-stats', 'datacenter-view', ...Object.keys(approvalRouteViews), ...blockedRouteSections])
+const routeSections = new Set([...sectionSet, 'search', 'topology', 'instance-detail', 'resource-stats', 'datacenter-view', ...Object.keys(approvalRouteViews)])
 const routeMeta = {
   topology: { label: '\u0043\u004d\u0044\u0042 \u5173\u7cfb\u62d3\u6251', desc: '\u6309\u5b9e\u4f8b\u3001\u4e1a\u52a1\u4e0a\u4e0b\u6587\u548c\u5ba1\u8ba1\u5951\u7ea6\u5c55\u793a\u5173\u7cfb\u3002' },
   'instance-detail': { label: '\u0043\u004d\u0044\u0042 \u5b9e\u4f8b\u8be6\u60c5', desc: '\u5c55\u793a\u5b9e\u4f8b\u8be6\u60c5\u3001\u5173\u7cfb\u53cd\u67e5\u548c\u76d1\u63a7\u7ed1\u5b9a\u5951\u7ea6\u3002' },
   'datacenter-view': { label: '机房视图', desc: '按机房、机柜、U位展示物理资源布局和容量。' },
-}
-const blockedRouteMeta = {
-  search: { label: '\u5168\u6587\u68c0\u7d22', desc: '\u9700\u8981\u771f\u5b9e\u7d22\u5f15\u3001\u6743\u9650\u8fc7\u6ee4\u548c\u5ba1\u8ba1\u56de\u6267\u3002' },
-  'room-view': { label: '\u673a\u623f\u89c6\u56fe', desc: '\u9700\u8981\u771f\u5b9e\u673a\u623f\u3001\u673a\u67dc\u3001\u673a\u4f4d\u548c\u5bb9\u91cf\u6570\u636e\u6e90\u3002' },
-  'recycle-bin': { label: '\u56de\u6536\u7ad9', desc: '\u9700\u8981\u5220\u9664\u5ba1\u8ba1\u3001\u6062\u590d\u56de\u6267\u548c\u4fdd\u7559\u7b56\u7565\u5951\u7ea6\u3002' },
-  'model-relations': { label: '\u5173\u8054\u7c7b\u578b', desc: '\u9700\u8981\u6a21\u578b\u5173\u7cfb\u7c7b\u578b\u3001\u65b9\u5411\u548c\u53d8\u66f4\u5ba1\u8ba1\u5951\u7ea6\u3002' },
-  'attribute-units': { label: '\u5c5e\u6027\u5355\u4f4d', desc: '\u9700\u8981\u5c5e\u6027\u5355\u4f4d\u5b57\u5178\u548c\u53d8\u66f4\u56de\u6267\u5951\u7ea6\u3002' },
-  'auto-discovery': { label: '\u81ea\u52a8\u53d1\u73b0', desc: '\u9700\u8981\u53d1\u73b0\u89c4\u5219\u3001\u4efb\u52a1\u6267\u884c\u5668\u548c\u8d44\u6e90\u5199\u5165\u5951\u7ea6\u3002' },
-  'auto-mapping': { label: '\u81ea\u52a8\u5316\u6620\u5c04', desc: '\u9700\u8981\u6620\u5c04\u89c4\u5219\u3001\u51b2\u7a81\u7b56\u7565\u548c\u5ba1\u6279\u56de\u6267\u5951\u7ea6\u3002' },
-  'discovery-records': { label: '\u6267\u884c\u8bb0\u5f55', desc: '\u9700\u8981\u53d1\u73b0\u4efb\u52a1\u3001\u6267\u884c\u65e5\u5fd7\u548c\u5ba1\u8ba1\u67e5\u8be2\u5951\u7ea6\u3002' },
-  'approval-mine': { label: '\u6211\u7684\u7533\u8bf7', desc: '\u8bfb\u53d6\u540e\u7aef\u771f\u5b9e\u5ba1\u6279\u8bf7\u6c42\u3002' },
-  'approval-todo': { label: '\u6211\u7684\u5f85\u529e', desc: '\u8bfb\u53d6\u540e\u7aef\u771f\u5b9e\u5f85\u529e\u5ba1\u6279\u3002' },
-  'approval-archive': { label: '\u5df2\u5f52\u6863', desc: '\u8bfb\u53d6\u540e\u7aef\u771f\u5b9e\u5f52\u6863\u5ba1\u6279\u3002' },
-  'resource-stats': { label: '\u8d44\u6e90\u7edf\u8ba1', desc: '\u57fa\u4e8e CMDB \u771f\u5b9e\u805a\u5408\u5c55\u793a\u8d44\u6e90\u603b\u89c8\u3002' },
-  'change-stats': { label: '\u53d8\u66f4\u7edf\u8ba1', desc: '\u9700\u8981\u53d8\u66f4\u4e8b\u4ef6\u3001\u5f71\u54cd\u8303\u56f4\u548c\u5ba1\u8ba1\u805a\u5408\u5951\u7ea6\u3002' },
-  'model-change': { label: '\u6a21\u578b\u53d8\u66f4', desc: '\u9700\u8981\u6a21\u578b\u7248\u672c\u3001\u5dee\u5f02\u5b57\u6bb5\u548c\u56de\u6eda\u5f71\u54cd\u5951\u7ea6\u3002' },
-  'instance-change-top': { label: '\u5b9e\u4f8b\u53d8\u66f4TOP', desc: '\u9700\u8981\u771f\u5b9e\u53d8\u66f4\u6392\u884c\u548c\u5ba1\u8ba1\u6765\u6e90\u5951\u7ea6\u3002' },
-  'custom-report': { label: '\u81ea\u5b9a\u4e49\u62a5\u8868', desc: '\u9700\u8981\u62a5\u8868\u5b9a\u4e49\u3001\u6743\u9650\u6821\u9a8c\u548c\u5bfc\u51fa\u56de\u6267\u5951\u7ea6\u3002' },
-  'cloud-bill': { label: '\u4e91\u5e73\u53f0\u8d26\u5355', desc: '\u9700\u8981\u8d26\u5355\u5bfc\u5165\u3001\u8d44\u6e90\u6620\u5c04\u548c\u8131\u654f\u5951\u7ea6\u3002' },
-  'compliance-check': { label: '\u5408\u89c4\u6027\u68c0\u67e5', desc: '\u9700\u8981\u89c4\u5219\u96c6\u3001\u68c0\u67e5\u6267\u884c\u5668\u548c\u7ed3\u679c\u56de\u6267\u5951\u7ea6\u3002' },
-  'compliance-stats': { label: '\u5408\u89c4\u6027\u7edf\u8ba1', desc: '\u9700\u8981\u5408\u89c4\u7ed3\u679c\u805a\u5408\u548c\u8d8b\u52bf\u5951\u7ea6\u3002' },
-  'change-notice': { label: '\u53d8\u66f4\u901a\u77e5', desc: '\u9700\u8981\u8ba2\u9605\u89c4\u5219\u3001\u901a\u77e5\u6e20\u9053\u548c\u53d1\u9001\u56de\u6267\u5951\u7ea6\u3002' },
-  'spare-management': { label: '\u5907\u4ef6\u7ba1\u7406', desc: '\u9700\u8981\u5907\u4ef6\u5e93\u5b58\u3001\u9886\u7528\u5ba1\u6279\u548c\u5ba1\u8ba1\u5951\u7ea6\u3002' },
-  'inspection-config': { label: '\u5de1\u68c0\u914d\u7f6e', desc: '\u9700\u8981\u5de1\u68c0\u6a21\u677f\u3001\u76ee\u6807\u9009\u62e9\u5668\u548c\u7ed3\u679c\u56de\u6267\u5951\u7ea6\u3002' },
-  'relationship-query': { label: '\u5173\u7cfb\u67e5\u8be2', desc: '\u9700\u8981\u9012\u5f52\u5173\u7cfb\u8def\u5f84\u3001\u6df1\u5ea6\u9650\u5236\u548c\u6743\u9650\u8fc7\u6ee4\u5951\u7ea6\u3002' },
-  'event-subscription': { label: '\u4e8b\u4ef6\u8ba2\u9605', desc: '\u9700\u8981\u4e8b\u4ef6\u6e90\u3001\u8ba2\u9605\u89c4\u5219\u548c\u53d1\u9001\u56de\u6267\u5951\u7ea6\u3002' },
-  'notice-records': { label: '\u901a\u77e5\u8bb0\u5f55', desc: '\u9700\u8981\u901a\u77e5\u6d41\u6c34\u3001\u6e20\u9053\u7ed3\u679c\u548c\u5ba1\u8ba1\u67e5\u8be2\u5951\u7ea6\u3002' },
-  'change-records': { label: '\u53d8\u66f4\u8bb0\u5f55', desc: '\u9700\u8981\u5b9e\u4f8b\u53d8\u66f4\u3001\u5b57\u6bb5\u5dee\u5f02\u548c\u5ba1\u8ba1\u67e5\u8be2\u5951\u7ea6\u3002' },
-  'subscription-records': { label: '\u8ba2\u9605\u8bb0\u5f55', desc: '\u9700\u8981\u8ba2\u9605\u5bf9\u8c61\u3001\u4e8b\u4ef6\u7c7b\u578b\u548c\u5ba1\u8ba1\u67e5\u8be2\u5951\u7ea6\u3002' },
 }
 
 async function settle(label, fn) {
@@ -91,7 +38,7 @@ async function settle(label, fn) {
 
 export function AssetsPage({ query, onNavigate }) {
   const section = routeSections.has(query?.section) ? query.section : 'overview'
-  const meta = blockedRouteMeta[section] || routeMeta[section] || sections.find(item => item.value === section) || sections[0]
+  const meta = routeMeta[section] || sections.find(item => item.value === section) || sections[0]
   const [workspaces, setWorkspaces] = useState([])
   const [groups, setGroups] = useState([])
   const [hosts, setHosts] = useState([])
@@ -143,7 +90,6 @@ export function AssetsPage({ query, onNavigate }) {
       {section === 'resource-stats' && <ResourceStatsSection />}
       {section === 'datacenter-view' && <DatacenterView />}
       {approvalRouteViews[section] && <ResourceApprovalSection section={section} meta={meta} />}
-      {(section === 'search' || blockedRouteSections.includes(section)) && <CmdbCapabilityBlockedSection section={section} meta={meta} />}
     </main>
   )
 }
@@ -163,7 +109,6 @@ function OverviewSection({ rows, errors, loading, onNavigate, onRefresh }) {
       </div>
       <div className='fx-assets-grid'>{cards.map(([label, value]) => <article className='fx-assets-card' key={label}><strong>{value}</strong><span>{label}</span></article>)}</div>
       {Object.values(errors).map(error => <ErrorBox key={error}>{error}</ErrorBox>)}
-      <Blocked>{ASSET_BLOCKERS.terminal}</Blocked><Blocked>{ASSET_BLOCKERS.agentLifecycle}</Blocked>
       <HostSnapshot rows={rows.hosts} agents={rows.agents} />
     </section>
   )
@@ -188,8 +133,6 @@ function CmdbSection({ groups, workspaces, initialQuery, onRefreshAll }) {
     <section className='fx-assets-split'>
       <GroupTree rows={groups} selected={selected} onSelect={setSelected} onCreateRoot={() => {}} onCreateChild={() => {}} onEdit={() => {}} onDelete={() => {}} readonly />
       <div className='fx-assets-detail'>
-        <Blocked>{ASSET_BLOCKERS.terminal}</Blocked>
-        <Blocked>{ASSET_BLOCKERS.monitor}</Blocked>
         <RelationGraphSection groupId={selected} />
         <HostsSection groups={groups} workspaces={workspaces} initialQuery={{ ...initialQuery, group: selected }} onRefreshAll={onRefreshAll} embedded />
       </div>
@@ -422,7 +365,6 @@ function ResourceStatsContractAudit({ audit, compact = false, title }) {
           <h2>{title || (compact ? 'contract audit' : 'resource statistics contract blocked')}</h2>
           <p>{audit.message || 'missing resource statistics contract; empty statistics are not rendered'}</p>
         </div>
-        {isCmdbContractAudit(audit) && <Status ok={false}>PENDING</Status>}
       </div>
       {audit.contract_id && (
         <div className='fx-resource-stat-contract-list'>
@@ -471,33 +413,3 @@ function formatApprovalStatus(status) {
   return value || '-'
 }
 
-function CmdbCapabilityBlockedSection({ section, meta }) {
-  const contractBase = `cmdb_${section.replace(/-/g, '_')}`
-  const missing = [
-    `${contractBase}_store_contract`,
-    `${contractBase}_handler_contract`,
-    `${contractBase}_audit_receipt_contract`,
-  ]
-  return (
-    <section className='fx-assets-work fx-cmdb-capability-blocked'>
-      <div className='fx-cmdb-blocked-head'>
-        <div>
-          <h2>{meta.label}</h2>
-          <p>{meta.desc}</p>
-        </div>
-        <Status ok={false}>PENDING</Status>
-      </div>
-      <Blocked>PENDING: backend contract is missing; only contract audit is rendered.</Blocked>
-      <div className='fx-cmdb-blocked-grid'>
-        <article>
-          <strong>missing contracts</strong>
-          {missing.map(item => <code key={item}>{item}</code>)}
-        </article>
-        <article>
-          <strong>findx_audit query</strong>
-          <code>{`source=findx_audit scope=cmdb resource_type=${section} action=cmdb.${section}.request`}</code>
-        </article>
-      </div>
-    </section>
-  )
-}

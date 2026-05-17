@@ -1,12 +1,12 @@
 import { get, del, isPermissionError, normalizeList, post, put, redactText } from './http.js'
 
 export const AISRE_BLOCKERS = {
-  evidence: 'PENDING: 指标、日志、链路、告警、CMDB、Agent、巡检和工作流的统一证据聚合契约未开放。',
-  workflowRun: 'PENDING: 工作流执行路由缺少 AI SRE 权限、审批、审计、回滚和错误脱敏契约。',
-  remediation: 'PENDING: 自动修复缺少审批、执行计划、远程执行、回滚、审计和 Evidence Chain 关联契约。',
-  reportExport: 'PENDING: 复盘报告导出、分享、脱敏预览和留档契约未开放。',
-  knowledgeWrite: 'PENDING: 知识库写入、导入、删除和权限失败态需要完整审计契约。',
-  dataArrival: 'PENDING: Agent 数据到达、链路覆盖率和巡检数据质量缺少统一健康契约。',
+  evidence: '指标、日志、链路、告警、CMDB、Agent、巡检和工作流的统一证据聚合契约未开放。',
+  workflowRun: '工作流执行路由缺少 AI SRE 权限、审批、审计、回滚和错误脱敏契约。',
+  remediation: '自动修复缺少审批、执行计划、远程执行、回滚、审计和 Evidence Chain 关联契约。',
+  reportExport: '复盘报告导出、分享、脱敏预览和留档契约未开放。',
+  knowledgeWrite: '知识库写入、导入、删除和权限失败态需要完整审计契约。',
+  dataArrival: 'Agent 数据到达、链路覆盖率和巡检数据质量缺少统一健康契约。',
 }
 
 const cleanParams = (params = {}) => Object.fromEntries(
@@ -17,7 +17,7 @@ const unwrapData = value => value?.data ?? value
 
 export const formatAiSreError = error => {
   if (isPermissionError(error)) return error.status === 401 ? '登录状态已过期，请重新登录。' : '当前账号没有 AI SRE 操作权限。'
-  if ([404, 405, 501].includes(error?.status)) return `PENDING: ${redactText(error.message || '接口未开放')}`
+  if ([404, 405, 501].includes(error?.status)) return redactText(error.message || '接口未开放')
   return redactText(error?.message || 'AI SRE 请求失败')
 }
 

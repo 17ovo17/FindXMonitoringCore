@@ -64,6 +64,84 @@ func SaveLogPipeline(input *model.LogPipeline, actor string) (*model.LogPipeline
 	return copyLogPipeline(item), nil
 }
 
+func GetLogPipeline(id string) (*model.LogPipeline, bool) {
+	logsMu.RLock()
+	item, ok := logPipelines[id]
+	logsMu.RUnlock()
+	if ok {
+		return copyLogPipeline(item), true
+	}
+	return nil, false
+}
+
+func UpdateLogPipeline(input *model.LogPipeline, actor string) (*model.LogPipeline, bool, error) {
+	logsMu.RLock()
+	_, ok := logPipelines[input.ID]
+	logsMu.RUnlock()
+	if !ok {
+		return nil, false, nil
+	}
+	out, err := SaveLogPipeline(input, actor)
+	if err != nil {
+		return nil, true, err
+	}
+	return out, true, nil
+}
+
+func DeleteLogPipeline(id string) (bool, error) {
+	logsMu.Lock()
+	_, ok := logPipelines[id]
+	if ok {
+		delete(logPipelines, id)
+	}
+	logsMu.Unlock()
+	if mysqlOK {
+		res, err := db.Exec(`DELETE FROM log_pipelines WHERE id=?`, id)
+		if err != nil {
+			return ok, err
+		}
+		rows, _ := res.RowsAffected()
+		ok = ok || rows > 0
+	}
+	return ok, nil
+}
+
+func DeployLogPipeline(id string, actor string) (*model.LogPipeline, bool, error) {
+	logsMu.RLock()
+	item, ok := logPipelines[id]
+	logsMu.RUnlock()
+	if !ok {
+		return nil, false, nil
+	}
+	updated := copyLogPipeline(item)
+	updated.Enabled = true
+	updated.UpdatedBy = actor
+	updated.UpdatedAt = time.Now()
+	out, err := SaveLogPipeline(updated, actor)
+	if err != nil {
+		return nil, true, err
+	}
+	return out, true, nil
+}
+
+func RollbackLogPipeline(id string, actor string) (*model.LogPipeline, bool, error) {
+	logsMu.RLock()
+	item, ok := logPipelines[id]
+	logsMu.RUnlock()
+	if !ok {
+		return nil, false, nil
+	}
+	updated := copyLogPipeline(item)
+	updated.Enabled = false
+	updated.UpdatedBy = actor
+	updated.UpdatedAt = time.Now()
+	out, err := SaveLogPipeline(updated, actor)
+	if err != nil {
+		return nil, true, err
+	}
+	return out, true, nil
+}
+
 func DefaultLogPipeline(version string) model.LogPipeline {
 	now := time.Now()
 	return model.LogPipeline{

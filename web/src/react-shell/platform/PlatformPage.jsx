@@ -25,7 +25,7 @@ const emptyProvider = { id: '', name: '', base_url: '', api_key: '', models: '',
 const sanitizeEndpoint = (value) => String(value || '').replace(/\$\{[^}]+\}/g, '<FINDX_URL>').replace(/https?:\/\/[^\s]+/g, '<URL>')
 
 function Blocked({ children }) {
-  return <div className='fx-platform-blocked'><strong>PENDING</strong><span>{children}</span></div>
+  return <div className='fx-platform-blocked'><strong></strong><span>{children}</span></div>
 }
 
 function Modal({ title, children, onClose }) {
@@ -89,7 +89,7 @@ function ModelsSection() {
 
   const saveProviders = async (nextProviders) => {
     if (nextProviders.some((item) => item.api_key === '<SECRET>')) {
-      setError('PENDING: 当前批量保存契约无法保留既有密钥引用。请为要保存的条目重新输入密钥，或等待凭据引用契约。')
+      setError('当前批量保存契约无法保留既有密钥引用。请为要保存的条目重新输入密钥，或等待凭据引用契约。')
       return
     }
     setSaving(true)

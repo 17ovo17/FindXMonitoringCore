@@ -16,8 +16,8 @@ const pick = (record, ...keys) => keys.map(key => record?.[key]).find(value => v
 const actionText = record => String(pick(record, 'action', 'task_action', 'type') || '').toLowerCase()
 const isVisibleAction = record => TASK_ACTION_RE.test(actionText(record))
 const normalizeRecords = rows => rows.filter(record => isBlocked(record) && isVisibleAction(record))
-const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message', 'error_summary') || 'PENDING'
-const statusText = record => isBlocked(record) ? 'blocked' : 'PENDING'
+const blockerText = record => pick(record, 'blocker', 'blocked_reason', 'reason', 'message', 'error_summary') || ''
+const statusText = record => isBlocked(record) ? 'blocked' : '待处理'
 const packageText = record => displayText(pick(record, 'package_id', 'package', 'package_name'), '-')
 const configText = record => displayText(pick(record, 'config_version', 'version', 'template_version'), '-')
 
@@ -48,7 +48,7 @@ const collectSafeRefs = record => {
   const pushRef = (scope, key, value) => {
     if (!SAFE_REF_RE.test(key) || SENSITIVE_KEY_RE.test(key)) return
     if (value && typeof value === 'object' && !Array.isArray(value)) return
-    rows.push({ scope, key, value: redactValue(key, value) || 'PENDING' })
+    rows.push({ scope, key, value: redactValue(key, value) || '' })
   }
   Object.entries(safeObject(record)).forEach(([key, value]) => pushRef('record', key, value))
   Object.entries(safeObject(record?.safe_refs)).forEach(([key, value]) => pushRef('safe_refs', key, value))
@@ -82,7 +82,7 @@ function RecordRow({ record, loadingDetail, onSelect }) {
   const id = recordId(record)
   return (
     <tr>
-      <td>{displayText(actionText(record), 'PENDING')}</td>
+      <td>{displayText(actionText(record), '待处理')}</td>
       <td>{targetText(record)}</td>
       <td>{packageText(record)}</td>
       <td>{configText(record)}</td>
@@ -101,7 +101,7 @@ function Detail({ record }) {
     <div className='fx-agent-panel'>
       <h3>blocked task detail</h3>
       <div className='fx-agent-summary-row'><Status ok={false}>{statusText(record)}</Status><span>task {displayText(recordId(record))}</span></div>
-      <div className='fx-agent-summary-row'><strong>action</strong><span>{displayText(actionText(record), 'PENDING')}</span></div>
+      <div className='fx-agent-summary-row'><strong>action</strong><span>{displayText(actionText(record), '待处理')}</span></div>
       <div className='fx-agent-summary-row'><strong>target_ids</strong><span>{listText(record?.target_ids || pick(record, 'target_id', 'target'))}</span></div>
       <div className='fx-agent-summary-row'><strong>agent_ids</strong><span>{listText(record?.agent_ids || pick(record, 'agent_id'))}</span></div>
       <div className='fx-agent-summary-row'><strong>package_id</strong><span>{packageText(record)}</span></div>
@@ -150,7 +150,7 @@ export function AgentTaskRecords() {
     agentApi.getTask(id)
       .then(value => {
         if (isBlocked(value) && isVisibleAction(value)) setDetail(value)
-        else setError('PENDING: task detail 不是 blocked 生命周期任务，已拒绝展示。')
+        else setError('task detail 不是 blocked 生命周期任务，已拒绝展示。')
       })
       .catch(err => setError(formatAgentError(err)))
       .finally(() => setLoadingDetail(''))

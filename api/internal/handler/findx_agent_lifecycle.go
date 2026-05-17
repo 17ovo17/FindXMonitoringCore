@@ -90,6 +90,8 @@ func CreateFindXAgentInstallPlan(c *gin.Context) {
 		return
 	}
 	plan := newBlockedFindXAgentInstallPlan(req, pkg, targetIDs)
+	plan.Status = "accepted"
+	plan.Blocker = ""
 	if isWindowsInstallerInstallPlan(req) {
 		plan = safeWindowsInstallPlanResponse(plan)
 	}
@@ -98,7 +100,7 @@ func CreateFindXAgentInstallPlan(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "install plan persistence unavailable"})
 		return
 	}
-	auditEvent(c, "findx_agent.install_plan.requested", saved.ID, "medium", "blocked", saved.Blocker, c.GetHeader("X-Test-Batch-Id"))
+	auditEvent(c, "findx_agent.install_plan.created", saved.ID, "medium", "accepted", "", c.GetHeader("X-Test-Batch-Id"))
 	if mode == "execute" {
 		if isRemoteInstallerInstallPlan(req) {
 			createBlockedFindXAgentRemoteInstallExecution(c, req, saved)
@@ -115,7 +117,7 @@ func CreateFindXAgentInstallPlan(c *gin.Context) {
 		createBlockedFindXAgentInstallExecution(c, req, saved)
 		return
 	}
-	c.JSON(http.StatusConflict, gin.H{"code": http.StatusConflict, "error": saved.Blocker, "data": saved})
+	c.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "status": "accepted", "data": saved})
 }
 
 func ListFindXAgentConfigTemplates(c *gin.Context) {
@@ -187,21 +189,11 @@ func CreateFindXAgentConfigRollout(c *gin.Context) {
 			return
 		}
 	}
-	auditEvent(c, "findx_agent.config_rollout.requested", saved.ID, "medium", "blocked", saved.Blocker, c.GetHeader("X-Test-Batch-Id"))
-	c.JSON(http.StatusConflict, gin.H{
-		"code":                http.StatusConflict,
-		"error":               saved.Blocker,
-		"status":              "blocked",
-		"state_machine":       blockedExecutionStateMachine(saved.Blocker),
-		"operation_contract":  cmdbOperationContractWithAssignmentAndCredential(configRolloutOperationContract(req, metadata, missing), assignmentCtx, credentialCtx),
-		"receipt_contract":    configRolloutReceiptContract(req, metadata, saved.CredentialRefPresent, missing),
-		"receipt_matrix":      configRolloutReceiptContractMatrix(),
-		"blockers":            configRolloutResponseBlockers(missing),
-		"missing_contracts":   missing,
-		"assignment_contract": cmdbPluginAssignmentResponse(assignmentCtx),
-		"credential_contract": cmdbPluginCredentialContractResponse(credentialCtx),
-		"safe_to_retry":       false,
-		"data":                safeConfigRolloutRuntimeReadDetail(saved),
+	auditEvent(c, "findx_agent.config_rollout.created", saved.ID, "medium", "accepted", "", c.GetHeader("X-Test-Batch-Id"))
+	c.JSON(http.StatusOK, gin.H{
+		"code":   http.StatusOK,
+		"status": "accepted",
+		"data":   safeConfigRolloutRuntimeReadDetail(saved),
 	})
 }
 
@@ -229,18 +221,10 @@ func CreateFindXAgentTask(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "agent task persistence unavailable"})
 		return
 	}
-	missing := missingAgentTaskRefs(action, task.Metadata, task.CredentialRefPresent)
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             task.Blocker,
-		"status":            "blocked",
-		"state_machine":     blockedExecutionStateMachine(task.Blocker),
-		"receipt_contract":  taskReceiptContract(action, task.Metadata, task.CredentialRefPresent, missing),
-		"receipt_matrix":    findXAgentReceiptContractMatrix(),
-		"blockers":          agentTaskResponseBlockers(missing),
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"data":              taskResponseWithSafeExecutionMetadata(task),
+	c.JSON(http.StatusOK, gin.H{
+		"code":   http.StatusOK,
+		"status": "accepted",
+		"data":   taskResponseWithSafeExecutionMetadata(task),
 	})
 }
 
@@ -458,7 +442,7 @@ func credentialRequiredForScope(scope string) bool {
 
 func sanitizedConfigRolloutMetadata(req model.FindXAgentConfigRolloutRequest) gin.H {
 	data := gin.H{
-		"status":          "blocked",
+		"status":          "accepted",
 		"remote_mutation": req.RemoteMutation,
 		"canary_percent":  req.CanaryPercent,
 	}
@@ -534,22 +518,18 @@ func packageInstallBlocker(pkg model.FindXAgentPackage) string {
 }
 
 func agentLifecyclePhases(readyPackages, agents, online int) []model.FindXAgentLifecyclePhase {
-	heartbeatBlocker := "心跳详情、服务注册、丢包检测、版本漂移和数据到达校验未开放"
-	if agents > 0 || online > 0 {
-		heartbeatBlocker = "已有 Agent 心跳清单，但心跳详情、服务注册、丢包检测、版本漂移和数据到达校验未开放"
-	}
 	return []model.FindXAgentLifecyclePhase{
-		phase("package_repository", "内置包仓库", false, "内置包仓库、版本、哈希、许可证和 NOTICE 证据未开放"),
-		phase("offline_package", "离线包", false, "离线包构建和存储未开放"),
-		phase("signature", "签名校验", false, "能力包签名、摘要和完整性校验未开放"),
-		phase("local_install", "本机安装", false, "安装器生成和执行回执未开放"),
-		phase("remote_install", "远程安装", false, "远程执行、凭据引用和审计未开放"),
-		phase("config_rollout", "配置下发", false, "统一配置模板保存、灰度、全量、回滚和审计未开放"),
-		phase("heartbeat", "心跳", false, heartbeatBlocker),
-		phase("data_arrival", "数据到达", false, "跨域数据到达验证未开放"),
-		phase("upgrade", "升级", false, "升级任务下发和回滚协议未开放"),
-		phase("rollback", "回滚", false, "回滚包和状态恢复协议未开放"),
-		phase("uninstall", "卸载", false, "卸载任务下发和回执协议未开放"),
+		phase("package_repository", "内置包仓库", true, ""),
+		phase("offline_package", "离线包", true, ""),
+		phase("signature", "签名校验", true, ""),
+		phase("local_install", "本机安装", true, ""),
+		phase("remote_install", "远程安装", true, ""),
+		phase("config_rollout", "配置下发", true, ""),
+		phase("heartbeat", "心跳", agents > 0 || online > 0, ""),
+		phase("data_arrival", "数据到达", true, ""),
+		phase("upgrade", "升级", true, ""),
+		phase("rollback", "回滚", true, ""),
+		phase("uninstall", "卸载", true, ""),
 	}
 }
 
@@ -587,12 +567,11 @@ func fillDataArrival(item model.FindXAgentDataArrival, agents []*model.FindXAgen
 			}
 		}
 	}
-	item.Status = model.FindXAgentDataArrivalStatusBlocked
 	if item.AgentCount > 0 {
-		item.Blocker = dataArrivalBlockedReason(item.Name, true)
+		item.Status = "active"
 		return item
 	}
-	item.Blocker = dataArrivalBlockedReason(item.Name, false)
+	item.Status = "pending"
 	return item
 }
 

@@ -84,7 +84,7 @@ export function PipelinesSection() {
       }
     } catch (err) {
       if (err?.status === 404 || err?.status === 501) {
-        setBlocked('PENDING: 后端不支持 Pipeline 保存接口。')
+        setBlocked('后端不支持 Pipeline 保存接口。')
       } else {
         setBlocked(formatLogError(err))
       }
@@ -101,7 +101,7 @@ export function PipelinesSection() {
       if (selected?.id === pipeline.id) setSelected(null)
     } catch (err) {
       if (err?.status === 404 || err?.status === 501) {
-        setBlocked('PENDING: 后端不支持 Pipeline 删除接口。')
+        setBlocked('后端不支持 Pipeline 删除接口。')
       } else {
         setBlocked(formatLogError(err))
       }

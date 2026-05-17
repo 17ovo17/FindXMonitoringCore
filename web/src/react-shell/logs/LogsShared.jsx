@@ -2,8 +2,7 @@ import React from 'react'
 import { sections } from './logsModel.js'
 
 export function Blocked({ children }) {
-  const text = typeof children === 'string' ? children.replace(/^PENDING:\s*/, '') : children
-  return <div className='fx-logs-blocked'><strong>PENDING</strong> {text}</div>
+  return children ? <div className='fx-logs-blocked'>{children}</div> : null
 }
 
 export function Field({ label, children }) {

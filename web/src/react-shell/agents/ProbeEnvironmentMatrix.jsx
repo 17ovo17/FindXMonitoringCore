@@ -84,7 +84,7 @@ export function PluginDeliveryMatrix({ pluginConfig }) {
         <span>回滚 {pluginConfig.rollbackStatus || PENDING_STATUS}</span>
         <span>receipt {pluginConfig.receiptStatus || PENDING_STATUS}</span>
       </div>
-      <Blocked>采集插件配置已纳入 FindX Agent、CMDB 主机、业务组和 namespace/workload 可下发范围；远程修改、reload、漂移检测、回滚和 receipt 仍为 PENDING。</Blocked>
+      <Blocked>采集插件配置已纳入 FindX Agent、CMDB 主机、业务组和 namespace/workload 可下发范围；远程修改、reload、漂移检测、回滚和 receipt 仍待接入。</Blocked>
     </div>
   )
 }

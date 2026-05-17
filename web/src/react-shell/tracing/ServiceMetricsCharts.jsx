@@ -69,14 +69,14 @@ export function ServiceMetricsCharts({ serviceId }) {
             setMetricsData(resp.metrics)
           } else {
             // 后端返回了数据但没有 metrics 字段
-            setBlocked('PENDING: 需要后端实现 /apm/overview?serviceId&metrics API 返回时序指标数据')
+            setBlocked('需要后端实现 /apm/overview?serviceId&metrics API 返回时序指标数据')
           }
         }
       } catch (err) {
         if (cancelled) return
         const msg = formatTracingError(err)
-        if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-          setBlocked('PENDING: 需要后端实现 /apm/overview?serviceId&metrics API 返回时序指标数据')
+        if ([404, 405, 501].includes(err?.status)) {
+          setBlocked('需要后端实现 /apm/overview?serviceId&metrics API 返回时序指标数据')
         } else {
           setError(msg)
         }
@@ -99,7 +99,7 @@ export function ServiceMetricsCharts({ serviceId }) {
         if (!values.length) return (
           <div key={m.key} className='fx-metric-chart'>
             <h4 className='fx-metric-chart__title'>{m.label}</h4>
-            <Blocked>PENDING: 需要后端实现 /apm/overview 返回 {m.key} 时序数据</Blocked>
+            <Blocked>需要后端实现 /apm/overview 返回 {m.key} 时序数据</Blocked>
           </div>
         )
         return <UPlotChart key={m.key} title={m.label} timestamps={timestamps} values={values} unit={m.unit} color={m.color} />

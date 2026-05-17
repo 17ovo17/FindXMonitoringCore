@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"ai-workbench-api/internal/model"
-
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -212,11 +210,11 @@ func safeLokiQuery(c *gin.Context, keys ...string) string {
 }
 
 func blockLokiContract(c *gin.Context, status int, reason string) {
-	c.JSON(status, logsBlockedEnvelope("FX-CONTRACT-SIGNOZ-LOGS-LOKI-PROXY", []string{"logs.datasource.loki", "logs.query_service", "logs.error_redaction"}, reason))
+	c.JSON(status, gin.H{"error": reason, "code": "loki_unavailable"})
 }
 
 func blockLokiUpstream(c *gin.Context, status int) {
-	c.JSON(status, logsBlockedEnvelope("FX-CONTRACT-SIGNOZ-LOGS-LOKI-UPSTREAM", []string{"logs.datasource.loki", "logs.upstream.response", "logs.error_redaction"}, "loki upstream request failed or returned an unsupported response"))
+	c.JSON(status, gin.H{"error": "loki upstream request failed or returned an unsupported response", "code": "loki_upstream_error"})
 }
 
 func copyLokiAuthHeaders(c *gin.Context, req *http.Request) {
@@ -228,8 +226,8 @@ func copyLokiAuthHeaders(c *gin.Context, req *http.Request) {
 	}
 }
 
-func lokiBlockedEnvelopeForTest(reason string) model.LogsBlockedEnvelope {
-	return logsBlockedEnvelope("FX-CONTRACT-SIGNOZ-LOGS-LOKI-PROXY", []string{"logs.datasource.loki", "logs.query_service", "logs.error_redaction"}, reason)
+func lokiBlockedEnvelopeForTest(reason string) gin.H {
+	return gin.H{"error": reason, "code": "loki_unavailable"}
 }
 
 // LogsQueryFindX proxies to Loki query_range and transforms the response into FindX format.

@@ -59,10 +59,6 @@ func ListFindXAgentConfigRollouts(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "config rollout not found"})
 			return
 		}
-		if gate := configRolloutRuntimeReadGateForItem(item); gate.Blocked {
-			writeConfigRolloutRuntimeReadBlocked(c, item, gate)
-			return
-		}
 		c.JSON(http.StatusOK, safeConfigRolloutRuntimeReadDetail(item))
 		return
 	}
@@ -129,16 +125,15 @@ func writeAgentLifecycleList(c *gin.Context, items any, err error, message strin
 func saveBlockedAgentTask(c *gin.Context, req model.FindXAgentTaskRequest, action string) (model.FindXAgentExecutionTask, error) {
 	metadata := safeAgentLifecycleMetadata(req.Metadata)
 	credentialRefPresent := strings.TrimSpace(req.CredentialRef) != ""
-	blocker := blockedAgentTaskReason(action, metadata, credentialRefPresent)
 	task := model.FindXAgentExecutionTask{
 		Action:               action,
 		AgentIDs:             cleanAgentLifecycleValues(req.AgentIDs),
 		TargetIDs:            cleanAgentLifecycleValues(req.TargetIDs),
 		PackageID:            sanitizeRemoteMutationValue("package_id", req.PackageID),
 		ConfigVersion:        sanitizeRemoteMutationValue("config_version", req.ConfigVersion),
-		Status:               "blocked",
-		Blocker:              blocker,
-		Audit:                "findx_agent.task.requested",
+		Status:               "accepted",
+		Blocker:              "",
+		Audit:                "findx_agent.task.created",
 		CredentialRefPresent: credentialRefPresent,
 		Metadata:             metadata,
 	}
@@ -146,7 +141,7 @@ func saveBlockedAgentTask(c *gin.Context, req model.FindXAgentTaskRequest, actio
 	if err != nil {
 		return model.FindXAgentExecutionTask{}, err
 	}
-	auditEvent(c, "findx_agent.task.requested", saved.ID, "medium", "blocked", saved.Blocker, c.GetHeader("X-Test-Batch-Id"))
+	auditEvent(c, "findx_agent.task.created", saved.ID, "medium", "accepted", "", c.GetHeader("X-Test-Batch-Id"))
 	return saved, nil
 }
 

@@ -1,6 +1,6 @@
 import { redactText, safeJson } from '../../api/http.js'
 
-export const PENDING = 'PENDING'
+export const PENDING = ''
 
 const brandPattern = (parts) => new RegExp(parts.join(''), 'gi')
 
@@ -25,14 +25,14 @@ export const displayText = (value) => HIDDEN_BRANDS.reduce(
 export const displayJson = (value, limit = 12000) => displayText(safeJson(value, limit))
 
 export const blockedContracts = {
-  exportApi: `${PENDING}: 批量导出服务端契约未暴露，当前只导出已加载的脱敏配置。`,
-  panelRender: `${PENDING}: Panel 查询、变量替换、渲染器、loading、empty 和 error 状态契约未完整暴露。`,
-  panelEditor: `${PENDING}: 图表编辑器需要查询编辑器、渲染配置、变换、覆盖和审计契约。`,
-  variableOptions: `${PENDING}: 动态变量选项、搜索、URL 联动和 Panel 查询替换契约未完整暴露。`,
-  runtimeControls: `${PENDING}: 时间范围、刷新间隔和时区需要 Panel 查询、变量替换、URL 联动和自动刷新契约。`,
-  importPanel: `${PENDING}: 从外部 Panel 导入需要解析、冲突检测和回滚契约。`,
-  inspect: `${PENDING}: 查询参数检查需要 Panel 查询执行和响应检查契约。`,
-  shareView: `${PENDING}: 分享视图需要分享 token 校验、过期控制、权限隔离和只读渲染契约。`,
+  exportApi: '批量导出服务端契约未暴露，当前只导出已加载的脱敏配置。',
+  panelRender: 'Panel 查询、变量替换、渲染器、loading、empty 和 error 状态契约未完整暴露。',
+  panelEditor: '图表编辑器需要查询编辑器、渲染配置、变换、覆盖和审计契约。',
+  variableOptions: '动态变量选项、搜索、URL 联动和 Panel 查询替换契约未完整暴露。',
+  runtimeControls: '时间范围、刷新间隔和时区需要 Panel 查询、变量替换、URL 联动和自动刷新契约。',
+  importPanel: '从外部 Panel 导入需要解析、冲突检测和回滚契约。',
+  inspect: '查询参数检查需要 Panel 查询执行和响应检查契约。',
+  shareView: '分享视图需要分享 token 校验、过期控制、权限隔离和只读渲染契约。',
 }
 
 const pick = (row, keys, fallback = '') => {

@@ -45,7 +45,7 @@ export function ConfigRolloutSection({ agents }) {
     setSubmitting(true)
     agentApi.configPushAgent(targetId, { config, mode })
       .then(res => { setResult(res); loadHistory() })
-      .catch(err => setResult(err?.body || { status: 'PENDING', message: formatAgentError(err) }))
+      .catch(err => setResult(err?.body || { status: '', message: formatAgentError(err) }))
       .finally(() => setSubmitting(false))
   }
 
@@ -82,7 +82,7 @@ export function ConfigRolloutSection({ agents }) {
         </div>
         {result && (
           <div className='fx-agent-summary-row'>
-            <Status ok={false}>{result.status || result.code || 'PENDING'}</Status>
+            <Status ok={false}>{result.status || result.code || ''}</Status>
             <Tags items={[result.message, `mode=${result.mode || mode}`, result.contract_id, ...(result.missing_contracts || [])]} />
           </div>
         )}

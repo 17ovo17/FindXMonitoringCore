@@ -12,7 +12,7 @@ export function TraceDetailSection({ traceId, onNavigate }) {
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async () => {
-    if (!traceId) { setBlocked('PENDING: Trace 详情需要 traceId 和详情查询契约。'); return }
+    if (!traceId) { setBlocked('Trace 详情需要 traceId 和详情查询契约。'); return }
     setLoading(true); setError(''); setBlocked('')
     try {
       const d = await tracingApi.traces.detail(traceId)
@@ -25,7 +25,7 @@ export function TraceDetailSection({ traceId, onNavigate }) {
       setDetail(null)
       setSpans([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) setBlocked(msg); else setError(msg)
+      setError(msg)
     } finally { setLoading(false) }
   }, [traceId])
 
@@ -39,7 +39,7 @@ export function TraceDetailSection({ traceId, onNavigate }) {
         </Field>
         <div className='fx-tracing-condition-actions'>
           <button type='button' className='is-primary' onClick={load}>{loading ? '加载中...' : '刷新'}</button>
-          <button type='button' onClick={() => setBlocked('PENDING: Span 日志和日志中心上下文关联缺少跨域证据契约。')}>关联日志</button>
+          <button type='button' onClick={() => setBlocked('Span 日志和日志中心上下文关联缺少跨域证据契约。')}>关联日志</button>
           <button type='button' onClick={() => onNavigate({ section: 'traces' })}>返回列表</button>
         </div>
       </div>

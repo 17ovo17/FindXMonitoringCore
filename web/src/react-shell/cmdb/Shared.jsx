@@ -2,7 +2,7 @@ import React from 'react'
 import { displayTags, rowText, sections } from './assetsModel.js'
 
 export function Blocked({ children }) {
-  return <div className='fx-assets-blocked'><strong>PENDING</strong> {children}</div>
+  return children ? <div className='fx-assets-blocked'>{children}</div> : null
 }
 
 export function ErrorBox({ children }) {

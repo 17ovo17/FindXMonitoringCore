@@ -4,22 +4,22 @@
   "topology_businesses": {},
   "users": {
     "admin": {
-      "id": "1778950657714239300-1",
+      "id": "1778958431035821300-1",
       "username": "admin",
-      "password_hash": "$2a$10$ErOEDyAQorQaU1yvPKbZdeq4J.aeuBrH2UQ4lFvr/snl9fogLUIYq",
+      "password_hash": "$2a$10$2PKwHC89qGLw/EXlGWHX7uR1DczQJ/2goKhYbgp7x4Puj8zNt8SAq",
       "role": "admin",
       "must_change_pwd": true,
-      "created_at": "2026-05-17T00:57:37.7142393+08:00",
-      "updated_at": "2026-05-17T00:57:37.7142393+08:00"
+      "created_at": "2026-05-17T03:07:11.0358213+08:00",
+      "updated_at": "2026-05-17T03:07:11.0358213+08:00"
     },
     "fallback-change-user": {
-      "id": "1778950657932634000-2",
+      "id": "1778958431257325000-2",
       "username": "fallback-change-user",
-      "password_hash": "$2a$10$S8LRPrenUqaSZDHVNVDdfus7ZaCsDxz/DjAJTY/WqcunhThWjEj1K",
+      "password_hash": "$2a$10$urEultQBUFtPWpxFxHRyje4oSZXqlTMulsAc7QF0FV/dlEL.ivtXS",
       "role": "admin",
       "must_change_pwd": false,
-      "created_at": "2026-05-17T00:57:37.932634+08:00",
-      "updated_at": "2026-05-17T00:57:38.1509571+08:00"
+      "created_at": "2026-05-17T03:07:11.257325+08:00",
+      "updated_at": "2026-05-17T03:07:11.4749335+08:00"
     }
   },
   "org_roles": {
@@ -28,16 +28,16 @@
       "name": "admin",
       "note": "系统管理员",
       "builtin": true,
-      "created_at": "2026-05-17T00:57:37.6418584+08:00",
-      "updated_at": "2026-05-17T00:57:37.6418584+08:00"
+      "created_at": "2026-05-17T03:07:10.9639754+08:00",
+      "updated_at": "2026-05-17T03:07:10.9639754+08:00"
     },
     "viewer": {
       "id": "viewer",
       "name": "viewer",
       "note": "只读用户",
       "builtin": true,
-      "created_at": "2026-05-17T00:57:37.6418584+08:00",
-      "updated_at": "2026-05-17T00:57:37.6418584+08:00"
+      "created_at": "2026-05-17T03:07:10.9639754+08:00",
+      "updated_at": "2026-05-17T03:07:10.9639754+08:00"
     }
   },
   "org_role_operations": {

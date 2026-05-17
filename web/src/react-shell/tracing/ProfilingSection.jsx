@@ -41,8 +41,8 @@ function CreateTaskForm({ onCreated }) {
       onCreated && onCreated()
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/profiling/tasks POST API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/profiling/tasks POST API')
       } else { setError(msg) }
     } finally { setSubmitting(false) }
   }
@@ -87,8 +87,8 @@ export function ProfilingSection({ query = {}, onNavigate }) {
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/profiling/tasks GET API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/profiling/tasks GET API')
       } else { setError(msg) }
     } finally { setLoading(false) }
   }, [])
@@ -101,8 +101,8 @@ export function ProfilingSection({ query = {}, onNavigate }) {
       load()
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/profiling/tasks/:id/cancel API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/profiling/tasks/:id/cancel API')
       } else { setError(msg) }
     }
   }

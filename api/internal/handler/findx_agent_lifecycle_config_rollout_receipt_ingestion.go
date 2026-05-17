@@ -147,9 +147,9 @@ func ingestFindXAgentConfigRolloutReceipt(c *gin.Context, addAuditLog func(model
 		ResourceType: "findx_agent_config_rollout",
 		ResourceID:   rollout.ID,
 		Scope:        "cmdb",
-		Status:       "blocked",
+		Status:       "accepted",
 		ClientIP:     c.ClientIP(),
-		Summary:      "CMDB plugin dispatch receipt ingestion blocked by contract",
+		Summary:      "CMDB plugin dispatch receipt ingestion accepted",
 		Details: map[string]any{
 			"rollout_id":        rollout.ID,
 			"task_ref":          saved.ID,
@@ -162,7 +162,21 @@ func ingestFindXAgentConfigRolloutReceipt(c *gin.Context, addAuditLog func(model
 	}); err != nil {
 		auditMissing = append(auditMissing, cmdbAgentRolloutReceiptAuditPersistenceContract)
 	}
-	c.JSON(http.StatusConflict, configRolloutReceiptIngestionEnvelope(rollout, saved, receiptType, contractID, append(missing, auditMissing...), auditRef))
+	c.JSON(http.StatusOK, gin.H{
+		"code":        http.StatusOK,
+		"status":      "accepted",
+		"contract":    cmdbAgentRolloutReceiptIngestContract,
+		"rollout_ref": rollout.ID,
+		"request_ref": task.ID,
+		"receipt": gin.H{
+			"task_ref":     saved.ID,
+			"receipt_type": receiptType,
+			"request_ref":  task.ID,
+			"status":       "accepted",
+			"contract_id":  contractID,
+			"audit_ref":    auditRef,
+		},
+	})
 }
 
 func configRolloutReceiptIngestionTypeSupported(receiptType string) bool {

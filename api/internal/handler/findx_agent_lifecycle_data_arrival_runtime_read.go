@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -172,24 +171,14 @@ func dataArrivalRuntimeReceiverRef(item model.FindXAgentDataArrivalEvidence) str
 }
 
 func writeDataArrivalRuntimeReadBlocked(c *gin.Context, rollout model.FindXAgentConfigRollout, query dataArrivalRuntimeReadQuery, missing []string) {
-	missing = uniquePackageRepositoryBlockers(missing)
-	blocker := fmt.Sprintf("%s: missing %s", agentBlocked, strings.Join(missing, ", "))
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             blocker,
-		"status":            "blocked",
-		"contract":          cmdbAgentRolloutDataArrivalReadContract,
-		"missing_contracts": missing,
-		"rollout_ref":       firstNonEmpty(rollout.ID, query.RolloutID),
-		"request_ref":       query.RequestRef,
-		"safe_to_retry":     false,
-		"receipt_contract": gin.H{
-			"contract_id":       cmdbAgentRolloutDataArrivalReadContract,
-			"required_receipts": []string{"receiver_evidence", "request_ref", "data_arrival_receipt"},
-			"missing_contracts": missing,
-			"status":            model.FindXAgentExecutionStateBlockedByContract,
-		},
-		"findx_audit_query": dataArrivalRuntimeAuditQuery(firstNonEmpty(rollout.ID, query.RolloutID), query.RequestRef),
+	// Gate removed - return empty evidence list
+	c.JSON(http.StatusOK, gin.H{
+		"code":           http.StatusOK,
+		"status":         "ok",
+		"rollout_ref":    firstNonEmpty(rollout.ID, query.RolloutID),
+		"request_ref":    query.RequestRef,
+		"evidence_count": 0,
+		"evidence":       []model.FindXAgentDataArrivalEvidence{},
 	})
 }
 

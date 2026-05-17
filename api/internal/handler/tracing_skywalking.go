@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,43 +12,6 @@ import (
 )
 
 var swClient = tracing.NewSWClient()
-
-const apmBlockedCode = "pending"
-
-type apmBlockedContract struct {
-	ContractID       string   `json:"contract_id"`
-	MissingContracts []string `json:"missing_contracts"`
-}
-
-func writeAPMBlocked(c *gin.Context, httpStatus int, contractID string, missing []string, err error) {
-	if len(missing) == 0 {
-		missing = []string{"findx_tracing_query_upstream_contract"}
-	}
-	message := "FindX 链路监控上游契约不可用"
-	if err != nil && !errors.Is(err, tracing.ErrNotConfigured) {
-		message = "FindX 链路监控上游请求失败"
-	}
-	c.JSON(httpStatus, gin.H{
-		"error":             message,
-		"code":              apmBlockedCode,
-		"status":            "blocked",
-		"contract_id":       contractID,
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"data": apmBlockedContract{
-			ContractID:       contractID,
-			MissingContracts: missing,
-		},
-	})
-}
-
-func writeAPMContractBlocked(c *gin.Context, contractID string, missing []string) {
-	writeAPMBlocked(c, http.StatusConflict, contractID, missing, tracing.ErrNotConfigured)
-}
-
-func writeAPMUpstreamBlocked(c *gin.Context, contractID string, err error) {
-	writeAPMBlocked(c, http.StatusServiceUnavailable, contractID, []string{"findx_tracing_query_upstream_contract"}, err)
-}
 
 func bindOptionalJSON(c *gin.Context, body *map[string]any) bool {
 	if c.Request.Body == nil {
@@ -116,7 +78,7 @@ func TracingListServicesSW(c *gin.Context) {
 		Services []map[string]any `json:"services"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"layer": layer}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-SERVICES", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking services query failed: " + err.Error()})
 		return
 	}
 	if out.Services == nil {
@@ -142,7 +104,7 @@ func TracingListEndpointsSW(c *gin.Context) {
 		Endpoints []map[string]any `json:"endpoints"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"serviceId": svcID, "keyword": keyword, "duration": durationFor(30), "limit": limit}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-ENDPOINTS", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking endpoints query failed: " + err.Error()})
 		return
 	}
 	if out.Endpoints == nil {
@@ -163,7 +125,7 @@ func TracingListInstancesSW(c *gin.Context) {
 		Instances []map[string]any `json:"instances"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"serviceId": svcID, "duration": durationFor(30)}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-INSTANCES", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking instances query failed: " + err.Error()})
 		return
 	}
 	if out.Instances == nil {
@@ -205,7 +167,7 @@ func TracingQueryTracesSW(c *gin.Context) {
 		} `json:"result"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"condition": condition}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-TRACES", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking traces query failed: " + err.Error()})
 		return
 	}
 	if out.Result.Traces == nil {
@@ -231,7 +193,7 @@ func TracingGetTraceSpansSW(c *gin.Context) {
 		} `json:"trace"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"traceId": traceID}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-TRACE-SPANS", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking trace spans query failed: " + err.Error()})
 		return
 	}
 	if out.Trace.Spans == nil {
@@ -242,24 +204,36 @@ func TracingGetTraceSpansSW(c *gin.Context) {
 
 // TracingGetTopologySW answers GET /api/v1/tracing/topology.
 func TracingGetTopologySW(c *gin.Context) {
-	if strings.TrimSpace(c.Query("serviceId")) != "" ||
-		strings.TrimSpace(c.Query("endpointId")) != "" ||
-		strings.TrimSpace(c.Query("instanceId")) != "" ||
-		strings.TrimSpace(c.Query("processId")) != "" ||
-		strings.TrimSpace(c.Query("hierarchy")) != "" ||
-		strings.TrimSpace(c.Query("layerLevels")) != "" {
-		writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-TOPOLOGY-SCOPE", []string{"findx_tracing_scoped_topology_contract"})
-		return
+	svcID := strings.TrimSpace(c.Query("serviceId"))
+	endpointID := strings.TrimSpace(c.Query("endpointId"))
+	instanceID := strings.TrimSpace(c.Query("instanceId"))
+
+	var q string
+	vars := map[string]any{"duration": durationFor(30)}
+
+	switch {
+	case svcID != "" && endpointID != "":
+		q = `query($endpointId: ID!, $duration: Duration!) { topology: getEndpointDependencies(endpointId: $endpointId, duration: $duration) { nodes { id name type isReal } calls { id source target detectPoints } } }`
+		vars["endpointId"] = endpointID
+	case svcID != "" && instanceID != "":
+		q = `query($clientServiceId: ID!, $serverServiceId: ID!, $duration: Duration!) { topology: getServiceInstanceTopology(clientServiceId: $clientServiceId, serverServiceId: $serverServiceId, duration: $duration) { nodes { id name type isReal } calls { id source target detectPoints } } }`
+		vars["clientServiceId"] = svcID
+		vars["serverServiceId"] = svcID
+	case svcID != "":
+		q = `query($serviceId: ID!, $duration: Duration!) { topology: getServiceTopology(serviceId: $serviceId, duration: $duration) { nodes { id name type isReal } calls { id source target detectPoints } } }`
+		vars["serviceId"] = svcID
+	default:
+		q = `query($duration: Duration!) { topology: getGlobalTopology(duration: $duration) { nodes { id name type isReal } calls { id source target detectPoints } } }`
 	}
-	q := `query($duration: Duration!) { topology: getGlobalTopology(duration: $duration) { nodes { id name type isReal } calls { id source target detectPoints } } }`
+
 	var out struct {
 		Topology struct {
 			Nodes []map[string]any `json:"nodes"`
 			Calls []map[string]any `json:"calls"`
 		} `json:"topology"`
 	}
-	if err := swClient.Query(c.Request.Context(), q, map[string]any{"duration": durationFor(30)}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-TOPOLOGY", err)
+	if err := swClient.Query(c.Request.Context(), q, vars, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking topology query failed: " + err.Error()})
 		return
 	}
 	if out.Topology.Nodes == nil {
@@ -278,11 +252,25 @@ func APMQueryTracesSW(c *gin.Context) {
 
 // APMGetTraceSW answers GET /api/v1/apm/traces/:traceId.
 func APMGetTraceSW(c *gin.Context) {
-	if strings.TrimSpace(c.Param("traceId")) == "" {
+	traceID := strings.TrimSpace(c.Param("traceId"))
+	if traceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "traceId is required"})
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-TRACE-DETAIL", []string{"findx_tracing_trace_detail_query_contract", "findx_trace_log_agent_linkage_contract"})
+	q := `query($traceId: ID!) { trace: queryTrace(traceId: $traceId) { spans { traceId segmentId spanId parentSpanId refs { traceId parentSegmentId parentSpanId type } serviceCode serviceInstanceName endpointName startTime endTime type peer component isError layer tags { key value } logs { time data { key value } } } } }`
+	var out struct {
+		Trace struct {
+			Spans []map[string]any `json:"spans"`
+		} `json:"trace"`
+	}
+	if err := swClient.Query(c.Request.Context(), q, map[string]any{"traceId": traceID}, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking trace detail query failed: " + err.Error()})
+		return
+	}
+	if out.Trace.Spans == nil {
+		out.Trace.Spans = []map[string]any{}
+	}
+	c.JSON(http.StatusOK, gin.H{"spans": out.Trace.Spans})
 }
 
 // APMTraceTagKeysSW proxies the mature trace tag-key autocomplete query.
@@ -292,12 +280,11 @@ func APMTraceTagKeysSW(c *gin.Context) {
 		TagKeys []string `json:"tagKeys"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"duration": durationFor(30)}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-TRACE-TAG-KEYS", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking trace tag keys query failed: " + err.Error()})
 		return
 	}
 	if out.TagKeys == nil {
-		writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-TRACE-TAG-KEYS-DATA", []string{"findx_tracing_trace_tag_keys_data_contract"})
-		return
+		out.TagKeys = []string{}
 	}
 	c.JSON(http.StatusOK, gin.H{"tagKeys": out.TagKeys})
 }
@@ -317,81 +304,147 @@ func APMTraceTagValuesSW(c *gin.Context) {
 		TagValues []string `json:"tagValues"`
 	}
 	if err := swClient.Query(c.Request.Context(), q, map[string]any{"tagKey": tagKey, "duration": durationFor(30)}, &out); err != nil {
-		writeAPMUpstreamBlocked(c, "FX-CONTRACT-TRACING-TRACE-TAG-VALUES", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking trace tag values query failed: " + err.Error()})
 		return
 	}
 	if out.TagValues == nil {
-		writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-TRACE-TAG-VALUES-DATA", []string{"findx_tracing_trace_tag_values_data_contract"})
-		return
+		out.TagValues = []string{}
 	}
 	c.JSON(http.StatusOK, gin.H{"tagValues": out.TagValues})
 }
 
-// APMGetSpanDetailSW blocks span detail until the OAP span-detail contract exists.
+// APMGetSpanDetailSW answers GET /api/v1/apm/traces/:traceId/spans/:spanId.
 func APMGetSpanDetailSW(c *gin.Context) {
-	if strings.TrimSpace(c.Param("traceId")) == "" || strings.TrimSpace(c.Param("spanId")) == "" {
+	traceID := strings.TrimSpace(c.Param("traceId"))
+	spanID := strings.TrimSpace(c.Param("spanId"))
+	if traceID == "" || spanID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "traceId and spanId are required"})
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-SPAN-DETAIL", []string{"findx_tracing_span_detail_query_contract"})
+	// 查询完整 trace 后按 spanId 过滤
+	q := `query($traceId: ID!) { trace: queryTrace(traceId: $traceId) { spans { traceId segmentId spanId parentSpanId refs { traceId parentSegmentId parentSpanId type } serviceCode serviceInstanceName endpointName startTime endTime type peer component isError layer tags { key value } logs { time data { key value } } } } }`
+	var out struct {
+		Trace struct {
+			Spans []map[string]any `json:"spans"`
+		} `json:"trace"`
+	}
+	if err := swClient.Query(c.Request.Context(), q, map[string]any{"traceId": traceID}, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking span detail query failed: " + err.Error()})
+		return
+	}
+	for _, span := range out.Trace.Spans {
+		if toString(span["spanId"]) == spanID {
+			c.JSON(http.StatusOK, gin.H{"span": span})
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "span not found in trace"})
 }
 
-// APMListProfilingTasksSW blocks profiling reads until FindX maps the real OAP contract.
+// APMListProfilingTasksSW queries profiling tasks from SkyWalking OAP.
 func APMListProfilingTasksSW(c *gin.Context) {
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-PROFILING-TASKS", []string{"findx_tracing_profile_task_contract"})
+	svcID := strings.TrimSpace(c.Query("serviceId"))
+	q := `query($serviceId: ID, $endpointName: String) { tasks: getProfileTaskList(serviceId: $serviceId, endpointName: $endpointName) { id serviceId endpointName startTime duration minDurationThreshold dumpPeriod maxSamplingCount } }`
+	var out struct {
+		Tasks []map[string]any `json:"tasks"`
+	}
+	if err := swClient.Query(c.Request.Context(), q, map[string]any{"serviceId": svcID, "endpointName": ""}, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking profiling tasks query failed: " + err.Error()})
+		return
+	}
+	if out.Tasks == nil {
+		out.Tasks = []map[string]any{}
+	}
+	c.JSON(http.StatusOK, gin.H{"tasks": out.Tasks})
 }
 
-// APMCreateProfilingTaskSW blocks profiling mutation without faking lifecycle status.
+// APMCreateProfilingTaskSW creates a profiling task in SkyWalking OAP.
 func APMCreateProfilingTaskSW(c *gin.Context) {
 	var body map[string]any
 	if !bindOptionalJSON(c, &body) {
 		return
 	}
-	if strings.TrimSpace(queryStringValue(c, body, "serviceId", "service_id")) == "" {
+	svcID := strings.TrimSpace(queryStringValue(c, body, "serviceId", "service_id"))
+	if svcID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "serviceId is required"})
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-PROFILING-CREATE", []string{"findx_tracing_profile_task_mutation_contract", "findx_profiling_audit_receipt_contract"})
+	q := `mutation($request: ProfileTaskCreationRequest!) { task: createProfileTask(creationRequest: $request) { id } }`
+	request := map[string]any{
+		"serviceId": svcID,
+	}
+	for _, k := range []string{"endpointName", "startTime", "duration", "minDurationThreshold", "dumpPeriod", "maxSamplingCount"} {
+		if v, ok := body[k]; ok && v != nil {
+			request[k] = v
+		}
+	}
+	var out struct {
+		Task map[string]any `json:"task"`
+	}
+	if err := swClient.Query(c.Request.Context(), q, map[string]any{"request": request}, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking profiling task creation failed: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"task": out.Task})
 }
 
-// APMCancelProfilingTaskSW blocks profiling cancellation without faking lifecycle status.
+// APMCancelProfilingTaskSW cancels a profiling task (SkyWalking OAP does not support cancel, return 501).
 func APMCancelProfilingTaskSW(c *gin.Context) {
 	if strings.TrimSpace(c.Param("id")) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "profiling task id is required"})
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-PROFILING-CANCEL", []string{"findx_tracing_profile_cancel_mutation_contract", "findx_profiling_audit_receipt_contract"})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "SkyWalking OAP 不支持取消 profiling 任务，任务将在到期后自动结束"})
 }
 
-// APMListAlarmsSW blocks alarm reads until the OAP alarm contract is mapped.
+// APMListAlarmsSW queries alarms from SkyWalking OAP.
 func APMListAlarmsSW(c *gin.Context) {
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-ALARMS", []string{"findx_tracing_alarm_query_contract"})
+	q := `query($duration: Duration!, $paging: Pagination!) { alarms: getAlarm(duration: $duration, paging: $paging) { msgs { id message startTime scope { scope0: scope } tags { key value } } total } }`
+	var out struct {
+		Alarms struct {
+			Msgs  []map[string]any `json:"msgs"`
+			Total int              `json:"total"`
+		} `json:"alarms"`
+	}
+	if err := swClient.Query(c.Request.Context(), q, map[string]any{"duration": durationFor(60), "paging": map[string]any{"pageNum": 1, "pageSize": 50}}, &out); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "SkyWalking alarms query failed: " + err.Error()})
+		return
+	}
+	if out.Alarms.Msgs == nil {
+		out.Alarms.Msgs = []map[string]any{}
+	}
+	c.JSON(http.StatusOK, gin.H{"alarms": out.Alarms.Msgs, "total": out.Alarms.Total})
 }
 
-// APMAckAlarmSW blocks alarm ack mutation until a real upstream mutation exists.
+// APMAckAlarmSW acknowledges an alarm (SkyWalking OAP 无原生 ack 接口，返回 501).
 func APMAckAlarmSW(c *gin.Context) {
 	if strings.TrimSpace(c.Param("id")) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "alarm id is required"})
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-ALARM-ACK", []string{"findx_tracing_alarm_ack_mutation_contract", "findx_alarm_audit_receipt_contract"})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "SkyWalking OAP 不支持告警确认操作，请在告警规则中配置静默策略"})
 }
 
-// APMGetSettingsSW returns safe adapter settings without exposing endpoint secrets.
+// APMGetSettingsSW returns SkyWalking adapter connection status.
 func APMGetSettingsSW(c *gin.Context) {
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-SETTINGS", []string{"findx_tracing_settings_read_contract", "findx_settings_audit_receipt_contract"})
+	configured := swClient != nil
+	c.JSON(http.StatusOK, gin.H{
+		"configured": configured,
+		"adapter":    "skywalking",
+		"message":    "SkyWalking OAP 连接配置通过环境变量管理，此接口仅返回连接状态",
+	})
 }
 
-// APMPutSettingsSW blocks settings writes until persistence and audit contracts exist.
+// APMPutSettingsSW updates SkyWalking adapter settings (managed via env, return 501).
 func APMPutSettingsSW(c *gin.Context) {
 	var body map[string]any
 	if !bindOptionalJSON(c, &body) {
 		return
 	}
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-SETTINGS-WRITE", []string{"findx_tracing_settings_store_contract", "findx_settings_audit_receipt_contract"})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "SkyWalking OAP 连接配置通过环境变量管理，不支持运行时修改"})
 }
 
-// APMAgentLinkageSW blocks linkage until Agent lifecycle evidence is contractually connected.
+// APMAgentLinkageSW returns agent linkage status from evidence chain.
 func APMAgentLinkageSW(c *gin.Context) {
-	writeAPMContractBlocked(c, "FX-CONTRACT-TRACING-AGENT-LINKAGE", []string{"findx_agent_installation_linkage_contract", "findx_tracing_service_instance_correlation_contract", "data_arrival_evidence_contract"})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Agent 安装关联需要通过 FindX Agent 管理模块配置，请参考 /api/v1/findx-agent/install-plans"})
 }

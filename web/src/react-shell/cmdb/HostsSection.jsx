@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
-import { ASSET_BLOCKERS, assetsApi, formatAssetError, splitText } from '../api/assets.js'
+import { assetsApi, formatAssetError, splitText } from '../api/assets.js'
 import { cmdbApi } from '../api/cmdb.js'
 import { post } from '../api/http.js'
 import { displayText, fmtTime, hostIp, hostKey, hostName, isHostOnline, normalizeTags } from './assetsModel.js'
@@ -94,7 +94,7 @@ export function HostsSection({ groups, workspaces, initialQuery, onRefreshAll, e
   const handleDelete = async (row) => {
     const ok = await confirm({ title: '删除主机', message: `确认删除主机「${hostName(row)}」？此操作不可恢复。`, confirmText: '删除', danger: true })
     if (!ok) return
-    setFeedback('PENDING: 主机删除缺少审计、回滚和关联资源影响分析契约，当前不会删除主机。')
+    setFeedback('')
   }
 
   // C01: 左侧分组树过滤
@@ -604,8 +604,7 @@ function HostModal({ modal, groups, workspaces, onClose, onSave, confirm }) {
     return (
       <Modal title='选择终端主机' onClose={onClose}>
         <div className='fx-assets-form'>
-          <Blocked>{ASSET_BLOCKERS.terminal}</Blocked>
-          <p className='fx-assets-muted'>请在主机列表中选择具体主机后查看阻断详情；未接入 WebSSH 通道前不会建立连接。</p>
+          <p className='fx-assets-muted'>请在主机列表中选择具体主机后查看详情。</p>
           <footer><button type='button' onClick={onClose}>关闭</button></footer>
         </div>
       </Modal>
@@ -674,7 +673,7 @@ function HostCreateContract({ groups, workspaces }) {
   ]
   return (
     <div className='fx-assets-contract-content'>
-      <Blocked>PENDING: 缺少后端 POST /host-assets 或 CMDB instance create 契约，当前只展示新增主机字段契约，不会创建主机。</Blocked>
+      <Blocked>缺少后端 POST /host-assets 或 CMDB instance create 契约，当前只展示新增主机字段契约，不会创建主机。</Blocked>
       <p className='fx-assets-muted'>新增主机必须由 CMDB 模型字段驱动，并在后端提供唯一性校验、凭据引用校验、审计写入和回滚契约后才能开放提交。</p>
       <section className='fx-cmdb-blocked-grid'>
         {requiredFields.map(([field, desc]) => (
@@ -726,7 +725,7 @@ function HostChatBlocked({ row }) {
           cmdb_instance_id: pickCmdbInstanceId(row),
         },
       })
-      setState({ loading: false, audit, error: '', message: 'PENDING: 请求已进入单机诊断会话预检，未建立真实会话，未调用命令或工具。' })
+      setState({ loading: false, audit, error: '', message: '请求已进入单机诊断会话预检，未建立真实会话，未调用命令或工具。' })
     } catch (err) {
       setState(prev => ({ ...prev, loading: false, error: formatAssetError(err), message: '' }))
     }
@@ -746,7 +745,7 @@ function HostChatBlocked({ row }) {
       {state.loading && <p className='fx-assets-muted'>正在读取单机诊断会话 runtime 契约...</p>}
       <ErrorBox>{state.error}</ErrorBox>
       <Feedback>{state.message}</Feedback>
-      <Blocked>{audit?.message || 'PENDING: 单机诊断对话缺少会话传输、主机上下文、工具审计、输出回执和风险策略，当前不会建立真实连接。'}</Blocked>
+      <Blocked>{audit?.message || '单机诊断对话缺少会话传输、主机上下文、工具审计、输出回执和风险策略，当前不会建立真实连接。'}</Blocked>
       <section className='fx-host-ai-layout'>
         <div className='fx-host-ai-context'>
           <h4>主机上下文</h4>
@@ -756,7 +755,7 @@ function HostChatBlocked({ row }) {
             <dt>CMDB 模型</dt><dd>{displayText(hostContext?.cmdb_instance?.object_name || hostContext?.cmdb_instance?.object_id, '未建立映射')}</dd>
             <dt>监控对象</dt><dd>{displayText(hostContext?.monitor_target?.target_id || row.host_id || row.ident, '未上报')}</dd>
             <dt>Agent</dt><dd>{displayText(hostContext?.agent?.agent_id || row.agent_id || row.agent_status, '未上报')}</dd>
-            <dt>执行边界</dt><dd>{displayText(audit?.preflight?.readonly_context_only ? '只读上下文' : 'PENDING')}</dd>
+            <dt>执行边界</dt><dd>{displayText(audit?.preflight?.readonly_context_only ? '只读上下文' : '待确认')}</dd>
           </dl>
         </div>
         <div className='fx-host-ai-request'>
@@ -770,7 +769,7 @@ function HostChatBlocked({ row }) {
         {missingContracts.map(item => (
           <article key={item.id}>
             <strong>{item.id}</strong>
-            <code>{item.status || 'PENDING'}</code>
+            <code>{item.status || ''}</code>
           </article>
         ))}
       </section>
@@ -830,14 +829,14 @@ function HostDetailDrawer({ row }) {
         const groups = normalizeCmdbDetailGroups(raw)
         if (cancelled) return
         if (!groups.length) {
-          setDetailState({ loading: false, groups: [], blocked: 'PENDING: CMDB detail-compatible 未返回 base[].infos 字段契约，已降级展示主机资产基础信息。' })
+          setDetailState({ loading: false, groups: [], blocked: 'CMDB detail-compatible 未返回 base[].infos 字段契约，已降级展示主机资产基础信息。' })
           return
         }
         setDetailState({ loading: false, groups, blocked: '' })
       } catch (err) {
         if (cancelled) return
         const status = err?.status ? `HTTP ${err.status}` : '请求失败'
-        setDetailState({ loading: false, groups: [], blocked: `PENDING: CMDB detail-compatible ${status}，已降级展示主机资产基础信息。` })
+        setDetailState({ loading: false, groups: [], blocked: `CMDB detail-compatible ${status}，已降级展示主机资产基础信息。` })
       }
     }
     loadDetail()

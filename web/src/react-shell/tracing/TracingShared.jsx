@@ -1,10 +1,10 @@
 import React from 'react'
 import { displayText, visibleSections } from './tracingModel.js'
 
-export const FINDX_AGENT_LINKAGE_BLOCKER = 'PENDING: 服务覆盖率、Trace 详情反查 FindX Agent 状态、拓扑节点探针覆盖缺少 APM-Agent Adapter 联动契约。'
+export const FINDX_AGENT_LINKAGE_BLOCKER = '服务覆盖率、Trace 详情反查 FindX Agent 状态、拓扑节点探针覆盖缺少 APM-Agent Adapter 联动契约。'
 
 export function Blocked({ children }) {
-  return <div className='fx-tracing-blocked'><strong>PENDING</strong> {children}</div>
+  return <div className='fx-tracing-blocked'><strong></strong> {children}</div>
 }
 
 export function ErrorBox({ children }) {
@@ -65,7 +65,7 @@ export function AgentEvidenceNotice({ children }) {
   return (
     <div className='fx-tracing-agent-evidence'>
       <strong>FindX Agent 证据链</strong>
-      <span>{children || '按服务、实例、端点或 Trace 上下文进入主机 Agent；缺少 serviceInstanceId -> process.agentId -> FindX Agent 的只读映射契约时保持 PENDING。'}</span>
+      <span>{children || '按服务、实例、端点或 Trace 上下文进入主机 Agent；缺少 serviceInstanceId -> process.agentId -> FindX Agent 的只读映射契约时待接入。'}</span>
     </div>
   )
 }

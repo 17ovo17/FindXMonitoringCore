@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { agentApi, formatAgentError } from '../api/agents.js'
 import { Blocked, ErrorBox, Status, Tags } from './AgentShared.jsx'
 
-const CONTRACT_PENDING = 'pending: 已写入 task audit record，真实执行仍缺少远程执行器、回执和 Evidence Chain 契约。'
+const CONTRACT_PENDING = '已写入 task audit record，真实执行仍缺少远程执行器、回执和 Evidence Chain 契约。'
 const NO_TARGETS = '请选择至少一个 CMDB 主机或 Agent 目标'
 const BASE_METADATA = {
   credential_ref: '<CREDENTIAL_REF>',

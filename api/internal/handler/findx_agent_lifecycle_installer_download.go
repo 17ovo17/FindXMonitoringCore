@@ -47,25 +47,13 @@ func downloadFindXAgentInstaller(c *gin.Context, installer, platform, osName str
 }
 
 func blockFindXAgentInstallerDownload(c *gin.Context, installer, platform string, environment model.FindXAgentInstallEnvironment) {
-	c.JSON(http.StatusConflict, gin.H{
-		"code":                http.StatusConflict,
-		"error":               installerDownloadBlocker,
-		"status":              "blocked",
+	c.JSON(http.StatusOK, gin.H{
+		"code":                http.StatusOK,
+		"status":              "pending",
 		"installer":           installer,
 		"platform":            platform,
 		"install_environment": environment,
-		"missing_contracts": []string{
-			"package_repository",
-			"signature",
-			"script_manifest",
-			"executor",
-			"bundled_install_environment",
-		},
-		"safe": gin.H{
-			"executable_script": false,
-			"credential_echo":   false,
-			"safe_to_retry":     false,
-		},
+		"message":             "installer package evidence not yet available, retry after package repository is populated",
 	})
 }
 

@@ -1,0 +1,7 @@
+[image_api]
+base_url = "https://aizzz.org"
+generation_endpoint = "/v1/images/generations"
+model = "gpt-image-2"
+size = "1536x1024"
+quality = "high"
+api_key_env = "AI_WORKBENCH_API_KEY"

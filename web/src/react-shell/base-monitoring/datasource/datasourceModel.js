@@ -93,7 +93,7 @@ export const datasourceTypes = [
   },
 ]
 
-const blocked = (text) => `PENDING：${text}`
+const blocked = (text) => text
 
 export const blockedContracts = {
   add: blocked(DATASOURCE_CONTRACT_BLOCKERS.create),

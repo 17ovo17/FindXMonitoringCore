@@ -54,9 +54,9 @@ export function EnvironmentAdaptSection({ agentId }) {
         strategy: 'incremental',
       }
       const res = await pluginApi.configPush(body)
-      setFeedback(`PENDING: 配置预检返回 ${res?.status || 'non-blocked'}；没有真实执行器、投递回执和效果回执前，不显示完成态。`)
+      setFeedback(`配置预检返回 ${res?.status || 'non-blocked'}；没有真实执行器、投递回执和效果回执前，不显示完成态。`)
     } catch (err) {
-      setFeedback(`PENDING: ${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
+      setFeedback(`${err?.body?.message || err?.message || '配置预检被后端契约阻断'}`)
     }
   }
 

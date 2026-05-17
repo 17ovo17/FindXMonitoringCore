@@ -61,8 +61,8 @@ export function AlarmsSection() {
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/alarms GET API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/alarms GET API')
       } else { setError(msg) }
     } finally { setLoading(false) }
   }, [filters.keyword, filters.severity, filters.scope])
@@ -75,8 +75,8 @@ export function AlarmsSection() {
       load()
     } catch (err) {
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING') || [404, 405, 501].includes(err?.status)) {
-        setBlocked('PENDING: 需要后端实现 /apm/alarms/:id/ack POST API')
+      if ([404, 405, 501].includes(err?.status)) {
+        setBlocked('需要后端实现 /apm/alarms/:id/ack POST API')
       } else { setError(msg) }
     }
   }

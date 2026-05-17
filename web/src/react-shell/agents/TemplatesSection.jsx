@@ -13,7 +13,7 @@ const normalizePluginConfig = value => value ? {
   reloadStrategy: value.reloadStrategy || value.reload_strategy || '',
   restartStrategy: value.restartStrategy || value.restart_strategy || '',
   remoteMutation: value.remoteMutation ?? value.remote_mutation ?? false,
-  remoteMutationStatus: value.remoteMutationStatus || value.remote_mutation_status || 'PENDING',
+  remoteMutationStatus: value.remoteMutationStatus || value.remote_mutation_status || '',
   rolloutMetadata: value.rolloutMetadata || value.rollout_metadata || [],
   credentialRefRequired: value.credentialRefRequired ?? value.credential_ref_required ?? false,
   auditEvent: value.auditEvent || value.audit_event || '',
@@ -68,7 +68,7 @@ export function TemplatesSection() {
   }
 
   const rollout = rolloutStrategy => {
-    setBlocked(`PENDING: 统一配置模板页缺少真实 CMDB/主机 Agent 目标选择器，请从主机 Agent 的配置/插件下发抽屉选择真实目标后执行 ${rolloutStrategy}。`)
+    setBlocked(`统一配置模板页缺少真实 CMDB/主机 Agent 目标选择器，请从主机 Agent 的配置/插件下发抽屉选择真实目标后执行 ${rolloutStrategy}。`)
   }
 
   const buildRolloutPayload = rolloutStrategy => ({
@@ -88,7 +88,7 @@ export function TemplatesSection() {
     change_ticket: '<CHANGE_TICKET>',
     remote_mutation: Boolean(selected.pluginConfig?.remoteMutation),
     canary_percent: rolloutStrategy === '灰度下发' ? 10 : 100,
-    target_selector: 'PENDING: 在主机 Agent 抽屉中选择真实目标',
+    target_selector: '在主机 Agent 抽屉中选择真实目标',
   })
 
   const payload = {
@@ -158,7 +158,7 @@ export function TemplatesSection() {
           <Tags items={[
             `格式 ${selected.pluginConfig.configFormat}`,
             `Provider ${(selected.pluginConfig.providerModes || []).join('/')}`,
-            selected.pluginConfig.remoteMutationStatus === 'PENDING' ? '远程修改契约待开放' : '远程修改',
+            selected.pluginConfig.remoteMutationStatus === '' ? '远程修改契约待开放' : '远程修改',
           ]} />
         </>}
         <CopyBlock>{JSON.stringify(payload, null, 2)}</CopyBlock>

@@ -5,7 +5,6 @@ import { AlertRulesSection } from './AlertRulesSection.jsx'
 import { AlertMuteSection } from './AlertMuteSection.jsx'
 import { AlertSubscribeSection } from './AlertSubscribeSection.jsx'
 import { AlertPipelineSection } from './AlertPipelineSection.jsx'
-import { AlertsBlockedSection } from './AlertsBlockedSection.jsx'
 import './alerts.css'
 
 const validSections = new Set(alertSections.map((item) => item.value))
@@ -36,7 +35,6 @@ export function AlertsPage({ query = {}, onNavigate }) {
       {section === 'mutes' && <AlertMuteSection />}
       {section === 'subscriptions' && <AlertSubscribeSection />}
       {section === 'event-pipelines' && <AlertPipelineSection />}
-      {section !== 'rules' && section !== 'events' && section !== 'history-events' && section !== 'mutes' && section !== 'subscriptions' && section !== 'event-pipelines' && <AlertsBlockedSection section={section} />}
     </main>
   )
 }

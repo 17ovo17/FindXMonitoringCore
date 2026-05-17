@@ -174,7 +174,7 @@ export function ServicesSection({ onNavigate }) {
     } catch (err) {
       setRows([])
       const msg = formatTracingError(err)
-      if (msg.startsWith('PENDING')) setBlocked(msg); else setError(msg)
+      setError(msg)
     } finally { setLoading(false) }
   }, [filters.layer, filters.duration])
 

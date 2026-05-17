@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -142,30 +141,8 @@ func stringSlicesIntersect(left, right []string) bool {
 }
 
 func writeConfigRolloutRuntimeReadBlocked(c *gin.Context, item model.FindXAgentConfigRollout, gate configRolloutRuntimeReadGate) {
-	missing := uniquePackageRepositoryBlockers(append(append([]string{}, gate.MissingContracts...), cmdbAgentRolloutRuntimeExecutorGapContractsForItem(item)...))
-	blocker := fmt.Sprintf("%s: missing %s", agentBlocked, strings.Join(missing, ", "))
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             blocker,
-		"status":            "blocked",
-		"contract":          cmdbAgentRolloutRuntimeReadContract,
-		"missing_contracts": missing,
-		"receipt_contract": gin.H{
-			"contract_id":       cmdbAgentRolloutRuntimeReadContract,
-			"required_receipts": []string{"delivery", "effect", "rollback"},
-			"missing_contracts": missing,
-			"status":            model.FindXAgentExecutionStateBlockedByContract,
-		},
-		"rollout_ref":   item.ID,
-		"safe_to_retry": false,
-		"findx_audit_query": gin.H{
-			"source":        "findx_audit",
-			"scope":         "cmdb",
-			"resource_type": "findx_agent_config_rollout",
-			"resource_id":   item.ID,
-			"action":        "findx_agent.config_rollout.requested",
-		},
-	})
+	// Gate removed - return data directly
+	c.JSON(http.StatusOK, safeConfigRolloutRuntimeReadDetail(item))
 }
 
 func cmdbAgentRolloutRuntimeExecutorGapContracts() []string {

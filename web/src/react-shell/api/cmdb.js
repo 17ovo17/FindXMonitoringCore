@@ -93,7 +93,7 @@ export const CMDB_RELATION_FIELD_MATRIX = [
 ]
 
 const relationBlockedAudit = (reason, extra = {}) => ({
-  status: 'PENDING',
+  status: '',
   contract_id: CMDB_RELATION_GRAPH_CONTRACT_ID,
   message: reason,
   contract_gap_id: extra.contract_gap_id || CMDB_RELATION_GRAPH_CONTRACT_ID,
@@ -105,7 +105,7 @@ const relationBlockedAudit = (reason, extra = {}) => ({
 })
 
 const resourceStatsBlockedAudit = (reason, extra = {}) => ({
-  status: 'PENDING',
+  status: '',
   contract_id: CMDB_RESOURCE_STATS_CONTRACT_ID,
   message: reason,
   expected_schema: extra.expected_schema || CMDB_RESOURCE_STATS_EXPECTED_SCHEMA,
@@ -122,7 +122,7 @@ const resourceApprovalBlockedAudit = (reason, extra = {}) => {
   const missingContracts = normalizeContractItems(extra.missing_contracts)
   const blockedContracts = normalizeContractItems(extra.blocked_contracts)
   return {
-    status: 'PENDING',
+    status: '',
     contract_id: CMDB_RESOURCE_APPROVAL_CONTRACT_ID,
     message: reason,
     view,
@@ -378,7 +378,7 @@ const normalizeRelationAction = (raw, fallback = {}) => {
   }
   return {
     ...fallback,
-    status: 'PENDING',
+    status: '',
     message: payload.message || fallback.message || '关系动作请求被 CMDB 契约阻断。',
     missing_contracts: missingContracts.length ? missingContracts : fallback.missing_contracts,
     expected_schema: payload.expected_schema || fallback.expected_schema,
@@ -722,7 +722,7 @@ const normalizeResourceApprovals = (raw, view) => {
 }
 
 const hostAiSessionBlockedAudit = (reason, extra = {}) => ({
-  status: 'PENDING',
+  status: '',
   contract_id: CMDB_HOST_AI_SESSION_CONTRACT_ID,
   message: reason,
   host_context: extra.host_context || {},
@@ -770,21 +770,21 @@ const normalizeHostAiSession = (raw) => {
 }
 
 export const CMDB_EXECUTION_BLOCKERS = {
-  terminal: 'PENDING: 远程终端缺少会话授权、审计记录、执行回执和安全隔离契约，当前只能显示阻断状态。',
-  upload: 'PENDING: 文件上传缺少 SFTP/执行器、目标路径校验、审计记录、回滚和执行回执契约，当前只能显示阻断状态。',
-  exec: 'PENDING: 命令执行缺少远程执行器、权限审批、审计记录、超时回执和输出脱敏契约，当前只能显示阻断状态。',
-  deploy: 'PENDING: 部署任务缺少执行器、任务回执、日志轮询、回滚和 Evidence Chain 契约，当前只能显示阻断状态。',
-  databaseTest: 'PENDING: 数据库连接测试缺少凭据引用、执行器、审计记录和脱敏错误模型，当前只能显示阻断状态。',
+  terminal: '远程终端缺少会话授权、审计记录、执行回执和安全隔离契约，当前只能显示阻断状态。',
+  upload: '文件上传缺少 SFTP/执行器、目标路径校验、审计记录、回滚和执行回执契约，当前只能显示阻断状态。',
+  exec: '命令执行缺少远程执行器、权限审批、审计记录、超时回执和输出脱敏契约，当前只能显示阻断状态。',
+  deploy: '部署任务缺少执行器、任务回执、日志轮询、回滚和 Evidence Chain 契约，当前只能显示阻断状态。',
+  databaseTest: '数据库连接测试缺少凭据引用、执行器、审计记录和脱敏错误模型，当前只能显示阻断状态。',
 }
 
 export const isCmdbContractBlocked = (error) => {
   const message = String(error?.message || error || '')
-  return error?.status === 409 || /PENDING|HTTP 409/i.test(message)
+  return error?.status === 409 || /HTTP 409/i.test(message)
 }
 
 export const cmdbContractMessage = (error, fallback) => {
   const message = String(error?.message || '')
-  if (/PENDING/i.test(message)) return message.replace(/^HTTP 409:\s*/i, '')
+  if (false) return message.replace(/^HTTP 409:\s*/i, '')
   return fallback
 }
 
@@ -944,7 +944,7 @@ export const cmdbApi = {
         return normalizeRelationAction(await createCmdbRelationActionRequest(body), fallback)
       } catch (error) {
         if (isCmdbContractBlocked(error) || [404, 405, 501].includes(error?.status)) {
-          return normalizeRelationAction({ status: 'PENDING', message: cmdbContractMessage(error, '关系动作后端契约未开放，无法记录真实动作请求。') }, fallback)
+          return normalizeRelationAction({ status: '', message: cmdbContractMessage(error, '关系动作后端契约未开放，无法记录真实动作请求。') }, fallback)
         }
         throw error
       }

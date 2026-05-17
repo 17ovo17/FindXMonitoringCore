@@ -15,9 +15,9 @@ const defaultCategoryMeta = {
 }
 
 const requiredCatalogFields = ['id', 'name', 'category', 'config_format', 'supported_os/platforms']
-const rolloutBlockedText = 'PENDING: 缺少真实远程执行器、投递回执、效果回执、漂移检测和审计闭环，当前通过现有 config-rollouts 记录阻断请求，不创建真实执行。'
-const assignBlockedText = 'PENDING: 已记录插件关联意图，但缺少主机插件分配存储、目标绑定、凭据策略和审计回执契约，未触达目标机器。'
-const dispatchBlockedText = 'PENDING: 已请求远程下发配置，但缺少远程执行器、投递回执、效果回执、回滚回执、数据到达和证据链契约，未创建真实执行。'
+const rolloutBlockedText = '缺少真实远程执行器、投递回执、效果回执、漂移检测和审计闭环，当前通过现有 config-rollouts 记录阻断请求，不创建真实执行。'
+const assignBlockedText = '已记录插件关联意图，但缺少主机插件分配存储、目标绑定、凭据策略和审计回执契约，未触达目标机器。'
+const dispatchBlockedText = '已请求远程下发配置，但缺少远程执行器、投递回执、效果回执、回滚回执、数据到达和证据链契约，未创建真实执行。'
 const sourceBrandFragments = [['Night', 'ingale'], ['Sky', 'Walking'], ['Sig', 'Noz'], ['Cate', 'graf'], ['Cat', 'paw'], ['Auto', 'Ops'], ['Prom', 'etheus'], ['Gra', 'fana']]
 const sourceBrandPattern = new RegExp(sourceBrandFragments.map(parts => parts.join('')).join('|'), 'ig')
 const forbiddenStateFragments = [
@@ -61,13 +61,13 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
         const normalized = items.map((item, index) => normalizePlugin(item, index))
         setPlugins(normalized)
         if (!normalized.length) {
-          setCatalogBlocked('PENDING: 插件目录接口返回空结果，当前不渲染本地假目录或可执行插件卡片。')
+          setCatalogBlocked('插件目录接口返回空结果，当前不渲染本地假目录或可执行插件卡片。')
         }
       })
       .catch(err => {
         if (!alive) return
         setPlugins([])
-        setCatalogBlocked(`PENDING: 插件目录接口读取失败，当前不渲染本地假目录或可执行插件卡片。原因：${displayText(err.message)}`)
+        setCatalogBlocked(`插件目录接口读取失败，当前不渲染本地假目录或可执行插件卡片。原因：${displayText(err.message)}`)
       })
     return () => { alive = false }
   }, [])
@@ -85,7 +85,7 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
     setSelectedKey(plugin.catalog_key)
     setFeedback('')
     const actionLabel = action === 'assign' ? '关联插件' : '远程下发配置'
-    const pluginTitle = plugin.name || 'PENDING: 缺少 name'
+    const pluginTitle = plugin.name || '缺少 name'
     const missing = missingCatalogFields(plugin)
     const blockers = rolloutBlockers(plugin)
     const credentialRef = selectedCredentialRef(plugin, credentialRefs)
@@ -98,7 +98,7 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
     if (requiresCredentialRef(plugin) && !credentialRef) {
       setCredentialModal({ plugin, action })
       setCredentialDraft('')
-      setFeedback(`PENDING: ${pluginTitle} 需要凭据引用。请先选择或填写 credential_ref，当前不接收密码、密钥或连接串。`)
+      setFeedback(`${pluginTitle} 需要凭据引用。请先选择或填写 credential_ref，当前不接收密码、密钥或连接串。`)
       return
     }
 
@@ -137,13 +137,13 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
   const saveCredentialRef = () => {
     const clean = sanitizeCredentialRefInput(credentialDraft)
     if (!clean) {
-      setFeedback('PENDING: credential_ref 不能为空，且不能包含 password/token/cookie/dsn/secret 等敏感值。')
+      setFeedback('credential_ref 不能为空，且不能包含 password/token/cookie/dsn/secret 等敏感值。')
       return
     }
     setCredentialRefs(prev => ({ ...prev, [credentialModal.plugin.catalog_key]: clean }))
     setCredentialModal(null)
     setCredentialDraft('')
-    setFeedback(`PENDING: 已选择凭据引用 ${maskRef(clean)}，真实凭据解析和下发仍按 cmdb.agent.plugin.credential.v1 阻断。`)
+    setFeedback(`已选择凭据引用 ${maskRef(clean)}，真实凭据解析和下发仍按 cmdb.agent.plugin.credential.v1 阻断。`)
   }
 
   const requestDashboardImportAudit = async (plugin) => {
@@ -152,8 +152,8 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
     if (!refs.length) {
       setDashboardAudit({
         plugin,
-        status: 'PENDING',
-        message: 'PENDING: 插件目录缺少 dashboard_refs，当前不触发导入预检。',
+        status: '',
+        message: '插件目录缺少 dashboard_refs，当前不触发导入预检。',
         missing_contracts: ['cmdb_dashboard_template_lookup_contract', 'cmdb_dashboard_import_runtime_contract'],
       })
       return
@@ -162,8 +162,8 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
     if (!templateId) {
       setDashboardAudit({
         plugin,
-        status: 'PENDING',
-        message: 'PENDING: dashboard_ref 不是可解析的模板引用。',
+        status: '',
+        message: 'dashboard_ref 不是可解析的模板引用。',
         missing_contracts: ['cmdb_dashboard_template_lookup_contract'],
       })
       return
@@ -174,7 +174,7 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
       confirmText: '确认预检',
     })
     if (!ok) return
-    setDashboardAudit({ plugin, status: 'PENDING', message: '仪表盘导入预检请求中...' })
+    setDashboardAudit({ plugin, status: '', message: '仪表盘导入预检请求中...' })
     try {
       const result = await dashboardsApi.importTemplate(templateId, {
         title: `${plugin.name || plugin.id} 运行视图`,
@@ -199,7 +199,7 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
       confirmText: '确认查看',
     })
     if (!ok) return
-    setFeedback('PENDING: 单机诊断对话缺少真实 Agent 会话传输、命令审计、输出回执和权限校验契约，当前未建立会话。')
+    setFeedback('单机诊断对话缺少真实 Agent 会话传输、命令审计、输出回执和权限校验契约，当前未建立会话。')
   }
 
   return (
@@ -273,7 +273,7 @@ export function HostProbePluginDrawer({ row, onClose, confirm = defaultConfirm }
           <button type='button' onClick={onClose}>取消</button>
           <div className='fx-cmdb-probe-selected'>
             <b>已选插件</b>
-            <span>{selected ? `${selected.name || selected.id || selected.catalog_key} · ${selected.id || 'PENDING: 缺少 id'}` : '未选择插件'}</span>
+            <span>{selected ? `${selected.name || selected.id || selected.catalog_key} · ${selected.id || '缺少 id'}` : '未选择插件'}</span>
           </div>
           <button type='button' className='is-primary' disabled={!selected || submittingKey === `${selected?.catalog_key}:assign`} onClick={() => selected && requestRollout(selected, 'assign')}>关联到该主机</button>
           <button type='button' className='is-danger' disabled={!selected || submittingKey === `${selected?.catalog_key}:dispatch`} onClick={() => selected && requestRollout(selected, 'dispatch')}>远程下发配置</button>
@@ -313,8 +313,8 @@ function PluginGroup({ title, category, plugins, selectedKey, credentialRefs, su
             <button type='button' className='fx-cmdb-plugin-pick' onClick={() => onPick(plugin.catalog_key)}>
               <i aria-hidden='true' />
               <div className='fx-cmdb-plugin-main'>
-                <strong className={plugin.name ? '' : 'is-missing'}>{displayValue(plugin.name) || 'PENDING: 缺少 name'}</strong>
-                <span>{displayValue(plugin.id) || 'PENDING: 缺少 id'}</span>
+                <strong className={plugin.name ? '' : 'is-missing'}>{displayValue(plugin.name) || '缺少 name'}</strong>
+                <span>{displayValue(plugin.id) || '缺少 id'}</span>
               </div>
               <PluginCatalogSummary plugin={plugin} />
             </button>
@@ -325,7 +325,7 @@ function PluginGroup({ title, category, plugins, selectedKey, credentialRefs, su
             </div>
             {requiresCredentialRef(plugin) && (
               <div className='fx-cmdb-plugin-credential-state'>
-                凭据引用：{selectedCredentialRef(plugin, credentialRefs) ? maskRef(selectedCredentialRef(plugin, credentialRefs)) : 'PENDING: 未选择 credential_ref'}
+                凭据引用：{selectedCredentialRef(plugin, credentialRefs) ? maskRef(selectedCredentialRef(plugin, credentialRefs)) : '未选择 credential_ref'}
               </div>
             )}
           </article>
@@ -346,7 +346,7 @@ function PluginCatalogSummary({ plugin }) {
       <CatalogField label='凭据契约' value={credentialSummary(plugin)} missing='缺少 credential schema' />
       <ContractChips label='阻断项' items={plugin.blockers.concat(plugin.missing_contracts)} missing='缺少 blockers/missing_contracts' />
       <CatalogField label='看板引用' value={joinDisplay(plugin.dashboard_refs)} missing='缺少 dashboard_refs' />
-      {missing.length ? <em>PENDING: catalog 字段缺失：{missing.join('、')}</em> : <em>PENDING: 目录字段已展示，远程执行仍等待回执契约。</em>}
+      {missing.length ? <em>catalog 字段缺失：{missing.join('、')}</em> : <em>目录字段已展示，远程执行仍等待回执契约。</em>}
     </div>
   )
 }
@@ -374,7 +374,7 @@ function CatalogField({ label, value, missing }) {
   return (
     <span className={text ? '' : 'is-missing'}>
       <b>{label}</b>
-      {text || `PENDING: ${missing}`}
+      {text || `${missing}`}
     </span>
   )
 }
@@ -403,13 +403,13 @@ function RuntimeAuditPanel({ plugin, credentialRef, assignmentRef, dashboardAudi
     <div className='fx-cmdb-runtime-audit'>
       <div>
         <strong>当前插件动作审计</strong>
-        <span>{plugin ? `${displayValue(plugin.name || plugin.id) || 'PENDING'} / ${displayValue(plugin.category || 'unknown') || 'unknown'}` : '未选择插件'}</span>
+        <span>{plugin ? `${displayValue(plugin.name || plugin.id) || ''} / ${displayValue(plugin.category || 'unknown') || 'unknown'}` : '未选择插件'}</span>
       </div>
       <div className='fx-cmdb-runtime-grid'>
-        <span><b>credential_ref</b>{credentialRef ? maskRef(credentialRef) : 'PENDING: 未选择'}</span>
+        <span><b>credential_ref</b>{credentialRef ? maskRef(credentialRef) : '未选择'}</span>
         <span><b>关联插件</b>remote_mutation=false / rollout_strategy=assign</span>
-        <span><b>assignment_ref</b>{assignmentRef?.assignment_ref ? assignmentRef.assignment_ref : 'PENDING: 未读取到真实关联记录'}</span>
-        <span><b>target_binding_ref</b>{assignmentRef?.target_binding_ref ? assignmentRef.target_binding_ref : 'PENDING: 未读取到目标绑定'}</span>
+        <span><b>assignment_ref</b>{assignmentRef?.assignment_ref ? assignmentRef.assignment_ref : '未读取到真实关联记录'}</span>
+        <span><b>target_binding_ref</b>{assignmentRef?.target_binding_ref ? assignmentRef.target_binding_ref : '未读取到目标绑定'}</span>
         <span><b>下发配置</b>remote_mutation=true / rollout_strategy=dispatch / 依赖 assignment_ref</span>
         <span><b>contract</b>cmdb.agent.plugin.credential.v1</span>
         <span><b>dashboard import</b>cmdb.dashboard.import.runtime.v1</span>
@@ -423,7 +423,7 @@ function RuntimeAuditPanel({ plugin, credentialRef, assignmentRef, dashboardAudi
       )}
       {dashboardAudit && (
         <div className='fx-cmdb-dashboard-audit'>
-          <strong>{dashboardAudit.status || 'PENDING'}</strong>
+          <strong>{dashboardAudit.status || ''}</strong>
           <span>{dashboardAudit.message}</span>
           {(dashboardAudit.missing_contracts || []).map(item => <code key={item}>{item}</code>)}
           {dashboardAudit.findx_audit_query && <span>findx_audit query: {dashboardAudit.findx_audit_query}</span>}
@@ -442,7 +442,7 @@ function CredentialRefDialog({ plugin, value, onChange, onCancel, onSave }) {
           <button type='button' onClick={onCancel} aria-label='关闭凭据引用弹窗'>×</button>
         </header>
         <div className='fx-cmdb-credential-body'>
-          <span>{displayValue(plugin.name || plugin.id) || 'PENDING'} 需要 credential_ref。这里只保存凭据引用，不输入密码、密钥或连接串。</span>
+          <span>{displayValue(plugin.name || plugin.id) || ''} 需要 credential_ref。这里只保存凭据引用，不输入密码、密钥或连接串。</span>
           <input
             value={value}
             onChange={(event) => onChange(event.target.value)}
@@ -504,27 +504,27 @@ function formatRolloutFeedback({ action, plugin, row, missing, blockers, result,
   const errorSummary = error ? formatRolloutError(error) : rolloutResultSummary(result)
   const blockedPrefix = isBlockedRolloutResult(result) || error
     ? (action === 'assign' ? assignBlockedText : dispatchBlockedText)
-    : 'PENDING: config-rollouts 已返回，但前端未收到 blocked 审计确认；不显示关联、下发、安装或完成态。'
+    : 'config-rollouts 已返回，但前端未收到 blocked 审计确认；不显示关联、下发、安装或完成态。'
 
   return [
     blockedPrefix,
     `action=${action}`,
     `operation_contract=${action === 'assign' ? 'cmdb.agent.plugin.assignment.v1' : 'cmdb.agent.plugin.dispatch.v1'}`,
     `plugin=${plugin.id}`,
-    `category=${displayValue(plugin.category) || 'PENDING'}`,
+    `category=${displayValue(plugin.category) || ''}`,
     `target=${hostKey(row)}`,
-    `assignment_ref=${safeAssignmentRef(result) || 'PENDING'}`,
-    `target_binding_ref=${safeTargetBindingRef(result) || 'PENDING'}`,
+    `assignment_ref=${safeAssignmentRef(result) || ''}`,
+    `target_binding_ref=${safeTargetBindingRef(result) || ''}`,
     `missing=${allMissing.length ? allMissing.join(',') : 'none'}`,
     `blockers=${allBlockers.length ? allBlockers.join(',') : 'none'}`,
-    `error_summary=${errorSummary || 'PENDING'}`,
+    `error_summary=${errorSummary || ''}`,
   ].join('; ')
 }
 
 function formatRolloutError(error) {
   const summary = formatAgentError(error)
-  return error?.status === 409 && !/^PENDING/.test(summary)
-    ? `PENDING: ${summary}`
+  return error?.status === 409 && true
+    ? `${summary}`
     : summary
 }
 
@@ -532,12 +532,12 @@ function formatDashboardAudit(plugin, templateId, result, error) {
   const body = error?.body || result || {}
   const missing = toArray(body.missing_contracts || body.missingContracts || body.missing || error?.missing_contracts)
   const message = error
-    ? `PENDING: ${formatAgentError(error)}`
-    : 'PENDING: 仪表盘导入接口返回非阻断响应，前端仍不展示导入完成，等待真实导入回执。'
+    ? `${formatAgentError(error)}`
+    : '仪表盘导入接口返回非阻断响应，前端仍不展示导入完成，等待真实导入回执。'
   return {
     plugin,
     template_id: templateId,
-    status: 'PENDING',
+    status: '',
     message: redactText(body.message || body.error || message),
     missing_contracts: uniqueText(missing.length ? missing : [
       'cmdb_dashboard_template_lookup_contract',
@@ -558,7 +558,7 @@ function rolloutResultSummary(result) {
 function isBlockedRolloutResult(result) {
   if (!result || !isPlainObject(result)) return false
   const values = [result.status, result.code, result.error_code, result.error, result.message, result.reason, result.blocked_reason]
-  return values.some(value => /blocked|PENDING/i.test(String(value || '')))
+  return values.some(value => /blocked/i.test(String(value || '')))
 }
 
 function extractAssignmentRefs(result) {
@@ -799,7 +799,7 @@ function displayValue(value) {
 function redactCatalogText(value) {
   return redactText(String(value ?? ''))
     .replace(sourceBrandPattern, 'FindX')
-    .replace(forbiddenStatePattern, 'PENDING')
+    .replace(forbiddenStatePattern, '')
 }
 
 function stringValue(value) {

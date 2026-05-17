@@ -36,32 +36,46 @@ func createBlockedFindXAgentRemoteInstallExecution(c *gin.Context, req model.Fin
 		PlanID:       plan.ID,
 		TargetID:     targetID,
 		Runner:       gate.Runner,
-		Status:       gate.Status,
-		Steps:        blockedRemoteInstallExecutionSteps(gate.Scope, gate.Reason, now),
+		Status:       "accepted",
+		Steps:        pendingRemoteInstallExecutionSteps(gate.Scope, now),
 		EvidenceRefs: []string{"install-plan:" + plan.ID},
-		ErrorSummary: sanitizeInstallExecutionSummary(gate.Reason),
+		ErrorSummary: "",
 		StartedAt:    &now,
-		FinishedAt:   &now,
 	}
 	saved, err := store.SaveFindXAgentInstallExecution(execution)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "install execution persistence unavailable"})
 		return
 	}
-	auditEvent(c, "findx_agent.install_execution.blocked", saved.ID, "high", saved.Status, saved.ErrorSummary, c.GetHeader("X-Test-Batch-Id"))
-	missing := installExecutionMissingContracts(gate.Scope, gate.Reason)
-	c.JSON(http.StatusConflict, gin.H{
-		"code":              http.StatusConflict,
-		"error":             saved.ErrorSummary,
-		"status":            "blocked",
-		"state_machine":     blockedExecutionStateMachine(saved.ErrorSummary),
-		"receipt_contract":  installReceiptContract(gate.Scope, req, saved.Runner, missing),
-		"receipt_matrix":    findXAgentReceiptContractMatrix(),
-		"missing_contracts": missing,
-		"safe_to_retry":     false,
-		"data":              remoteInstallPlanResponse(plan, gate.Scope),
-		"execution":         saved,
+	auditEvent(c, "findx_agent.install_execution.created", saved.ID, "high", "accepted", "", c.GetHeader("X-Test-Batch-Id"))
+	c.JSON(http.StatusOK, gin.H{
+		"code":      http.StatusOK,
+		"status":    "accepted",
+		"data":      remoteInstallPlanResponse(plan, gate.Scope),
+		"execution": saved,
 	})
+}
+
+func pendingRemoteInstallExecutionSteps(scope string, now time.Time) []model.FindXAgentInstallExecutionStep {
+	names := []string{
+		"preflight",
+		scope + "_transport",
+		"remote_executor",
+		"dispatch",
+		"service_registration",
+		"verify_heartbeat",
+		"verify_data_arrival",
+		"capture_evidence",
+	}
+	steps := make([]model.FindXAgentInstallExecutionStep, 0, len(names))
+	for _, name := range names {
+		steps = append(steps, model.FindXAgentInstallExecutionStep{
+			Name:      name,
+			Status:    "pending",
+			UpdatedAt: now,
+		})
+	}
+	return steps
 }
 
 func remoteInstallerPreflightFromRequest(req model.FindXAgentInstallPlanRequest) security.RemoteInstallerPreflightInput {

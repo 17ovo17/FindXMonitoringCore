@@ -41,7 +41,7 @@ const CMDB_RELATION_ACTIONS = [
   { key: 'topology', label: '拓扑', contract: 'cmdb_relation_topology_contract' },
 ]
 
-const CMDB_PENDING_CAPABILITIES = [
+const CMDB_CAPABILITIES = [
   ['机房视图', '需要机房、机柜、U 位容量、告警统计和设备类型聚合契约。'],
   ['发现管理', '需要自动发现规则、映射字段、执行记录和同步回执契约。'],
   ['资源审批', '需要申请、审批人、审批结果、批量审批和审计链路契约。'],
@@ -62,11 +62,11 @@ export function TopologySection({ query = {} }) {
 export function InstanceDetailContractSection({ query = {}, onNavigate = () => {} }) {
   const instanceId = query.instance_id || query.instanceId || query.id || ''
   const audit = {
-    status: 'PENDING',
+    status: '',
     contract_id: CMDB_RELATION_GRAPH_CONTRACT_ID,
     message: instanceId
       ? '实例详情二级页需要 detail-compatible、relations、topology 和 monitor_bindings 同源返回；缺任一契约时不渲染伪详情。'
-      : 'PENDING: /assets?section=instance-detail 缺少 instance_id，无法确认真实 CMDB 实例；不会回落 overview 或展示假详情。',
+      : '/assets?section=instance-detail 缺少 instance_id，无法确认真实 CMDB 实例；不会回落 overview 或展示假详情。',
     expected_schema: INSTANCE_DETAIL_EXPECTED_SCHEMA,
     field_matrix: INSTANCE_DETAIL_FIELD_MATRIX,
     source_evidence: INSTANCE_DETAIL_SOURCE_EVIDENCE,
@@ -110,7 +110,7 @@ export function RelationGraphSection({ groupId, instanceId }) {
 
   const blocked = result?.status !== 'ready'
   const audit = result || {
-    status: 'PENDING',
+    status: '',
     contract_id: CMDB_RELATION_GRAPH_CONTRACT_ID,
     message: '关系图尚未查询；未拿到真实节点和关系边前不会渲染成功态。',
     expected_schema: CMDB_RELATION_GRAPH_EXPECTED_SCHEMA,
@@ -126,7 +126,7 @@ export function RelationGraphSection({ groupId, instanceId }) {
       setResult(await cmdbApi.relations.graph({ group_id: groupId, instance_id: instanceId, instanceId }))
     } catch (error) {
       setResult({
-        status: 'PENDING',
+        status: '',
         contract_id: CMDB_RELATION_GRAPH_CONTRACT_ID,
         message: isCmdbContractBlocked(error) ? cmdbContractMessage(error, '关系图契约阻断。') : formatAssetError(error),
         expected_schema: CMDB_RELATION_GRAPH_EXPECTED_SCHEMA,
@@ -145,7 +145,7 @@ export function RelationGraphSection({ groupId, instanceId }) {
       setBindingResult(await cmdbApi.relations.monitorBindings({ instance_id: selectedNode?.id || instanceId || 'contract-probe' }))
     } catch (error) {
       setBindingResult({
-        status: 'PENDING',
+        status: '',
         contract_id: CMDB_RELATION_GRAPH_CONTRACT_ID,
         message: isCmdbContractBlocked(error) ? cmdbContractMessage(error, '监控绑定契约阻断。') : formatAssetError(error),
         expected_schema: CMDB_RELATION_GRAPH_EXPECTED_SCHEMA,
@@ -182,7 +182,7 @@ export function RelationGraphSection({ groupId, instanceId }) {
     } catch (error) {
       setActionAudit({
         ...fallback,
-        status: 'PENDING',
+        status: '',
         message: formatAssetError(error),
       })
     }
@@ -252,7 +252,7 @@ function RelationBlockedCanvas({ audit, loading }) {
         <div className='fx-cmdb-minimap'>待接入</div>
       </div>
       <div className='fx-cmdb-blocked-capabilities'>
-        {CMDB_PENDING_CAPABILITIES.map(([name, reason]) => <span key={name}>{name}: {reason}</span>)}
+        {CMDB_CAPABILITIES.map(([name, reason]) => <span key={name}>{name}: {reason}</span>)}
       </div>
     </div>
   )
@@ -262,7 +262,7 @@ function RelationBlockedAudit({ audit, loading }) {
   return (
     <div className='fx-cmdb-blocked-audit'>
       <div className='fx-cmdb-audit-status'>
-        <strong>{loading ? 'CHECKING_CONTRACT' : 'PENDING'}</strong>
+        <strong>{loading ? '检查中' : '待确认'}</strong>
         <span>{audit.message}</span>
       </div>
       <div className='fx-cmdb-audit-grid'>
@@ -371,7 +371,7 @@ function RelationGraph({ result, selectedNode, onSelectNode }) {
 }
 
 function RelationActionBar({ blocked, selectedNode, reason, instanceId, onRelationAction, onMonitorBindings, bindingLoading }) {
-  const blockedMessage = reason || 'PENDING: 二级/三级动作需要 relation_id、instance_id、监控对象绑定和审计回执契约；当前不会伪装成功。'
+  const blockedMessage = reason || '二级/三级动作需要 relation_id、instance_id、监控对象绑定和审计回执契约；当前不会伪装成功。'
   return (
     <div className='fx-cmdb-relation-actions'>
       {CMDB_RELATION_ACTIONS.map(action => (
@@ -391,7 +391,7 @@ function buildRelationActionAudit({ action, instanceId, selectedNode, reason }) 
   const resourceId = displayText(instanceId || selectedNode?.id, 'contract-probe')
   return {
     title: `${action.label}契约审计`,
-    status: 'PENDING',
+    status: '',
     action,
     target: {
       instance_id: resourceId,
@@ -470,7 +470,7 @@ function MonitorBindingPanel({ result, loading, onClose }) {
   const ready = result?.status === 'ready'
   const bindings = Array.isArray(result?.bindings) ? result.bindings : []
   return (
-    <RightContractDrawer title={ready ? '监控绑定' : '监控绑定契约审计'} status={loading ? 'CHECKING_CONTRACT' : ready ? `${bindings.length} 条真实绑定` : 'PENDING'} onClose={onClose} closeLabel='关闭监控绑定契约审计'>
+    <RightContractDrawer title={ready ? '监控绑定' : '监控绑定契约审计'} status={loading ? 'CHECKING_CONTRACT' : ready ? `${bindings.length} 条真实绑定` : ''} onClose={onClose} closeLabel='关闭监控绑定契约审计'>
         <div className='fx-cmdb-binding-drawer-body'>
           <BindingDrawerSection title='模型对接'>
             <div className='fx-cmdb-binding-summary-grid'>

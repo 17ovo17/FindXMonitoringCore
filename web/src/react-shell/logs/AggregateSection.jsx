@@ -54,7 +54,7 @@ export function AggregateSection() {
       {buckets.length ? (
         <div className='fx-logs-table'><table><thead><tr><th>分组</th><th>计数</th><th>来源</th></tr></thead><tbody>{buckets.map(bucket => <tr key={bucket.key}><td>{bucket.label || bucket.key}</td><td>{bucket.count}</td><td>{meta?.source_name || 'FindX 审计日志'}</td></tr>)}</tbody></table></div>
       ) : (
-        <Empty>{source === 'findx_audit' && !blocked ? '暂无可聚合的 FindX 审计日志。' : '通用生产日志聚合仍为 PENDING，未绘制静态趋势图。'}</Empty>
+        <Empty>{source === 'findx_audit' && !blocked ? '暂无可聚合的 FindX 审计日志。' : '通用生产日志聚合仍待接入，未绘制静态趋势图。'}</Empty>
       )}
       <JsonPreview value={{
         source,

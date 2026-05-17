@@ -36,7 +36,7 @@ export function Modal({ title, children, onClose }) {
 }
 
 export function Blocked({ children }) {
-  return <div className='fx-org-blocked'><strong>PENDING</strong><span>{children}</span></div>
+  return <div className='fx-org-blocked'><strong></strong><span>{children}</span></div>
 }
 
 export function Field({ label, children }) {
