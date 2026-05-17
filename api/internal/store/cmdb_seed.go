@@ -57,6 +57,16 @@ func seedModels() {
 		{ID: "obj-stor", Name: "存储设备", CategoryID: "cat-storage", Icon: "hdd", ObjectType: 401},
 		{ID: "obj-room", Name: "机房", CategoryID: "cat-dc", Icon: "building", ObjectType: 501},
 		{ID: "obj-rack", Name: "机柜", CategoryID: "cat-dc", Icon: "cabinet", ObjectType: 501},
+		// LWOPS 对齐 12 类资源模型
+		{ID: "obj-db", Name: "数据库", CategoryID: "cat-system", Icon: "database", ObjectType: 102},
+		{ID: "obj-middleware", Name: "中间件", CategoryID: "cat-system", Icon: "gateway", ObjectType: 103},
+		{ID: "obj-network", Name: "网络设备", CategoryID: "cat-network", Icon: "router", ObjectType: 301},
+		{ID: "obj-storage", Name: "存储", CategoryID: "cat-storage", Icon: "hdd", ObjectType: 401},
+		{ID: "obj-link", Name: "链路", CategoryID: "cat-network", Icon: "link", ObjectType: 301},
+		{ID: "obj-probe", Name: "探测", CategoryID: "cat-system", Icon: "radar", ObjectType: 101},
+		{ID: "obj-cloud", Name: "云平台", CategoryID: "cat-compute", Icon: "cloud-server", ObjectType: 101},
+		{ID: "obj-container", Name: "容器", CategoryID: "cat-compute", Icon: "docker", ObjectType: 101},
+		{ID: "obj-iot", Name: "物联网", CategoryID: "cat-compute", Icon: "sensor", ObjectType: 101},
 	}
 	for i := range models {
 		GetDB().Create(&models[i])
@@ -97,6 +107,80 @@ func seedOSAttributes() {
 		{ID: "attr-os-30", ObjectID: "obj-os", Label: "数据到达时间", Attr: "data_arrival_at", ValueType: "char", Tag: "Agent", Discovery: true, Sort: 30},
 		{ID: "attr-os-31", ObjectID: "obj-os", Label: "探针状态", Attr: "agent_status", ValueType: "enum", Tag: "Agent", Discovery: true, Sort: 31, Options: `["在线","离线","未安装"]`},
 		{ID: "attr-os-32", ObjectID: "obj-os", Label: "备注", Attr: "remark", ValueType: "char", Tag: "自定义", Sort: 32},
+	}
+	for i := range attrs {
+		GetDB().Create(&attrs[i])
+	}
+	seedLwopsModelAttributes()
+}
+
+func seedLwopsModelAttributes() {
+	attrs := []model.CmdbAttribute{
+		// 数据库
+		{ID: "attr-db-01", ObjectID: "obj-db", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-db-02", ObjectID: "obj-db", Label: "IP地址", Attr: "ip_address", ValueType: "ip", Tag: "基本信息", Required: true, Discovery: true, Sort: 2},
+		{ID: "attr-db-03", ObjectID: "obj-db", Label: "数据库类型", Attr: "db_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 3, Options: `["MySQL","PostgreSQL","Redis","MongoDB","Oracle","SQLServer"]`},
+		{ID: "attr-db-04", ObjectID: "obj-db", Label: "版本", Attr: "version", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 4},
+		{ID: "attr-db-05", ObjectID: "obj-db", Label: "端口", Attr: "port", ValueType: "int", Tag: "基本信息", Required: true, Sort: 5},
+		{ID: "attr-db-06", ObjectID: "obj-db", Label: "最大连接数", Attr: "max_connections", ValueType: "int", Tag: "性能", Discovery: true, Sort: 6},
+		{ID: "attr-db-07", ObjectID: "obj-db", Label: "数据大小", Attr: "data_size", ValueType: "float", Tag: "性能", Unit: "GB", Discovery: true, Sort: 7},
+		{ID: "attr-db-08", ObjectID: "obj-db", Label: "复制角色", Attr: "replication_role", ValueType: "enum", Tag: "高可用", Discovery: true, Sort: 8, Options: `["主","从","单机"]`},
+		// 中间件
+		{ID: "attr-mw-01", ObjectID: "obj-middleware", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-mw-02", ObjectID: "obj-middleware", Label: "IP地址", Attr: "ip_address", ValueType: "ip", Tag: "基本信息", Required: true, Discovery: true, Sort: 2},
+		{ID: "attr-mw-03", ObjectID: "obj-middleware", Label: "中间件类型", Attr: "mw_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 3, Options: `["Nginx","Tomcat","Kafka","RabbitMQ","Zookeeper","Nacos"]`},
+		{ID: "attr-mw-04", ObjectID: "obj-middleware", Label: "版本", Attr: "version", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 4},
+		{ID: "attr-mw-05", ObjectID: "obj-middleware", Label: "端口", Attr: "port", ValueType: "int", Tag: "基本信息", Required: true, Sort: 5},
+		{ID: "attr-mw-06", ObjectID: "obj-middleware", Label: "配置路径", Attr: "config_path", ValueType: "char", Tag: "运维", Sort: 6},
+		{ID: "attr-mw-07", ObjectID: "obj-middleware", Label: "进程名", Attr: "process_name", ValueType: "char", Tag: "运维", Discovery: true, Sort: 7},
+		// 网络设备
+		{ID: "attr-net-01", ObjectID: "obj-network", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-net-02", ObjectID: "obj-network", Label: "管理IP", Attr: "management_ip", ValueType: "ip", Tag: "基本信息", Required: true, Discovery: true, Sort: 2},
+		{ID: "attr-net-03", ObjectID: "obj-network", Label: "设备类型", Attr: "device_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 3, Options: `["交换机","路由器","防火墙","负载均衡"]`},
+		{ID: "attr-net-04", ObjectID: "obj-network", Label: "固件版本", Attr: "firmware", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 4},
+		{ID: "attr-net-05", ObjectID: "obj-network", Label: "端口数量", Attr: "ports_count", ValueType: "int", Tag: "基本信息", Discovery: true, Sort: 5},
+		{ID: "attr-net-06", ObjectID: "obj-network", Label: "厂商", Attr: "vendor", ValueType: "char", Tag: "基本信息", Sort: 6},
+		// 存储
+		{ID: "attr-sto-01", ObjectID: "obj-storage", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-sto-02", ObjectID: "obj-storage", Label: "IP地址", Attr: "ip_address", ValueType: "ip", Tag: "基本信息", Required: true, Discovery: true, Sort: 2},
+		{ID: "attr-sto-03", ObjectID: "obj-storage", Label: "存储类型", Attr: "storage_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 3, Options: `["SAN","NAS","对象存储","分布式"]`},
+		{ID: "attr-sto-04", ObjectID: "obj-storage", Label: "总容量", Attr: "capacity", ValueType: "float", Tag: "容量", Unit: "TB", Required: true, Sort: 4},
+		{ID: "attr-sto-05", ObjectID: "obj-storage", Label: "使用率", Attr: "used_percent", ValueType: "float", Tag: "容量", Unit: "%", Discovery: true, Sort: 5},
+		{ID: "attr-sto-06", ObjectID: "obj-storage", Label: "协议", Attr: "protocol", ValueType: "char", Tag: "基本信息", Sort: 6},
+		// 链路
+		{ID: "attr-lnk-01", ObjectID: "obj-link", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-lnk-02", ObjectID: "obj-link", Label: "链路类型", Attr: "link_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 2, Options: `["专线","VPN","互联网","内网"]`},
+		{ID: "attr-lnk-03", ObjectID: "obj-link", Label: "带宽", Attr: "bandwidth", ValueType: "char", Tag: "基本信息", Required: true, Sort: 3},
+		{ID: "attr-lnk-04", ObjectID: "obj-link", Label: "运营商", Attr: "provider", ValueType: "char", Tag: "基本信息", Sort: 4},
+		{ID: "attr-lnk-05", ObjectID: "obj-link", Label: "源端点", Attr: "source_endpoint", ValueType: "char", Tag: "拓扑", Sort: 5},
+		{ID: "attr-lnk-06", ObjectID: "obj-link", Label: "目标端点", Attr: "target_endpoint", ValueType: "char", Tag: "拓扑", Sort: 6},
+		// 探测
+		{ID: "attr-prb-01", ObjectID: "obj-probe", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-prb-02", ObjectID: "obj-probe", Label: "探测类型", Attr: "probe_type", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 2, Options: `["HTTP","TCP","ICMP","DNS","SSL"]`},
+		{ID: "attr-prb-03", ObjectID: "obj-probe", Label: "目标地址", Attr: "target_url", ValueType: "char", Tag: "基本信息", Required: true, Sort: 3},
+		{ID: "attr-prb-04", ObjectID: "obj-probe", Label: "检测间隔", Attr: "interval", ValueType: "int", Tag: "策略", Unit: "s", Sort: 4},
+		{ID: "attr-prb-05", ObjectID: "obj-probe", Label: "超时时间", Attr: "timeout", ValueType: "int", Tag: "策略", Unit: "s", Sort: 5},
+		// 云平台
+		{ID: "attr-cld-01", ObjectID: "obj-cloud", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-cld-02", ObjectID: "obj-cloud", Label: "云厂商", Attr: "cloud_provider", ValueType: "enum", Tag: "基本信息", Required: true, Sort: 2, Options: `["阿里云","腾讯云","华为云","AWS","Azure"]`},
+		{ID: "attr-cld-03", ObjectID: "obj-cloud", Label: "区域", Attr: "region", ValueType: "char", Tag: "基本信息", Required: true, Sort: 3},
+		{ID: "attr-cld-04", ObjectID: "obj-cloud", Label: "实例类型", Attr: "instance_type", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 4},
+		{ID: "attr-cld-05", ObjectID: "obj-cloud", Label: "账号ID", Attr: "account_id", ValueType: "char", Tag: "基本信息", Sort: 5},
+		{ID: "attr-cld-06", ObjectID: "obj-cloud", Label: "公网IP", Attr: "public_ip", ValueType: "ip", Tag: "网络", Discovery: true, Sort: 6},
+		// 容器
+		{ID: "attr-ctn-01", ObjectID: "obj-container", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-ctn-02", ObjectID: "obj-container", Label: "集群", Attr: "cluster", ValueType: "char", Tag: "基本信息", Required: true, Sort: 2},
+		{ID: "attr-ctn-03", ObjectID: "obj-container", Label: "命名空间", Attr: "namespace", ValueType: "char", Tag: "基本信息", Required: true, Sort: 3},
+		{ID: "attr-ctn-04", ObjectID: "obj-container", Label: "Pod名称", Attr: "pod_name", ValueType: "char", Tag: "运行时", Discovery: true, Sort: 4},
+		{ID: "attr-ctn-05", ObjectID: "obj-container", Label: "镜像", Attr: "image", ValueType: "char", Tag: "运行时", Discovery: true, Sort: 5},
+		{ID: "attr-ctn-06", ObjectID: "obj-container", Label: "副本数", Attr: "replicas", ValueType: "int", Tag: "运行时", Discovery: true, Sort: 6},
+		// 物联网
+		{ID: "attr-iot-01", ObjectID: "obj-iot", Label: "名称", Attr: "name", ValueType: "char", Tag: "基本信息", Required: true, Sort: 1},
+		{ID: "attr-iot-02", ObjectID: "obj-iot", Label: "设备型号", Attr: "device_model", ValueType: "char", Tag: "基本信息", Required: true, Sort: 2},
+		{ID: "attr-iot-03", ObjectID: "obj-iot", Label: "固件版本", Attr: "firmware_version", ValueType: "char", Tag: "基本信息", Discovery: true, Sort: 3},
+		{ID: "attr-iot-04", ObjectID: "obj-iot", Label: "协议", Attr: "protocol", ValueType: "enum", Tag: "通信", Sort: 4, Options: `["MQTT","CoAP","HTTP","Modbus"]`},
+		{ID: "attr-iot-05", ObjectID: "obj-iot", Label: "网关IP", Attr: "gateway_ip", ValueType: "ip", Tag: "通信", Sort: 5},
+		{ID: "attr-iot-06", ObjectID: "obj-iot", Label: "在线状态", Attr: "online_status", ValueType: "enum", Tag: "状态", Discovery: true, Sort: 6, Options: `["在线","离线","休眠"]`},
 	}
 	for i := range attrs {
 		GetDB().Create(&attrs[i])

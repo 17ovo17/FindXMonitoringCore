@@ -38,24 +38,110 @@ function TagsTab({ span, onAddToFilter }) {
 
 function LogsTab({ span }) {
   const logs = span.raw?.logs || []
+  const [levelFilter, setLevelFilter] = useState('')
+  const [expandedIdx, setExpandedIdx] = useState({})
+
   if (!logs.length) return <Empty>暂无 Span 日志</Empty>
+
+  const LEVELS = ['error', 'warn', 'info']
+
+  const getLogLevel = (log) => {
+    const data = log.data || []
+    const levelEntry = data.find(d => d.key === 'level' || d.key === 'severity' || d.key === 'log.level')
+    if (levelEntry) return String(levelEntry.value || '').toLowerCase()
+    const hasError = data.some(d => d.key === 'error.kind' || d.key === 'error' || d.key === 'exception')
+    if (hasError) return 'error'
+    return 'info'
+  }
+
+  const filtered = levelFilter
+    ? logs.filter(log => getLogLevel(log) === levelFilter)
+    : logs
+
+  const toggleExpand = (idx) => {
+    setExpandedIdx(prev => ({ ...prev, [idx]: !prev[idx] }))
+  }
+
+  const tryParseJson = (value) => {
+    if (!value || typeof value !== 'string') return null
+    const trimmed = value.trim()
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try { return JSON.parse(trimmed) } catch (_) { return null }
+    }
+    return null
+  }
+
   return (
-    <table>
-      <thead><tr><th>时间</th><th>内容</th></tr></thead>
-      <tbody>
-        {logs.map((log, idx) => (
-          <tr key={idx}>
-            <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(log.time || log.timestamp)}</td>
-            <td style={{ wordBreak: 'break-all' }}>
-              {(log.data || []).map((d, i) => (
-                <div key={i}><strong>{displayText(d.key)}</strong>: {displayText(d.value)}</div>
-              ))}
-              {!log.data && displayText(log.message || JSON.stringify(log))}
-            </td>
-          </tr>
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <button
+          type='button'
+          style={{ fontSize: 11, padding: '2px 10px', border: '1px solid var(--fx-border)', borderRadius: 4, background: !levelFilter ? 'var(--fx-primary, #1769ff)' : '#fff', color: !levelFilter ? '#fff' : 'inherit', cursor: 'pointer' }}
+          onClick={() => setLevelFilter('')}
+        >
+          全部
+        </button>
+        {LEVELS.map(lv => (
+          <button
+            key={lv}
+            type='button'
+            style={{ fontSize: 11, padding: '2px 10px', border: '1px solid var(--fx-border)', borderRadius: 4, background: levelFilter === lv ? 'var(--fx-primary, #1769ff)' : '#fff', color: levelFilter === lv ? '#fff' : 'inherit', cursor: 'pointer' }}
+            onClick={() => setLevelFilter(lv === levelFilter ? '' : lv)}
+          >
+            {lv.toUpperCase()}
+          </button>
         ))}
-      </tbody>
-    </table>
+        <span style={{ fontSize: 11, color: 'var(--fx-muted)', marginLeft: 8, alignSelf: 'center' }}>
+          {filtered.length}/{logs.length} 条
+        </span>
+      </div>
+      <table>
+        <thead><tr><th style={{ width: 140 }}>时间</th><th>级别</th><th>内容</th><th style={{ width: 40 }}></th></tr></thead>
+        <tbody>
+          {filtered.map((log, idx) => {
+            const level = getLogLevel(log)
+            const isExpanded = expandedIdx[idx]
+            const logContent = (log.data || []).map(d => `${d.key}: ${d.value}`).join('\n') || log.message || JSON.stringify(log)
+            const jsonParsed = tryParseJson(log.message || (log.data?.length === 1 ? log.data[0].value : null))
+
+            return (
+              <React.Fragment key={idx}>
+                <tr style={{ cursor: 'pointer' }} onClick={() => toggleExpand(idx)}>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: 11 }}>{fmtTime(log.time || log.timestamp)}</td>
+                  <td>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: level === 'error' ? '#fff1f0' : level === 'warn' ? '#fffbe6' : '#f0f5ff', color: level === 'error' ? '#cf1322' : level === 'warn' ? '#d4a017' : '#1769ff' }}>
+                      {level.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ wordBreak: 'break-all', fontSize: 12 }}>
+                    {(log.data || []).slice(0, 2).map((d, i) => (
+                      <span key={i}><strong>{displayText(d.key)}</strong>: {displayText(String(d.value || '').slice(0, 80))}{i < 1 && log.data.length > 1 ? ' | ' : ''}</span>
+                    ))}
+                    {!log.data && displayText((log.message || '').slice(0, 100))}
+                  </td>
+                  <td style={{ textAlign: 'center', fontSize: 10 }}>{isExpanded ? '▼' : '▶'}</td>
+                </tr>
+                {isExpanded && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '8px 12px', background: 'var(--fx-bg-subtle, #f8fbff)' }}>
+                      {jsonParsed ? (
+                        <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, Consolas, monospace' }}>
+                          {JSON.stringify(jsonParsed, null, 2)}
+                        </pre>
+                      ) : (
+                        <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, Consolas, monospace' }}>
+                          {logContent}
+                        </pre>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 function RefsTab({ span }) {

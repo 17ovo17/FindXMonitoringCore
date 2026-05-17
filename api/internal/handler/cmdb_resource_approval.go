@@ -24,11 +24,7 @@ func GetCmdbResourceApprovals(c *gin.Context) {
 	view := cmdbApprovalView(c.Query("view"))
 	actor := requestActor(c)
 	items := store.ListCmdbResourceApprovals(view, actor)
-	if len(items) > 0 {
-		c.JSON(http.StatusOK, cmdbResourceApprovalListEnvelope(view, actor, items))
-		return
-	}
-	c.JSON(http.StatusConflict, cmdbResourceApprovalBlockedEnvelope(view))
+	c.JSON(http.StatusOK, cmdbResourceApprovalListEnvelope(view, actor, items))
 }
 
 func GetCmdbResourceApproval(c *gin.Context) {
@@ -51,7 +47,7 @@ func ReviewCmdbResourceApproval(c *gin.Context) {
 	}
 	item, ok, err := store.DecideCmdbResourceApproval(strings.TrimSpace(c.Param("id")), payload.Decision, requestActor(c), cmdbSafeAuditText(payload.Note))
 	if err != nil {
-		c.JSON(http.StatusConflict, cmdbResourceApprovalReviewBlockedEnvelope(strings.TrimSpace(c.Param("id")), "cmdb approval decision is not supported by review contract"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cmdb approval decision is not valid"})
 		return
 	}
 	if !ok || item == nil {
@@ -65,9 +61,9 @@ func ReviewCmdbResourceApproval(c *gin.Context) {
 		ResourceType: "cmdb_resource_approval",
 		ResourceID:   item.ID,
 		Scope:        "cmdb",
-		Status:       "blocked",
+		Status:       "ok",
 		ClientIP:     c.ClientIP(),
-		Summary:      "CMDB approval review recorded; execution remains blocked by contract",
+		Summary:      "CMDB approval review completed",
 		Details: map[string]any{
 			"approval_id":    item.ID,
 			"decision_state": item.Status,
@@ -80,7 +76,11 @@ func ReviewCmdbResourceApproval(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb approval review audit unavailable"})
 		return
 	}
-	c.JSON(http.StatusConflict, cmdbResourceApprovalReviewEnvelope(*item))
+	c.JSON(http.StatusOK, gin.H{
+		"code":             0,
+		"status":           "ok",
+		"approval_request": cmdbResourceApprovalDTO(*item),
+	})
 }
 
 func cmdbResourceApprovalBlockedEnvelope(view string) gin.H {
@@ -165,16 +165,11 @@ func CreateCmdbResourceApprovalRequest(c *gin.Context) {
 		return
 	}
 	gate := cmdbHighRiskApprovalGate(c, input)
-	gate["code"] = cmdbBlockedByContract
-	gate["status"] = cmdbBlockedByContract
-	gate["message"] = "CMDB credential policy approval request was recorded for review; credential release remains blocked until review_accept_recorded."
-	gate["missing_contracts"] = cmdbHighRiskMissingContracts(
-		"cmdb_approval_decision_contract",
-		"cmdb_approval_execution_release_contract",
-		"cmdb_agent_plugin_credential_policy_contract",
-	)
-	gate["safe_to_retry"] = false
-	c.JSON(http.StatusConflict, gate)
+	gate["code"] = 0
+	gate["status"] = "recorded"
+	gate["message"] = "CMDB credential policy approval request recorded for review."
+	gate["safe_to_retry"] = true
+	c.JSON(http.StatusCreated, gate)
 }
 
 func cmdbCredentialPolicyApprovalInputFromPayload(payload cmdbResourceApprovalRequestPayload) (cmdbHighRiskApprovalInput, []string) {

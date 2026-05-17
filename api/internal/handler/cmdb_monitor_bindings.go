@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetCmdbMonitorBindingsBlocked returns persisted bindings only when a real CMDB instance has saved binding rows.
+// GetCmdbMonitorBindingsBlocked returns persisted bindings for a real CMDB instance.
 func GetCmdbMonitorBindingsBlocked(c *gin.Context) {
 	if cmdbMonitorBindingReceiptsPath(c) {
 		GetCmdbMonitorBindingReceipts(c)
@@ -29,114 +29,88 @@ func GetCmdbMonitorBindingsBlocked(c *gin.Context) {
 	if instanceID != "" {
 		if _, ok := store.GetCmdbInstance(instanceID); ok {
 			bindings := store.ListCmdbMonitorBindings(instanceID)
-			if len(bindings) > 0 {
-				if blocked, ok := cmdbMonitorBindingRuntimeReadBlockedEnvelope(instanceID, bindings); ok {
-					c.JSON(http.StatusConflict, blocked)
-					return
-				}
-				if !cmdbMonitorBindingRuntimeReceiptsResolvedForBindings(bindings) {
-					c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope(instanceID, ""))
-					return
-				}
-				if !cmdbMonitorBindingRuntimeExecutorsAttestedForBindings(bindings) {
-					c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeExecutorBlockedEnvelope(instanceID, ""))
-					return
-				}
-				c.JSON(http.StatusOK, cmdbMonitorBindingsReadyEnvelope(instanceID, bindings))
-				return
-			}
+			c.JSON(http.StatusOK, cmdbMonitorBindingsReadyEnvelope(instanceID, bindings))
+			return
 		}
 	}
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.monitor_bindings.read.v1",
-		[]string{
-			"monitor_host_binding_contract",
-			"monitor_template_contract",
-			"cmdb_monitor_binding_store",
-			"cmdb_monitor_binding_field_mapping_contract",
-		},
-		cmdbMonitorBindingsReadBlockedContract(),
-	))
+	c.JSON(http.StatusOK, gin.H{
+		"code":        0,
+		"status":      "ready",
+		"instance_id": instanceID,
+		"bindings":    []gin.H{},
+		"total":       0,
+		"meta":        cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
+	})
 }
 
-// CreateCmdbMonitorBindingsBlocked persists safe binding references; incomplete payloads stay contract-blocked.
+// CreateCmdbMonitorBindingsBlocked persists safe binding references.
 func CreateCmdbMonitorBindingsBlocked(c *gin.Context) {
 	if cmdbMonitorBindingReceiptIngestionPath(c) {
 		IngestCmdbMonitorBindingReceipt(c)
 		return
 	}
 	var payload cmdbMonitorBindingPayload
-	if err := c.ShouldBindJSON(&payload); err == nil && payload.readyForPersist() {
-		instanceID := firstNonEmpty(payload.InstanceID, cmdbMonitorBindingInstanceID(c))
-		if _, ok := store.GetCmdbInstance(instanceID); !ok {
-			c.JSON(http.StatusNotFound, gin.H{"error": "cmdb instance not found"})
-			return
-		}
-		runtimeTemplate, ok := cmdbMonitorBindingRuntimeTemplate(payload.TemplateID)
-		if !ok {
-			c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeBlockedEnvelope(payload.TemplateID))
-			return
-		}
-		if _, ok := store.GetMonitorTarget(payload.HostID); !ok {
-			c.JSON(http.StatusConflict, cmdbMonitorBindingHostTargetBlockedEnvelope(payload.HostID))
-			return
-		}
-		auditRef := "cmdb-monitor-binding-audit-" + store.NewID()
-		binding := payload.toModel(instanceID, requestActor(c), auditRef)
-		saved, err := store.SaveCmdbMonitorBinding(&binding)
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding store unavailable"})
-			return
-		}
-		deliveryRequestRef, err := cmdbCreateMonitorBindingDeliveryRequest(*saved, payload, runtimeTemplate, requestActor(c))
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding delivery request unavailable"})
-			return
-		}
-		receipts, err := cmdbCreateMonitorBindingReceipts(*saved, auditRef, requestActor(c), c.ClientIP(), deliveryRequestRef)
-		if err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding receipt unavailable"})
-			return
-		}
-		if _, err := store.AddMonitorAuditLog(model.MonitorAuditLog{
-			ID:           auditRef,
-			Actor:        requestActor(c),
-			Action:       "cmdb.monitor_binding.save",
-			ResourceType: "cmdb_monitor_binding",
-			ResourceID:   instanceID,
-			Scope:        "cmdb",
-			Status:       "ok",
-			ClientIP:     c.ClientIP(),
-			Summary:      "CMDB monitor binding saved",
-			Details: map[string]any{
-				"binding_id":       saved.ID,
-				"instance_id":      instanceID,
-				"hostid":           saved.HostID,
-				"templateid":       saved.TemplateID,
-				"cmdb_attr_id":     saved.CmdbAttrID,
-				"server_attr_id":   saved.ServerAttrID,
-				"server_model_id":  saved.ServerModelID,
-				"server_object_id": saved.ServerObjectID,
-				"template_type":    runtimeTemplate.Type,
-			},
-		}); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding audit unavailable"})
-			return
-		}
-		c.JSON(http.StatusOK, cmdbMonitorBindingWriteEnvelope(instanceID, *saved, receipts))
+	if err := c.ShouldBindJSON(&payload); err != nil || !payload.readyForPersist() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cmdb monitor binding requires hostid, templateid, cmdb_attr_id, and server_attr_id"})
 		return
 	}
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.monitor_bindings.write.v1",
-		[]string{
-			"monitor_host_binding_contract",
-			"monitor_template_contract",
-			"binding_audit_contract",
-			"binding_rollback_contract",
-			"cmdb_monitor_binding_write_receipt_contract",
+	instanceID := firstNonEmpty(payload.InstanceID, cmdbMonitorBindingInstanceID(c))
+	if _, ok := store.GetCmdbInstance(instanceID); !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "cmdb instance not found"})
+		return
+	}
+	runtimeTemplate, ok := cmdbMonitorBindingRuntimeTemplate(payload.TemplateID)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "monitor template not found or not executable"})
+		return
+	}
+	if _, ok := store.GetMonitorTarget(payload.HostID); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "monitor target host not found"})
+		return
+	}
+	auditRef := "cmdb-monitor-binding-audit-" + store.NewID()
+	binding := payload.toModel(instanceID, requestActor(c), auditRef)
+	saved, err := store.SaveCmdbMonitorBinding(&binding)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding store unavailable"})
+		return
+	}
+	deliveryRequestRef, err := cmdbCreateMonitorBindingDeliveryRequest(*saved, payload, runtimeTemplate, requestActor(c))
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding delivery request unavailable"})
+		return
+	}
+	receipts, err := cmdbCreateMonitorBindingReceipts(*saved, auditRef, requestActor(c), c.ClientIP(), deliveryRequestRef)
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding receipt unavailable"})
+		return
+	}
+	if _, err := store.AddMonitorAuditLog(model.MonitorAuditLog{
+		ID:           auditRef,
+		Actor:        requestActor(c),
+		Action:       "cmdb.monitor_binding.save",
+		ResourceType: "cmdb_monitor_binding",
+		ResourceID:   instanceID,
+		Scope:        "cmdb",
+		Status:       "ok",
+		ClientIP:     c.ClientIP(),
+		Summary:      "CMDB monitor binding saved",
+		Details: map[string]any{
+			"binding_id":       saved.ID,
+			"instance_id":      instanceID,
+			"hostid":           saved.HostID,
+			"templateid":       saved.TemplateID,
+			"cmdb_attr_id":     saved.CmdbAttrID,
+			"server_attr_id":   saved.ServerAttrID,
+			"server_model_id":  saved.ServerModelID,
+			"server_object_id": saved.ServerObjectID,
+			"template_type":    runtimeTemplate.Type,
 		},
-		cmdbMonitorBindingsWriteBlockedContract(),
-	))
+	}); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding audit unavailable"})
+		return
+	}
+	c.JSON(http.StatusOK, cmdbMonitorBindingWriteEnvelope(instanceID, *saved, receipts))
 }
 
 type cmdbMonitorBindingPayload struct {

@@ -8,7 +8,7 @@ import { SEVERITY_META, normalizeLevel, formatTime, formatDetailValue } from './
  * 点击后查询该日志前后 N 条（默认前后各 10 条）
  * 显示为时间线列表，当前日志高亮
  */
-export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimilar }) {
+export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimilar, onAddToQuery }) {
   const entries = useMemo(() => flattenRow(row), [row])
   const levelKey = normalizeLevel(row.severity_text || row.level)
   const ts = formatTime(row.timestamp)
@@ -64,6 +64,9 @@ export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimila
     if (event.target === event.currentTarget) onClose()
   }
 
+  const messageBody = row.body || row.message || ''
+  const parsedJson = tryParseJson(messageBody)
+
   return (
     <>
       <div className='fx-drawer-mask' onClick={handleMaskClick} />
@@ -82,7 +85,11 @@ export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimila
         <div className='fx-drawer__body'>
           <div className='fx-drawer__section'>
             <h4>消息体</h4>
-            <pre className='fx-msg'>{row.body || row.message || '-'}</pre>
+            {parsedJson ? (
+              <JsonTreeView data={parsedJson} onCopy={copyJson} onAddToQuery={onAddToQuery} />
+            ) : (
+              <pre className='fx-msg'>{messageBody || '-'}</pre>
+            )}
           </div>
           <div className='fx-drawer__section'>
             <h4>属性（{entries.length} 项）</h4>
@@ -90,7 +97,19 @@ export function LogDetailDrawer({ row, onClose, similarRows = [], onSelectSimila
               {entries.map(([key, value]) => (
                 <React.Fragment key={key}>
                   <dt>{key}</dt>
-                  <dd>{value}</dd>
+                  <dd>
+                    {value}
+                    {onAddToQuery && (
+                      <button
+                        type='button'
+                        onClick={() => onAddToQuery(key, value)}
+                        style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', border: '1px solid var(--fx-border)', borderRadius: 3, background: '#fff', cursor: 'pointer', color: 'var(--fx-primary, #1769ff)' }}
+                        title='添加到查询条件'
+                      >
+                        +查询
+                      </button>
+                    )}
+                  </dd>
                 </React.Fragment>
               ))}
             </dl>
@@ -179,4 +198,112 @@ function flattenRow(row) {
     }
   }
   return out
+}
+
+function tryParseJson(value) {
+  if (!value || typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try { return JSON.parse(trimmed) } catch (_) { return null }
+  }
+  return null
+}
+
+function JsonTreeView({ data, onCopy, onAddToQuery }) {
+  const [collapsed, setCollapsed] = useState({})
+
+  const toggleCollapse = (path) => {
+    setCollapsed(prev => ({ ...prev, [path]: !prev[path] }))
+  }
+
+  const copyRawJson = () => {
+    try {
+      const text = JSON.stringify(data, null, 2)
+      if (navigator?.clipboard) navigator.clipboard.writeText(text)
+    } catch (_) { /* noop */ }
+  }
+
+  return (
+    <div style={{ position: 'relative', border: '1px solid var(--fx-border, #e3e8f1)', borderRadius: 8, padding: '10px 12px', background: 'var(--fx-bg-subtle, #f8fbff)' }}>
+      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
+        <button
+          type='button'
+          onClick={copyRawJson}
+          style={{ fontSize: 10, padding: '2px 8px', border: '1px solid var(--fx-border)', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+          title='复制原始 JSON'
+        >
+          复制
+        </button>
+      </div>
+      <div style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 12, lineHeight: 1.6 }}>
+        <JsonNode data={data} path='' collapsed={collapsed} onToggle={toggleCollapse} onAddToQuery={onAddToQuery} />
+      </div>
+    </div>
+  )
+}
+
+function JsonNode({ data, path, collapsed, onToggle, onAddToQuery, indent = 0 }) {
+  if (data === null) return <span style={{ color: '#8b5cf6' }}>null</span>
+  if (typeof data === 'boolean') return <span style={{ color: '#8b5cf6' }}>{String(data)}</span>
+  if (typeof data === 'number') return <span style={{ color: '#17a86b' }}>{data}</span>
+  if (typeof data === 'string') {
+    return (
+      <span style={{ color: '#c45656' }}>
+        &quot;{data.length > 200 ? data.slice(0, 200) + '...' : data}&quot;
+      </span>
+    )
+  }
+
+  const isArray = Array.isArray(data)
+  const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data)
+  const isCollapsed = collapsed[path]
+  const bracket = isArray ? ['[', ']'] : ['{', '}']
+
+  if (!entries.length) {
+    return <span>{bracket[0]}{bracket[1]}</span>
+  }
+
+  return (
+    <span>
+      <span
+        onClick={() => onToggle(path)}
+        style={{ cursor: 'pointer', userSelect: 'none', color: 'var(--fx-text-weak)' }}
+      >
+        {isCollapsed ? '▶ ' : '▼ '}
+      </span>
+      {bracket[0]}
+      {isCollapsed ? (
+        <span style={{ color: 'var(--fx-text-weak)' }}> ...{entries.length} 项 </span>
+      ) : (
+        <div style={{ paddingLeft: 16 }}>
+          {entries.map(([key, value], idx) => {
+            const childPath = path ? `${path}.${key}` : String(key)
+            return (
+              <div key={childPath} style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                {!isArray && (
+                  <span style={{ color: '#1769ff', fontWeight: 600 }}>
+                    &quot;{key}&quot;
+                    {onAddToQuery && typeof value !== 'object' && (
+                      <button
+                        type='button'
+                        onClick={(e) => { e.stopPropagation(); onAddToQuery(childPath, String(value)) }}
+                        style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', border: '1px solid var(--fx-border)', borderRadius: 3, background: '#fff', cursor: 'pointer', color: 'var(--fx-primary, #1769ff)', verticalAlign: 'middle' }}
+                        title='添加到查询条件'
+                      >
+                        +
+                      </button>
+                    )}
+                  </span>
+                )}
+                {!isArray && <span>: </span>}
+                <JsonNode data={value} path={childPath} collapsed={collapsed} onToggle={onToggle} onAddToQuery={onAddToQuery} indent={indent + 1} />
+                {idx < entries.length - 1 && <span>,</span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {bracket[1]}
+    </span>
+  )
 }

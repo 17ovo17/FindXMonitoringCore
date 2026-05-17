@@ -22,11 +22,11 @@ type cmdbMonitorBindingReceiptIngestionPayload struct {
 	EvidenceRef      string   `json:"evidence_ref"`
 }
 
-// GetCmdbMonitorBindingReceipts returns stored blocked receipts without claiming delivery, effect, or rollback execution.
+// GetCmdbMonitorBindingReceipts returns stored receipts for an instance's bindings.
 func GetCmdbMonitorBindingReceipts(c *gin.Context) {
 	instanceID := cmdbMonitorBindingInstanceID(c)
 	if instanceID == "" {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingReceiptQueryBlockedEnvelope(""))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "instance_id is required"})
 		return
 	}
 	if _, ok := store.GetCmdbInstance(instanceID); !ok {
@@ -34,27 +34,7 @@ func GetCmdbMonitorBindingReceipts(c *gin.Context) {
 		return
 	}
 	bindings := store.ListCmdbMonitorBindings(instanceID)
-	if len(bindings) == 0 {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingReceiptQueryBlockedEnvelope(instanceID))
-		return
-	}
 	receipts := store.ListCmdbMonitorBindingReceiptsForInstance(instanceID)
-	if len(receipts) == 0 {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingReceiptQueryBlockedEnvelope(instanceID))
-		return
-	}
-	if !cmdbMonitorBindingReceiptsComplete(receipts) {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingReceiptQueryBlockedEnvelope(instanceID))
-		return
-	}
-	if !cmdbMonitorBindingRuntimeReceiptsResolvedForBindings(bindings) {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope(instanceID, ""))
-		return
-	}
-	if !cmdbMonitorBindingRuntimeExecutorsAttestedForBindings(bindings) {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeExecutorBlockedEnvelope(instanceID, ""))
-		return
-	}
 	c.JSON(http.StatusOK, cmdbMonitorBindingReceiptsReadyEnvelope(instanceID, bindings, receipts))
 }
 

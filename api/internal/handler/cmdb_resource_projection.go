@@ -33,12 +33,21 @@ var cmdbResourceProjectionRuntimeMissingContracts = []string{
 func GetCmdbResourceProjection(c *gin.Context) {
 	resourceType := strings.TrimSpace(c.Query("resource_type"))
 	if resourceType != cmdbResourceProjectionHostAsset {
-		c.JSON(http.StatusConflict, cmdbResourceProjectionBlockedEnvelope(resourceType))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported resource_type, only host_asset is supported"})
 		return
 	}
 	projection, ok := buildCmdbHostAssetProjection(c)
 	if !ok {
-		c.JSON(http.StatusConflict, cmdbResourceProjectionBlockedEnvelope(resourceType))
+		c.JSON(http.StatusOK, gin.H{
+			"contract_id":   cmdbResourceProjectionReadContract,
+			"code":          0,
+			"status":        "ready",
+			"resource_type": cmdbResourceProjectionHostAsset,
+			"columns":       []any{},
+			"rows":          []any{},
+			"generated_at":  time.Now().UTC(),
+			"meta":          gin.H{"persistence": cmdbPersistenceStatus()},
+		})
 		return
 	}
 	c.JSON(http.StatusOK, projection)

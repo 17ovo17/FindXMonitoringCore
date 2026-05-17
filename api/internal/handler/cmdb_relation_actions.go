@@ -91,33 +91,17 @@ func GetCmdbRelationActionRequest(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb relation action audit unavailable"})
 			return
 		}
-		if len(logs) == 0 {
-			c.JSON(http.StatusConflict, cmdbRelationActionAuditBlockedEnvelope(*item))
-			return
-		}
 		c.JSON(http.StatusOK, cmdbRelationActionAuditEnvelope(*item, logs))
 		return
 	}
 	receipts := store.ListCmdbRelationActionReceipts(item.ID)
-	if len(receipts) == 0 || !cmdbRelationActionReceiptsComplete(receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionDetailBlockedEnvelope(*item))
-		return
-	}
-	if !cmdbRelationActionRuntimeReceiptsResolved(*item, receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionRuntimeReadBlockedEnvelope(*item, "cmdb relation action detail requires receipt request_ref rows to resolve to blocked execution tasks"))
-		return
-	}
-	if !cmdbRelationActionRuntimeExecutorsAttested(*item, receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionExecutorBlockedEnvelope(item.ID, item.InstanceID, "cmdb relation action detail requires a registered action executor and attested delivery/effect receipts"))
-		return
-	}
 	c.JSON(http.StatusOK, cmdbRelationActionDetailEnvelope(*item, receipts))
 }
 
 func ListCmdbRelationActionRequests(c *gin.Context) {
 	instanceID := strings.TrimSpace(c.Query("instance_id"))
 	if instanceID == "" {
-		c.JSON(http.StatusConflict, cmdbRelationActionListBlockedEnvelope("", "cmdb relation action list requires instance_id"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "instance_id is required"})
 		return
 	}
 	if _, ok := store.GetCmdbInstance(instanceID); !ok {
@@ -125,22 +109,6 @@ func ListCmdbRelationActionRequests(c *gin.Context) {
 		return
 	}
 	items := store.ListCmdbRelationActionRequests(instanceID)
-	if len(items) == 0 {
-		c.JSON(http.StatusConflict, cmdbRelationActionListBlockedEnvelope(instanceID, "cmdb relation action list requires stored action requests"))
-		return
-	}
-	if !cmdbRelationActionListReceiptsComplete(items) {
-		c.JSON(http.StatusConflict, cmdbRelationActionListBlockedEnvelope(instanceID, "cmdb relation action list requires complete stored delivery and effect receipts"))
-		return
-	}
-	if !cmdbRelationActionListRuntimeReceiptsResolved(items) {
-		c.JSON(http.StatusConflict, cmdbRelationActionRuntimeListBlockedEnvelope(instanceID, "cmdb relation action list requires receipt request_ref rows to resolve to blocked execution tasks"))
-		return
-	}
-	if !cmdbRelationActionListExecutorsAttested(items) {
-		c.JSON(http.StatusConflict, cmdbRelationActionExecutorBlockedEnvelope("", instanceID, "cmdb relation action list requires a registered action executor and attested delivery/effect receipts"))
-		return
-	}
 	c.JSON(http.StatusOK, cmdbRelationActionListEnvelope(instanceID, items))
 }
 

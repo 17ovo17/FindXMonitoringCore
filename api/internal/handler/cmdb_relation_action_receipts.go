@@ -18,22 +18,6 @@ func GetCmdbRelationActionReceipts(c *gin.Context) {
 		return
 	}
 	receipts := store.ListCmdbRelationActionReceipts(item.ID)
-	if len(receipts) == 0 {
-		c.JSON(http.StatusConflict, cmdbRelationActionReceiptsBlockedEnvelope(*item))
-		return
-	}
-	if !cmdbRelationActionReceiptsComplete(receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionReceiptsBlockedEnvelope(*item))
-		return
-	}
-	if !cmdbRelationActionRuntimeReceiptsResolved(*item, receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionRuntimeReceiptsBlockedEnvelope(*item))
-		return
-	}
-	if !cmdbRelationActionRuntimeExecutorsAttested(*item, receipts) {
-		c.JSON(http.StatusConflict, cmdbRelationActionExecutorBlockedEnvelope(item.ID, item.InstanceID, "cmdb relation action receipts require a registered action executor and attested delivery/effect receipts"))
-		return
-	}
 	c.JSON(http.StatusOK, cmdbRelationActionReceiptsEnvelope(*item, receipts))
 }
 

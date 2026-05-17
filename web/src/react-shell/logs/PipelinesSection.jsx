@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { formatLogError, LOG_BLOCKERS, logsApi } from '../api/logs.js'
 import { pipelineSteps } from './logsModel.js'
 import { Blocked, JsonPreview, Status } from './LogsShared.jsx'
@@ -120,21 +120,26 @@ export function PipelinesSection() {
     }
   }
 
+  const handleReorder = useCallback(async (newOrder) => {
+    setPipelines(newOrder)
+    try {
+      const ids = newOrder.filter(p => p.id).map(p => p.id)
+      if (ids.length) await logsApi.pipelines.reorder({ order: ids })
+    } catch (err) {
+      setBlocked(formatLogError(err))
+    }
+  }, [])
+
   return (
     <section className='fx-logs-split'>
       <div className='fx-logs-list'>
         <button type='button' className='fx-qb__btn' style={{ marginBottom: 8 }} onClick={startCreate}>+ 新建 Pipeline</button>
-        {visible.map(step => (
-          <button
-            key={step.id}
-            className={selected?.id === step.id ? 'is-active' : ''}
-            type='button'
-            onClick={() => { setSelected(step); setEditing(null) }}
-          >
-            <strong>{step.name || step.title}</strong>
-            <span>{step.description || step.desc}</span>
-          </button>
-        ))}
+        <DraggablePipelineList
+          items={visible}
+          selected={selected}
+          onSelect={(step) => { setSelected(step); setEditing(null) }}
+          onReorder={handleReorder}
+        />
       </div>
       <div className='fx-logs-panel'>
         {editing ? (
@@ -193,6 +198,8 @@ function PipelineDetail({ pipeline, pipelines, onEdit, onDelete, onPreview, prev
 
 function PipelineForm({ pipeline, onChange, onSave, onCancel, saving }) {
   const updateField = (key, value) => onChange({ ...pipeline, [key]: value })
+  const [dragIdx, setDragIdx] = useState(null)
+  const [dropIdx, setDropIdx] = useState(null)
 
   const addRule = () => onChange({ ...pipeline, rules: [...pipeline.rules, emptyRule()] })
   const removeRule = (idx) => onChange({ ...pipeline, rules: pipeline.rules.filter((_, i) => i !== idx) })
@@ -200,6 +207,39 @@ function PipelineForm({ pipeline, onChange, onSave, onCancel, saving }) {
     ...pipeline,
     rules: pipeline.rules.map((r, i) => i === idx ? { ...r, ...patch } : r),
   })
+
+  const handleDragStart = (e, idx) => {
+    setDragIdx(idx)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(idx))
+  }
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropIdx(idx)
+  }
+
+  const handleDragLeave = () => {
+    setDropIdx(null)
+  }
+
+  const handleDrop = (e, idx) => {
+    e.preventDefault()
+    const fromIdx = dragIdx
+    if (fromIdx === null || fromIdx === idx) { setDragIdx(null); setDropIdx(null); return }
+    const rules = [...pipeline.rules]
+    const [moved] = rules.splice(fromIdx, 1)
+    rules.splice(idx, 0, moved)
+    onChange({ ...pipeline, rules })
+    setDragIdx(null)
+    setDropIdx(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIdx(null)
+    setDropIdx(null)
+  }
 
   return (
     <div>
@@ -214,9 +254,33 @@ function PipelineForm({ pipeline, onChange, onSave, onCancel, saving }) {
           <input value={pipeline.description} onChange={e => updateField('description', e.target.value)} placeholder='Pipeline 描述' />
         </label>
       </div>
-      <h4 style={{ fontSize: 13, margin: '8px 0' }}>处理规则</h4>
+      <h4 style={{ fontSize: 13, margin: '8px 0' }}>处理规则（拖拽排序）</h4>
       {pipeline.rules.map((rule, idx) => (
-        <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+        <div
+          key={idx}
+          draggable
+          onDragStart={e => handleDragStart(e, idx)}
+          onDragOver={e => handleDragOver(e, idx)}
+          onDragLeave={handleDragLeave}
+          onDrop={e => handleDrop(e, idx)}
+          onDragEnd={handleDragEnd}
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            marginBottom: 6,
+            padding: '4px 0',
+            borderTop: dropIdx === idx && dragIdx !== idx ? '2px solid var(--fx-primary, #1769ff)' : '2px solid transparent',
+            opacity: dragIdx === idx ? 0.5 : 1,
+            transition: 'border-color 0.15s, opacity 0.15s',
+          }}
+        >
+          <span
+            style={{ cursor: 'grab', fontSize: 14, color: 'var(--fx-text-weak, #66758d)', userSelect: 'none', padding: '0 4px' }}
+            title='拖拽排序'
+          >
+            ⠿
+          </span>
           <select className='fx-qb__select' value={rule.type} onChange={e => updateRule(idx, { type: e.target.value })}>
             {RULE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
@@ -237,6 +301,72 @@ function PipelineForm({ pipeline, onChange, onSave, onCancel, saving }) {
         </button>
         <button type='button' className='fx-qb__btn fx-qb__btn--ghost' onClick={onCancel}>取消</button>
       </div>
+    </div>
+  )
+}
+
+function DraggablePipelineList({ items, selected, onSelect, onReorder }) {
+  const [dragIdx, setDragIdx] = useState(null)
+  const [dropIdx, setDropIdx] = useState(null)
+
+  const handleDragStart = (e, idx) => {
+    setDragIdx(idx)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(idx))
+  }
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropIdx(idx)
+  }
+
+  const handleDragLeave = () => {
+    setDropIdx(null)
+  }
+
+  const handleDrop = (e, idx) => {
+    e.preventDefault()
+    const fromIdx = dragIdx
+    if (fromIdx === null || fromIdx === idx) { setDragIdx(null); setDropIdx(null); return }
+    const newItems = [...items]
+    const [moved] = newItems.splice(fromIdx, 1)
+    newItems.splice(idx, 0, moved)
+    onReorder(newItems)
+    setDragIdx(null)
+    setDropIdx(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIdx(null)
+    setDropIdx(null)
+  }
+
+  return (
+    <div>
+      {items.map((step, idx) => (
+        <button
+          key={step.id}
+          className={selected?.id === step.id ? 'is-active' : ''}
+          type='button'
+          draggable
+          onDragStart={e => handleDragStart(e, idx)}
+          onDragOver={e => handleDragOver(e, idx)}
+          onDragLeave={handleDragLeave}
+          onDrop={e => handleDrop(e, idx)}
+          onDragEnd={handleDragEnd}
+          onClick={() => onSelect(step)}
+          style={{
+            borderTop: dropIdx === idx && dragIdx !== idx ? '2px solid var(--fx-primary, #1769ff)' : '2px solid transparent',
+            opacity: dragIdx === idx ? 0.5 : 1,
+            transition: 'border-color 0.15s, opacity 0.15s',
+          }}
+        >
+          <span style={{ cursor: 'grab', marginRight: 6, fontSize: 12, color: 'var(--fx-text-weak)' }}>⠿</span>
+          <strong>{step.name || step.title}</strong>
+          <span>{step.description || step.desc}</span>
+        </button>
+      ))}
     </div>
   )
 }

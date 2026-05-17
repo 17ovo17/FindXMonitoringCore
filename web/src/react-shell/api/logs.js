@@ -36,6 +36,11 @@ export const logsApi = {
   addField: body => post('/logs/fields', body),
   removeField: body => del('/logs/fields', { data: body }),
   toggleIndex: (fieldName, indexed) => put(`/logs/fields/${encodeURIComponent(fieldName)}/index`, { indexed }),
+  fieldsIndexes: {
+    list: () => get('/logs/fields/indexes'),
+    create: body => post('/logs/fields/indexes', body),
+    remove: fieldName => del(`/logs/fields/indexes/${encodeURIComponent(fieldName)}`),
+  },
   aggregate: params => get('/logs/aggregate', { params: cleanParams(params) }),
   context: params => get('/logs/context', { params: cleanParams(params) }),
   contextById: (id, params) => get(`/api/v1/logs/context`, { params: cleanParams({ id, ...params }) }),
@@ -44,6 +49,7 @@ export const logsApi = {
     save: body => post('/logs/pipelines', body),
     update: (id, body) => put(`/logs/pipelines/${encodeURIComponent(id)}`, body),
     remove: id => del(`/logs/pipelines/${encodeURIComponent(id)}`),
+    reorder: body => put('/logs/pipelines/reorder', body),
     preview: body => post('/logs/pipelines/preview', body),
   },
   views: {

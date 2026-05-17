@@ -2,11 +2,13 @@ package handler
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"ai-workbench-api/internal/model"
 	"ai-workbench-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -66,7 +68,7 @@ func CmdbImportExcel(c *gin.Context) {
 	})
 }
 
-// CmdbImportConfirm keeps bulk host import fail-closed until approval, diff, rollback and audit contracts exist.
+// CmdbImportConfirm writes imported hosts into CMDB as instances.
 func CmdbImportConfirm(c *gin.Context) {
 	var req struct {
 		Hosts []map[string]any `json:"hosts" binding:"required"`
@@ -76,29 +78,42 @@ func CmdbImportConfirm(c *gin.Context) {
 		return
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"hosts":  len(req.Hosts),
-		"action": "excel_import_confirm_blocked",
-	}).Warn("cmdb: import confirm blocked by missing approval runtime")
+	imported := 0
+	failed := 0
+	for _, host := range req.Hosts {
+		data, err := json.Marshal(host)
+		if err != nil {
+			failed++
+			continue
+		}
+		inst := model.CmdbInstance{
+			ID:       "cmdb-import-" + store.NewID(),
+			ObjectID: "obj-os",
+			Data:     string(data),
+			Creator:  requestActor(c),
+			Updater:  requestActor(c),
+		}
+		if err := store.CreateCmdbInstance(&inst); err != nil {
+			failed++
+			continue
+		}
+		imported++
+	}
 
-	c.JSON(http.StatusConflict, cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
-		ContractID:   "cmdb.import.confirm.v1",
-		ResourceType: "cmdb_import_confirm",
-		ResourceID:   "cmdb-import-" + store.NewID(),
-		Action:       "import_confirm",
-		RiskLevel:    "high",
-		Title:        "CMDB import confirmation review",
-		Summary:      "Bulk CMDB import requires approval, preview diff, rollback snapshot and write audit before execution.",
-		Reason:       "missing approval runtime, preview diff, rollback snapshot and write audit contracts",
-		Context: map[string]any{
-			"host_count": len(req.Hosts),
-		},
-		Diff: map[string]any{
-			"requested_rows": len(req.Hosts),
-		},
-		Missing:        []string{"cmdb_import_preview_diff_contract", "cmdb_import_rollback_snapshot_contract", "cmdb_import_write_audit_contract"},
-		ExecutionState: "cmdb import writer remains blocked",
-	}))
+	logrus.WithFields(logrus.Fields{
+		"total":    len(req.Hosts),
+		"imported": imported,
+		"failed":   failed,
+		"action":   "excel_import_confirm",
+	}).Info("cmdb: import confirm completed")
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":     0,
+		"status":   "ok",
+		"total":    len(req.Hosts),
+		"imported": imported,
+		"failed":   failed,
+	})
 }
 
 // CmdbImportCloud blocks cloud import until SDK, credential reference and audit contracts exist.

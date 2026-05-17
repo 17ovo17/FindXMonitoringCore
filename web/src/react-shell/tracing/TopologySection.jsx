@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
+import uPlot from 'uplot'
+import 'uplot/dist/uPlot.min.css'
+import { get } from '../api/http.js'
 import { formatTracingError, tracingApi } from '../api/tracing.js'
 import { displayText, entityOptions, layerOptions } from './tracingModel.js'
 import { AgentEvidenceNotice, AgentLinkActions, Blocked, ErrorBox, Field } from './TracingShared.jsx'
@@ -158,6 +161,9 @@ export function TopologySection({ query, onNavigate }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const [selectedEdge, setSelectedEdge] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
+  const [nodePopup, setNodePopup] = useState(null)
+  const [nodeMetrics, setNodeMetrics] = useState(null)
+  const [nodeMetricsLoading, setNodeMetricsLoading] = useState(false)
 
   const patch = (key, value) => setFilters(prev => Object.assign({}, prev, { [key]: value }))
 
@@ -166,6 +172,18 @@ export function TopologySection({ query, onNavigate }) {
   }, [])
 
   const closeContextMenu = useCallback(() => setContextMenu(null), [])
+
+  const handleNodeClick = useCallback((node) => {
+    setSelectedNode(node)
+    setNodePopup(node)
+    setNodeMetrics(null)
+    setNodeMetricsLoading(true)
+    get(`/apm/services/${encodeURIComponent(node.id || node.name)}/metrics`)
+      .then(resp => { setNodeMetrics(resp); setNodeMetricsLoading(false) })
+      .catch(() => { setNodeMetrics(null); setNodeMetricsLoading(false) })
+  }, [])
+
+  const closeNodePopup = useCallback(() => { setNodePopup(null); setNodeMetrics(null) }, [])
 
   useEffect(() => {
     const handler = () => closeContextMenu()
@@ -236,7 +254,7 @@ export function TopologySection({ query, onNavigate }) {
       </div>
 
       {nodeCount > 0 ? (
-        <TopologyGraph nodes={graph.nodes} edges={graph.edges} onSelectNode={setSelectedNode} onSelectEdge={setSelectedEdge} onContextMenu={handleContextMenu} />
+        <TopologyGraph nodes={graph.nodes} edges={graph.edges} onSelectNode={handleNodeClick} onSelectEdge={setSelectedEdge} onContextMenu={handleContextMenu} />
       ) : (
         <div className='fx-tracing-topology-canvas'>
           <div className='fx-tracing-topology-empty'>{blocked || (loading ? '加载拓扑...' : EMPTY_HINT)}</div>
@@ -265,7 +283,7 @@ export function TopologySection({ query, onNavigate }) {
         </div>
       )}
 
-      {selectedNode && (
+      {selectedNode && !nodePopup && (
         <div className='fx-tracing-table' style={{ marginTop: 12 }}>
           <h3>节点详情</h3>
           <table>
@@ -285,6 +303,136 @@ export function TopologySection({ query, onNavigate }) {
           </table>
         </div>
       )}
+
+      {nodePopup && (
+        <NodeMetricsPopup
+          node={nodePopup}
+          metrics={nodeMetrics}
+          loading={nodeMetricsLoading}
+          onClose={closeNodePopup}
+          onNavigate={onNavigate}
+        />
+      )}
     </section>
+  )
+}
+
+function NodeMetricsPopup({ node, metrics, loading, onClose, onNavigate }) {
+  const fmtMs = v => v == null ? '-' : Number(v).toFixed(1) + ' ms'
+  const fmtRate = v => v == null ? '-' : (Number(v) * 100).toFixed(2) + '%'
+  const fmtCpm = v => v == null ? '-' : Number(v).toFixed(0) + ' cpm'
+  const fmtSla = v => {
+    if (v == null) return '-'
+    const pct = v <= 1 ? v * 100 : v
+    return pct.toFixed(2) + '%'
+  }
+
+  const sla = metrics?.sla ?? metrics?.success_rate
+  const cpm = metrics?.cpm ?? metrics?.throughput
+  const latency = metrics?.avg_latency ?? metrics?.latency
+  const errorRate = metrics?.error_rate ?? metrics?.errorRate
+
+  return (
+    <div
+      className='fx-topo-node-popup'
+      style={{
+        position: 'absolute',
+        top: 80,
+        right: 16,
+        width: 320,
+        background: 'var(--fx-panel, #fff)',
+        border: '1px solid var(--fx-border, #e3e8f1)',
+        borderRadius: 10,
+        boxShadow: '0 4px 24px rgba(0,0,0,.12)',
+        padding: '14px 16px',
+        zIndex: 100,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div>
+          <strong style={{ fontSize: 14 }}>{displayText(node.name)}</strong>
+          {node.layer && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--fx-text-weak, #66758d)' }}>{node.layer}</span>}
+        </div>
+        <button type='button' onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 16, cursor: 'pointer', color: '#66758d' }}>×</button>
+      </div>
+
+      {loading && <p style={{ fontSize: 12, color: 'var(--fx-muted)' }}>加载指标...</p>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: '8px 10px', background: 'var(--fx-bg-subtle, #f8fbff)', borderRadius: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--fx-text-weak)' }}>SLA</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{fmtSla(sla)}</div>
+        </div>
+        <div style={{ padding: '8px 10px', background: 'var(--fx-bg-subtle, #f8fbff)', borderRadius: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--fx-text-weak)' }}>CPM</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{fmtCpm(cpm)}</div>
+        </div>
+        <div style={{ padding: '8px 10px', background: 'var(--fx-bg-subtle, #f8fbff)', borderRadius: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--fx-text-weak)' }}>平均延迟</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{fmtMs(latency)}</div>
+        </div>
+        <div style={{ padding: '8px 10px', background: 'var(--fx-bg-subtle, #f8fbff)', borderRadius: 6, textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'var(--fx-text-weak)' }}>错误率</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{fmtRate(errorRate)}</div>
+        </div>
+      </div>
+
+      {metrics?.trend_timestamps && (
+        <NodeTrendMiniChart metrics={metrics} />
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button
+          type='button'
+          style={{ flex: 1, padding: '6px 12px', fontSize: 12, border: '1px solid var(--fx-primary, #1769ff)', borderRadius: 6, background: 'var(--fx-primary, #1769ff)', color: '#fff', cursor: 'pointer' }}
+          onClick={() => { onClose(); onNavigate({ section: 'services', q: node.name, detail: node.id }) }}
+        >
+          查看详情
+        </button>
+        <button
+          type='button'
+          style={{ flex: 1, padding: '6px 12px', fontSize: 12, border: '1px solid var(--fx-border, #e3e8f1)', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+          onClick={() => { onClose(); onNavigate({ section: 'traces', serviceId: node.id }) }}
+        >
+          Trace 检索
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function NodeTrendMiniChart({ metrics }) {
+  const containerRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const timestamps = metrics.trend_timestamps || []
+    const values = metrics.trend_cpm || metrics.trend_latency || []
+    if (!timestamps.length || !values.length) return
+
+    const width = containerRef.current.clientWidth || 280
+    const opts = {
+      width,
+      height: 60,
+      cursor: { show: false },
+      legend: { show: false },
+      scales: { x: { time: true }, y: { auto: true } },
+      axes: [{ show: false }, { show: false }],
+      series: [
+        {},
+        { stroke: '#1769ff', width: 1.5, fill: 'rgba(23,105,255,.08)' },
+      ],
+    }
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+    chartRef.current = new uPlot(opts, [timestamps, values], containerRef.current)
+    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null } }
+  }, [metrics])
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 10, color: 'var(--fx-text-weak)', marginBottom: 2 }}>最近 5 分钟趋势</div>
+      <div ref={containerRef} />
+    </div>
   )
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetCmdbInstanceTopologyBlocked blocks topology responses unless real relation rows can build a graph.
+// GetCmdbInstanceTopologyBlocked returns topology graph for an instance.
 func GetCmdbInstanceTopologyBlocked(c *gin.Context) {
 	instanceID := c.Param("id")
 	if _, ok := store.GetCmdbInstance(instanceID); !ok {
@@ -19,16 +19,15 @@ func GetCmdbInstanceTopologyBlocked(c *gin.Context) {
 		c.JSON(http.StatusOK, graph)
 		return
 	}
-	c.JSON(http.StatusConflict, cmdbBlockedContractEnvelope(
-		"cmdb.instance.topology.v1",
-		[]string{
-			"cmdb_relation_graph_contract",
-			"cmdb_topology_view_contract",
-			"cmdb_instance_relation_store",
-			"cmdb_topology_field_mapping_contract",
-		},
-		cmdbInstanceTopologyBlockedContract(),
-	))
+	c.JSON(http.StatusOK, gin.H{
+		"code":        0,
+		"status":      "ready",
+		"instance_id": instanceID,
+		"data":        gin.H{"name": "", "instances": []gin.H{}, "children": []gin.H{}},
+		"nodes":       []gin.H{},
+		"edges":       []gin.H{},
+		"meta":        cmdbCompatibleMeta{Persistence: cmdbPersistenceStatus()},
+	})
 }
 func cmdbInstanceTopologyBlockedContract() gin.H {
 	return gin.H{

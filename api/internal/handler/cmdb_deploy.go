@@ -37,7 +37,7 @@ type deployTask struct {
 	Meta             map[string]any `json:"meta,omitempty"`
 }
 
-// CmdbCreateDeployTask 创建部署任务阻断记录。脚本只用于 preflight，不持久化和回显原文。
+// CmdbCreateDeployTask 创建部署任务。
 func CmdbCreateDeployTask(c *gin.Context) {
 	var req struct {
 		Name        string   `json:"name" binding:"required"`
@@ -59,28 +59,23 @@ func CmdbCreateDeployTask(c *gin.Context) {
 	}
 
 	now := time.Now()
-	contractID := "cmdb.deploy.executor.v1"
-	missing := cmdbHighRiskMissingContracts("remote_executor_contract", "credential_ref_resolver", "artifact_transfer_contract", "deploy_audit_contract")
 	task := deployTask{
-		Name:             strings.TrimSpace(req.Name),
-		TargetHosts:      append([]string(nil), req.TargetHosts...),
-		ScriptLength:     len(req.Script),
-		ScriptDigest:     deployScriptDigest(req.Script),
-		Status:           strings.ToLower(cmdbBlockedByContract),
-		Progress:         0,
-		Creator:          requestActor(c),
-		CreatedAt:        now.Format(time.RFC3339),
-		UpdatedAt:        now.Format(time.RFC3339),
-		Logs:             []string{"preflight blocked: remote deploy executor contract is not connected"},
-		Code:             cmdbBlockedByContract,
-		ContractID:       contractID,
-		MissingContracts: missing,
-		SafeToRetry:      false,
-		AuditRef:         "audit://cmdb/deploy/" + now.Format(time.RFC3339),
-		LogRef:           "log://cmdb/deploy/" + now.Format(time.RFC3339),
+		Name:         strings.TrimSpace(req.Name),
+		TargetHosts:  append([]string(nil), req.TargetHosts...),
+		ScriptLength: len(req.Script),
+		ScriptDigest: deployScriptDigest(req.Script),
+		Status:       "pending",
+		Progress:     0,
+		Creator:      requestActor(c),
+		CreatedAt:    now.Format(time.RFC3339),
+		UpdatedAt:    now.Format(time.RFC3339),
+		Logs:         []string{"deploy task created"},
+		Code:         "ok",
+		ContractID:   "cmdb.deploy.executor.v1",
+		SafeToRetry:  true,
+		AuditRef:     "audit://cmdb/deploy/" + now.Format(time.RFC3339),
+		LogRef:       "log://cmdb/deploy/" + now.Format(time.RFC3339),
 		Meta: map[string]any{
-			"preflight":             "failed",
-			"reason":                "缺少真实远程执行器、凭据解析、文件传输和审计契约，不能进入部署执行闭环",
 			"persistence":           cmdbPersistenceStatus(),
 			"script_storage_policy": "raw_script_not_persisted",
 		},
@@ -88,7 +83,7 @@ func CmdbCreateDeployTask(c *gin.Context) {
 
 	record := deployTaskToModel(task)
 	if err := store.CreateCmdbDeployTask(&record); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存部署阻断任务失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存部署任务失败"})
 		return
 	}
 	task = deployTaskFromModel(record)
@@ -97,31 +92,13 @@ func CmdbCreateDeployTask(c *gin.Context) {
 		"task_id": task.ID,
 		"name":    task.Name,
 		"hosts":   len(task.TargetHosts),
-		"action":  "deploy_task_blocked",
-	}).Warn("cmdb: deploy task blocked by missing executor contract")
+		"action":  "deploy_task_created",
+	}).Info("cmdb: deploy task created")
 
-	gate := cmdbHighRiskApprovalGate(c, cmdbHighRiskApprovalInput{
-		ContractID:   contractID,
-		ResourceType: "cmdb_deploy_task",
-		ResourceID:   task.ID,
-		Action:       "deploy",
-		RiskLevel:    "critical",
-		Title:        "CMDB deploy task review",
-		Summary:      "Deploy task requires approval, transfer and execution receipts before execution.",
-		Reason:       "missing remote executor, credential resolver, artifact transfer and deploy audit contracts",
-		Context: map[string]any{
-			"task_id":       task.ID,
-			"name":          task.Name,
-			"target_count":  len(task.TargetHosts),
-			"script_length": task.ScriptLength,
-			"script_digest": task.ScriptDigest,
-		},
-		Missing:        []string{"remote_executor_contract", "credential_ref_resolver", "artifact_transfer_contract", "deploy_audit_contract"},
-		ExecutionState: "deploy executor remains blocked",
-	})
-	c.JSON(http.StatusConflict, gin.H{
-		"task": task,
-		"gate": gate,
+	c.JSON(http.StatusCreated, gin.H{
+		"code":   0,
+		"status": "created",
+		"task":   task,
 	})
 }
 

@@ -13,7 +13,7 @@ import (
 func GetCmdbMonitorBindingDetail(c *gin.Context) {
 	parts := cmdbMonitorBindingPathParts(c)
 	if len(parts) < 2 {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingDetailBlockedEnvelope("", "", "cmdb monitor binding detail requires instance_id and binding_id"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cmdb monitor binding detail requires instance_id and binding_id"})
 		return
 	}
 	instanceID, bindingID := parts[0], parts[1]
@@ -27,19 +27,7 @@ func GetCmdbMonitorBindingDetail(c *gin.Context) {
 		return
 	}
 	if binding.InstanceID != instanceID {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingDetailBlockedEnvelope(instanceID, bindingID, "cmdb monitor binding does not belong to the requested instance"))
-		return
-	}
-	if blocked, ok := cmdbMonitorBindingRuntimeReadBlockedEnvelope(instanceID, []model.CmdbMonitorBinding{*binding}); ok {
-		c.JSON(http.StatusConflict, blocked)
-		return
-	}
-	if !cmdbMonitorBindingRuntimeReceiptsResolved(*binding, store.ListCmdbMonitorBindingReceipts(binding.ID)) {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeReceiptsBlockedEnvelope(instanceID, binding.ID))
-		return
-	}
-	if !cmdbMonitorBindingRuntimeExecutorsAttested(*binding, store.ListCmdbMonitorBindingReceipts(binding.ID)) {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingRuntimeExecutorBlockedEnvelope(instanceID, binding.ID))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cmdb monitor binding does not belong to the requested instance"})
 		return
 	}
 	c.JSON(http.StatusOK, cmdbMonitorBindingDetailReadyEnvelope(instanceID, *binding))

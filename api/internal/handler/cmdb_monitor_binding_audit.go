@@ -21,7 +21,7 @@ func cmdbMonitorBindingAuditRequested(c *gin.Context) bool {
 func GetCmdbMonitorBindingAudit(c *gin.Context) {
 	instanceID := cmdbMonitorBindingInstanceID(c)
 	if instanceID == "" {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingAuditBlockedEnvelope(""))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "instance_id is required"})
 		return
 	}
 	if _, ok := store.GetCmdbInstance(instanceID); !ok {
@@ -29,17 +29,9 @@ func GetCmdbMonitorBindingAudit(c *gin.Context) {
 		return
 	}
 	bindings := store.ListCmdbMonitorBindings(instanceID)
-	if len(bindings) == 0 {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingAuditBlockedEnvelope(instanceID))
-		return
-	}
 	logs, err := cmdbMonitorBindingAuditLogs(instanceID)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cmdb monitor binding audit unavailable"})
-		return
-	}
-	if len(logs) == 0 {
-		c.JSON(http.StatusConflict, cmdbMonitorBindingAuditBlockedEnvelope(instanceID))
 		return
 	}
 	c.JSON(http.StatusOK, cmdbMonitorBindingAuditReadyEnvelope(instanceID, bindings, logs))

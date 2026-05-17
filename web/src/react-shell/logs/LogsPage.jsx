@@ -3,6 +3,7 @@ import { AggregateSection } from './AggregateSection.jsx'
 import { ContextSection } from './ContextSection.jsx'
 import { FieldsSection } from './FieldsSection.jsx'
 import { LiveSection } from './LiveSection.jsx'
+import { LogsIndexToFields } from './LogsIndexToFields.jsx'
 import { PipelinesSection } from './PipelinesSection.jsx'
 import { QuerySection } from './QuerySection.jsx'
 import { SavedViewsSection } from './SavedViewsSection.jsx'
@@ -24,6 +25,7 @@ export function LogsPage({ query, onNavigate, onOpenTrace, onOpenAgent }) {
       {section === 'query' && <QuerySection />}
       {section === 'live' && <LiveSection />}
       {section === 'fields' && <FieldsSection />}
+      {section === 'indexes' && <LogsIndexToFields />}
       {section === 'context' && <ContextSection query={query} onOpenTrace={onOpenTrace} onOpenAgent={onOpenAgent} />}
       {section === 'aggregate' && <AggregateSection />}
       {section === 'pipelines' && <PipelinesSection />}

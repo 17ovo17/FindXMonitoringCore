@@ -2,6 +2,7 @@ export const sections = [
   { value: 'query', label: '日志检索', desc: '按时间、关键词、字段、服务、级别和 Trace 信息检索日志。' },
   { value: 'live', label: '实时日志', desc: '承载实时 tail、暂停、恢复、断线提示和查询条件复用。' },
   { value: 'fields', label: '字段筛选', desc: '管理可用字段、已选字段、字段搜索和字段值联想。' },
+  { value: 'indexes', label: '字段索引', desc: '管理已索引字段、添加/删除索引和字段类型配置。' },
   { value: 'context', label: '上下文', desc: '围绕单条日志加载前后文、同实例和同 Trace 日志。' },
   { value: 'aggregate', label: '聚合分析', desc: '按字段、时间粒度和过滤条件聚合日志趋势。' },
   { value: 'pipelines', label: '接入管道', desc: '管理解析、过滤、增强、预览验证和版本审计。' },
